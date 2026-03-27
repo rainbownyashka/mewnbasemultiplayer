@@ -17,6 +17,7 @@ Changes
 - Basegame: structure check recorded in docs/STRUCTURE_CHECK.txt (no issues found).
 - Added optional runtime eval server (disabled by default, enable with -Dmewnbase.eval=1).
 - Added optional UI test server (disabled by default, enable with -Dmewnbase.uitest=1) to list/click buttons safely.
+- Added basegame/run_log.bat to persist game logs to basegame/logs/.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
