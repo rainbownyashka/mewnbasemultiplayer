@@ -25,6 +25,7 @@ Changes
 - MoonBase: legacy `-Dmewnbase.connect` now routes through menu-based auto-connect instead of instant-run.
 - MainMenu: auto-open multiplayer now runs after intro animation completes.
 - MultiplayerConfigMenu: patched jar with updated inner classes to avoid NoSuchMethodError.
+- DesktopLauncher: avoid crashlog NPE when currentSaveFolder is null.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -38,6 +39,7 @@ Verification
 - Compiled Hud.java with javac --release 8 and patched jar.
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
+- Compiled DesktopLauncher.java with javac --release 8 and patched jar.
 - UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
 
 Risks

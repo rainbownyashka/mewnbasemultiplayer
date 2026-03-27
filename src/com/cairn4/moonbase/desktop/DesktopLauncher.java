@@ -12,7 +12,6 @@ import com.cairn4.moonbase.MoonBase;
 import com.cairn4.moonbase.desktop.DesktopAdapter;
 import com.cairn4.moonbase.desktop.achievements.SteamAchievementAdapter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -32,7 +31,7 @@ public class DesktopLauncher {
         config.useVsync(true);
         config.setResizable(true);
         config.setTitle("MewnBase");
-        config.setWindowIcon(Files.FileType.Local, "app_icon_16x16.png", "app_icon_32x32.png");
+        config.setWindowIcon(com.badlogic.gdx.Files.FileType.Local, "app_icon_16x16.png", "app_icon_32x32.png");
         config.setAutoIconify(true);
         String coreFolder = "data/";
         System.out.println("MewnBase v1.0.1 | OS: " + System.getProperty("os.name"));
@@ -55,7 +54,7 @@ public class DesktopLauncher {
             result = MoonBase.STEAM_VERSION ? result + "Steam Version\n" : result + "Itch.io Version\n";
             result = result + System.getProperty("os.arch") + " | " + System.getProperty("os.name") + " | " + System.getProperty("os.version") + "\n\n";
             result = result + coreFolder + "\n\n";
-            if (!MoonBase.currentSaveFolder.equals("")) {
+            if (MoonBase.currentSaveFolder != null && !MoonBase.currentSaveFolder.equals("")) {
                 result = result + "Current save: " + MoonBase.currentSaveFolder + "\n";
             }
             result = result + coreFolder + "\n\n";
@@ -65,7 +64,7 @@ public class DesktopLauncher {
             String filename = "";
             try {
                 filename = "crashlog_v1.0.1_" + new SimpleDateFormat("yyyy-M-d_h.mm.ssa").format(new Date()) + ".txt";
-                Files.write(Paths.get(filename, new String[0]), result.getBytes(), new OpenOption[0]);
+                java.nio.file.Files.write(Paths.get(filename, new String[0]), result.getBytes(), new OpenOption[0]);
             }
             catch (IOException i) {
                 i.printStackTrace();
@@ -94,4 +93,3 @@ public class DesktopLauncher {
         return build.toString();
     }
 }
-
