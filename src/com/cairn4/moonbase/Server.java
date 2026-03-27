@@ -1105,6 +1105,42 @@ public class Server {
                             }
                             continue;
                         }
+                        if (message.startsWith("VEH_SPAWN:")) {
+                            try {
+                                final String payload = message;
+                                server.broadcast("0:" + payload, this);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            MultiplayerNetworkHelper.handleVehicleSpawn(server.gameScreen, payload, this.clientId);
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply VEH_SPAWN locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay VEH_SPAWN", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("GENERATOR_FUEL:")) {
+                            try {
+                                final String payload = message;
+                                server.broadcast("0:" + payload, this);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            MultiplayerNetworkHelper.handleGeneratorFuel(server.gameScreen, payload, this.clientId);
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply GENERATOR_FUEL locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay GENERATOR_FUEL", e);
+                            }
+                            continue;
+                        }
                         // If client sends POS updates, parse once, apply to host GameScreen (if present)
                         // and perform server-side rate-limiting before rebroadcasting to other clients.
                         if (message.startsWith("POS:") || (message.indexOf(':') > 0 && message.substring(message.indexOf(':') + 1).startsWith("POS:"))) {

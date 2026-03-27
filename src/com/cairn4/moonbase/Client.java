@@ -407,6 +407,14 @@ package com.cairn4.moonbase;
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_OCCUPY", e);
                             }
+                        } else if (frag.startsWith("VEH_SPAWN:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleSpawn(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_SPAWN", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_SPAWN", e);
+                            }
                         } else if (frag.startsWith("VEH_STATE:")) {
                             try {
                                 if (!MultiplayerNetworkHelper.handleVehicleState(this.screen, frag, srcId)) {
@@ -414,6 +422,14 @@ package com.cairn4.moonbase;
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_STATE", e);
+                            }
+                        } else if (frag.startsWith("GENERATOR_FUEL:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleGeneratorFuel(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle GENERATOR_FUEL", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling GENERATOR_FUEL", e);
                             }
                         } else if (frag.startsWith("INVENTORY_UPDATE:")) {
                              try {

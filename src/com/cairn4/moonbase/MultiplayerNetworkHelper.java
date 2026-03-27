@@ -421,6 +421,84 @@ public class MultiplayerNetworkHelper {
         }
         return false;
     }
+
+    /**
+     * Handles vehicle spawn sync (VEH_SPAWN:type:id:x:y:rot)
+     */
+    public static boolean handleVehicleSpawn(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("VEH_SPAWN:")) return false;
+            String[] parts = message.split(":", 6);
+            if (parts.length < 6 || gameScreen == null || gameScreen.world == null) return false;
+            final String type = parts[1];
+            final long entId = Long.parseLong(parts[2]);
+            final float x = safeParseFloat(parts[3], Float.NaN);
+            final float y = safeParseFloat(parts[4], Float.NaN);
+            final float rot = safeParseFloat(parts[5], 0.0f);
+            if (entId <= 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    if (gameScreen.world.getEntityById(entId) != null) return;
+                    com.cairn4.moonbase.entities.Vehicle v = null;
+                    if ("buggie".equals(type)) {
+                        v = new com.cairn4.moonbase.entities.Buggie(gameScreen.world, x, y, rot);
+                    } else if ("tank".equals(type)) {
+                        v = new com.cairn4.moonbase.entities.Tank(gameScreen.world, x, y, rot);
+                    } else if ("rover".equals(type)) {
+                        v = new com.cairn4.moonbase.entities.Vehicle2(gameScreen.world, x, y, rot);
+                    } else if ("trailer".equals(type)) {
+                        v = new com.cairn4.moonbase.entities.VehicleTrailer(gameScreen.world, x, y, rot);
+                    }
+                    if (v != null) {
+                        gameScreen.world.registerNetworkEntity(v, entId);
+                        try {
+                            java.lang.reflect.Method m = v.getClass().getMethod("spawnAnim");
+                            m.invoke(v);
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_SPAWN", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_SPAWN", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles generator fuel sync (GENERATOR_FUEL:wx:wy:amount)
+     */
+    public static boolean handleGeneratorFuel(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("GENERATOR_FUEL:")) return false;
+            String[] parts = message.split(":", 4);
+            if (parts.length < 4 || gameScreen == null || gameScreen.world == null) return false;
+            final int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+            final int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+            final float amt = safeParseFloat(parts[3], -1.0f);
+            if (wx == Integer.MIN_VALUE || wy == Integer.MIN_VALUE || amt < 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    gameScreen.world.ensureChunkLoadedForNetwork(wx, wy);
+                    com.cairn4.moonbase.tiles.Tile t = gameScreen.world.getTile(wx, wy);
+                    if (t instanceof com.cairn4.moonbase.tiles.Generator) {
+                        com.cairn4.moonbase.tiles.Generator g = (com.cairn4.moonbase.tiles.Generator)t;
+                        if (g.fuelStorageBehavior != null) {
+                            g.fuelStorageBehavior.amount = amt;
+                        }
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply GENERATOR_FUEL", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling GENERATOR_FUEL", e);
+        }
+        return false;
+    }
     
     /**
      * Utility for safe parsing of int with default value

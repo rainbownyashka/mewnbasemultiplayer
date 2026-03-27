@@ -30,21 +30,37 @@ extends ItemCrafter {
                 MoonBase.achievementAdapter.buildBuggie();
                 Buggie v = new Buggie(this.chunk.world, spawnX, spawnY, -90.0f);
                 v.spawnAnim();
+                try {
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
+                        "VEH_SPAWN:buggie:" + v.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                } catch (Exception ignored) {}
                 break;
             }
             case "tank": {
                 MoonBase.achievementAdapter.buildBuggie();
                 Tank tank = new Tank(this.chunk.world, spawnX, spawnY, -90.0f);
                 tank.spawnAnim();
+                try {
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
+                        "VEH_SPAWN:tank:" + tank.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                } catch (Exception ignored) {}
                 break;
             }
             case "rover": {
-                new Vehicle2(this.chunk.world, spawnX, spawnY, -90.0f);
+                Vehicle2 rv = new Vehicle2(this.chunk.world, spawnX, spawnY, -90.0f);
+                try {
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
+                        "VEH_SPAWN:rover:" + rv.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                } catch (Exception ignored) {}
                 break;
             }
             case "trailer": {
                 VehicleTrailer t = new VehicleTrailer(this.chunk.world, spawnX, spawnY, -90.0f);
                 t.spawnAnim();
+                try {
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
+                        "VEH_SPAWN:trailer:" + t.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                } catch (Exception ignored) {}
                 break;
             }
             default: {
@@ -64,4 +80,3 @@ extends ItemCrafter {
         this.localY = localY;
     }
 }
-

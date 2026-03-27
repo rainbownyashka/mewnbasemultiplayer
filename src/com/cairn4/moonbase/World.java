@@ -689,6 +689,17 @@ public class World {
         return null;
     }
 
+    // Register a network-spawned entity id so all clients use the same id space.
+    public void registerNetworkEntity(com.cairn4.moonbase.entities.Entity e, long id) {
+        if (e == null || id <= 0) return;
+        try {
+            e.id = id;
+            if (this.nextEntityId < id) {
+                this.nextEntityId = id;
+            }
+        } catch (Exception ignored) {}
+    }
+
     public void addChunk(Chunk chunk) {
         Gdx.app.debug("MoonBase", "World: Adding loaded chunk: " + chunk.chunkX + ", " + chunk.chunkY);
         this.putChunk(chunk);
