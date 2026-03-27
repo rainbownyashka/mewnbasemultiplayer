@@ -55,15 +55,22 @@ public class MultiplayerConfigMenu extends Menu {
             public void clicked(InputEvent event, float x, float y) {
                 MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
                 final String ip = ipField.getText();
-                final int port = Integer.parseInt(portField.getText());
+                final int port;
+                try {
+                    port = Integer.parseInt(portField.getText());
+                } catch (Exception e) {
+                    Gdx.app.error("MewnBase", "Invalid port: " + portField.getText(), e);
+                    MultiplayerConfigMenu.this.baseScreen.menuBackSound();
+                    return;
+                }
                 Gdx.app.log("MewnBase", "Preparing to connect to " + ip + ":" + port);
                 
                 // Perform a synchronous initial-data fetch from the server before creating GameScreen.
                 // This avoids racing to load a world before the server has sent the save blobs.
-                com.cairn4.moonbase.MoonBase.isMultiplayer = true;
-                com.cairn4.moonbase.MoonBase.multiplayerHost = ip;
-                com.cairn4.moonbase.MoonBase.multiplayerPort = port;
-                com.cairn4.moonbase.MoonBase.multiplayerNick = nickField.getText();
+                final boolean prevIsMultiplayer = com.cairn4.moonbase.MoonBase.isMultiplayer;
+                final String prevHost = com.cairn4.moonbase.MoonBase.multiplayerHost;
+                final int prevPort = com.cairn4.moonbase.MoonBase.multiplayerPort;
+                final String prevNick = com.cairn4.moonbase.MoonBase.multiplayerNick;
 
                 new Thread(() -> {
                     boolean success = false;
@@ -74,6 +81,7 @@ public class MultiplayerConfigMenu extends Menu {
 
                         java.net.Socket tempSock = new Socket();
                         tempSock.connect(new InetSocketAddress(ip, port), 5000);
+                        try { tempSock.setSoTimeout(15000); } catch (Exception ignored) {}
                         java.io.DataInputStream in = new java.io.DataInputStream(tempSock.getInputStream());
                         try { int assignedId = in.readInt(); } catch (Exception ignored) {}
 
@@ -118,6 +126,10 @@ public class MultiplayerConfigMenu extends Menu {
                     if (success) {
                         com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                             try {
+                                com.cairn4.moonbase.MoonBase.isMultiplayer = true;
+                                com.cairn4.moonbase.MoonBase.multiplayerHost = ip;
+                                com.cairn4.moonbase.MoonBase.multiplayerPort = port;
+                                com.cairn4.moonbase.MoonBase.multiplayerNick = nickField.getText();
                                 baseScreen.game.loadGameAssets();
                                 com.cairn4.moonbase.AssetManagerSingleton.getInstance().finishLoading();
                                 baseScreen.game.setScreen(new com.cairn4.moonbase.ui.GameScreen(baseScreen.game, false));
@@ -127,6 +139,10 @@ public class MultiplayerConfigMenu extends Menu {
                         });
                     } else {
                         com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                            com.cairn4.moonbase.MoonBase.isMultiplayer = prevIsMultiplayer;
+                            com.cairn4.moonbase.MoonBase.multiplayerHost = prevHost;
+                            com.cairn4.moonbase.MoonBase.multiplayerPort = prevPort;
+                            com.cairn4.moonbase.MoonBase.multiplayerNick = prevNick;
                             baseScreen.menuBackSound();
                             com.badlogic.gdx.Gdx.app.log("ClientSync", "Connection failed, returning to menu");
                         });

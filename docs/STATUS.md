@@ -10,13 +10,14 @@ Changes
 - Audited all old decompiled variants vs current src and captured counts in old/_diff_summary.txt.
 - Added multiplayer review draft in docs/MP_DRAFT.md.
 - Client: made multiplayer state thread-safe and added pending-spawn flush to prevent remote players getting stuck.
+- MultiplayerConfigMenu: added socket read timeout and rollback of multiplayer flags on failed connect.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
 - Scripts now assume src/ for sources, out/ for compiled classes, work/ for packaging.
 
 Verification
-- Not run (no compilation/test executed yet).
+- Compiled MultiplayerConfigMenu.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
 
 Risks
 - Any external references/scripts may still point to old paths; update as needed.
