@@ -1,4 +1,4 @@
-# --- ФАЙЛ: mewnbase_autoupdate.py (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
+# --- ФАЙЛ: mewnbase_autoupdate_ai.py (AI ВЕРСИЯ) ---
 
 import os
 import sys
@@ -27,6 +27,8 @@ BACKUP_PATH = os.path.join(PROJECT_ROOT, "backups")
 # --- ФАЙЛЫ СОСТОЯНИЯ ---
 STATUS_FILE = os.path.join(PROJECT_ROOT, "autocompile.status")
 ERROR_LOG_FILE = os.path.join(PROJECT_ROOT, "compile_errors.json")
+CHANGED_TRACK_FILE = os.path.join(PROJECT_ROOT, "autocompile.changed.json")
+UNARCHIVE_MARKER = os.path.join(UNARCHIVED_PATH, ".unarchived_from")
 
 # --- Функции для работы с файлами состояния ---
 
@@ -59,6 +61,82 @@ def write_error_log(errors):
             json.dump(errors, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"Не удалось записать лог ошибок: {e}")
+
+def read_changed_track():
+    if not os.path.exists(CHANGED_TRACK_FILE):
+        return set()
+    try:
+        with open(CHANGED_TRACK_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return set(data)
+    except Exception:
+        return set()
+    return set()
+
+def write_changed_track(changed_set):
+    try:
+        with open(CHANGED_TRACK_FILE, 'w', encoding='utf-8') as f:
+            json.dump(sorted(list(changed_set)), f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Не удалось записать список измененных файлов: {e}")
+
+def ensure_unarchived():
+    """Ensure UNARCHIVED_PATH contains an extracted copy of the current game jar."""
+    try:
+        jar_mtime = os.path.getmtime(GAME_PATH)
+    except Exception:
+        jar_mtime = None
+
+    need_extract = False
+    if not os.path.exists(UNARCHIVED_PATH):
+        need_extract = True
+    else:
+        if not os.path.isdir(UNARCHIVED_PATH):
+            need_extract = True
+        else:
+            if not os.path.exists(UNARCHIVE_MARKER):
+                need_extract = True
+            else:
+                try:
+                    with open(UNARCHIVE_MARKER, 'r', encoding='utf-8') as f:
+                        marker = f.read().strip()
+                    if str(jar_mtime) != marker:
+                        need_extract = True
+                except Exception:
+                    need_extract = True
+
+    if not need_extract:
+        return
+
+    print("Распаковка базового JAR в work/ ...")
+    if os.path.exists(UNARCHIVED_PATH):
+        try:
+            shutil.rmtree(UNARCHIVED_PATH)
+        except Exception as e:
+            print(f"\033[91mНе удалось очистить work/: {e}\033[0m")
+            return
+    os.makedirs(UNARCHIVED_PATH, exist_ok=True)
+    try:
+        with zipfile.ZipFile(GAME_PATH, 'r') as zin:
+            zin.extractall(UNARCHIVED_PATH)
+        if jar_mtime is not None:
+            with open(UNARCHIVE_MARKER, 'w', encoding='utf-8') as f:
+                f.write(str(jar_mtime))
+    except Exception as e:
+        print(f"\033[91mНе удалось распаковать JAR: {e}\033[0m")
+
+def kill_mewnbase_processes():
+    """Kill MewnBase.exe and any java process using desktop-1.0.jar."""
+    try:
+        os.system('taskkill /F /IM MewnBase.exe > NUL 2>&1')
+    except Exception:
+        pass
+    try:
+        cmd = 'powershell -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like \'*desktop-1.0.jar*\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"'
+        os.system(cmd)
+    except Exception:
+        pass
 
 # <<< НАЧАЛО ИЗМЕНЕННОГО БЛОКА >>>
 def update_compile_status(java_file, compiler_stderr, returncode):
@@ -112,9 +190,15 @@ def create_structured_backup(file_to_backup):
 # --- Основная логика ---
 
 def compile_and_update(changed_files, deleted_files):
+    ensure_unarchived()
+
+    changed_set = read_changed_track()
+
     if deleted_files:
         print("Удаление старых .class файлов...")
         for java_file in deleted_files:
+            if java_file in changed_set:
+                changed_set.discard(java_file)
             relative_java_path = os.path.relpath(java_file, SOURCE_PATH)
             class_file_path = os.path.join(UNARCHIVED_PATH, os.path.splitext(relative_java_path)[0] + ".class")
             if os.path.exists(class_file_path):
@@ -123,21 +207,27 @@ def compile_and_update(changed_files, deleted_files):
                     print(f"Удален: {class_file_path}")
                 except OSError as e:
                     print(f"\033[91mОшибка при удалении {class_file_path}: {e}\033[0m")
+        write_changed_track(changed_set)
 
     compilation_failed = False
     if changed_files:
-        print("Создание резервных копий измененных файлов...")
         for java_file in changed_files:
+            changed_set.add(java_file)
+        write_changed_track(changed_set)
+
+    if changed_set:
+        print("Создание резервных копий измененных файлов...")
+        for java_file in sorted(changed_set):
             create_structured_backup(java_file)
             relative_java_path = os.path.relpath(java_file, SOURCE_PATH)
             class_file_path = os.path.join(UNARCHIVED_PATH, os.path.splitext(relative_java_path)[0] + ".class")
             create_structured_backup(class_file_path)
 
-        update_status("COMPILING", f"Компиляция {len(changed_files)} файл(а/ов)...")
-        
-        for java_file in changed_files:
+        update_status("COMPILING", f"Компиляция {len(changed_set)} файл(а/ов)...")
+
+        for java_file in sorted(changed_set):
             print(f"--- Компиляция: {os.path.basename(java_file)} ---")
-            compile_command = ['javac', '-cp', UNARCHIVED_PATH, java_file, '-d', COMPILE_DIR]
+            compile_command = ['javac', '-cp', UNARCHIVED_PATH, '-sourcepath', SOURCE_PATH, java_file, '-d', COMPILE_DIR]
             result = subprocess.run(compile_command, capture_output=True, text=True, encoding='cp866')
             
             update_compile_status(java_file, result.stderr, result.returncode)
@@ -168,7 +258,7 @@ def compile_and_update(changed_files, deleted_files):
         zipdir(UNARCHIVED_PATH, zout)
     
     try:
-        os.system('taskkill /F /IM mewnbase.exe > NUL 2>&1')
+        kill_mewnbase_processes()
         time.sleep(0.6)
         with open(GAME_PATH, 'wb') as f:
             f.write(zip_buffer.getvalue())
@@ -184,6 +274,8 @@ def compile_and_update(changed_files, deleted_files):
 # --- Основной цикл отслеживания ---
 def main_loop():
     os.makedirs(BACKUP_PATH, exist_ok=True)
+    os.makedirs(COMPILE_DIR, exist_ok=True)
+    ensure_unarchived()
     print("Отслеживание изменений в файлах...")
     update_status("IDLE", "Скрипт запущен и отслеживает изменения.")
     last_modified = {}
