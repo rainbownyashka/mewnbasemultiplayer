@@ -137,6 +137,20 @@ def kill_mewnbase_processes():
         os.system(cmd)
     except Exception:
         pass
+    try:
+        # Kill cmd.exe windows running run_*.bat scripts (server/client/log)
+        cmd = (
+            'powershell -Command "'
+            '$patterns = @('
+            '\'run_server.bat\',\'run_client.bat\',\'run_client1_uitest.bat\',\'run_client2_uitest.bat\','
+            '\'run_both.bat\',\'run_log.bat\',\'run_log_uitest.bat\',\'run_server_uitest.bat\');'
+            'Get-CimInstance Win32_Process | Where-Object { $_.Name -ieq \'cmd.exe\' } | '
+            'Where-Object { $cl=$_.CommandLine; $cl -and ($patterns | Where-Object { $cl -like (\'*\' + $_ + \'*\') }) } | '
+            'ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"'
+        )
+        os.system(cmd)
+    except Exception:
+        pass
 
 # <<< НАЧАЛО ИЗМЕНЕННОГО БЛОКА >>>
 def update_compile_status(java_file, compiler_stderr, returncode):
