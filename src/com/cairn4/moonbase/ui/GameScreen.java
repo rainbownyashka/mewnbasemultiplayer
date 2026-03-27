@@ -276,8 +276,14 @@ implements Telegraph {
         RichPresenceState rpstate = new RichPresenceState();
         rpstate.state = RichPresenceState.States.playing;
         GameScreen gameScreen = this;
+        if (gameScreen.game.getCurrentMission() == null) {
+            Gdx.app.log("GameScreen", "updateRichPresence: mission not initialized yet");
+            return;
+        }
         rpstate.missionType = gameScreen.game.getCurrentMission().missionType;
-        rpstate.dayNum = this.world.dayCycle.getDay();
+        if (this.world != null && this.world.dayCycle != null) {
+            rpstate.dayNum = this.world.dayCycle.getDay();
+        }
         this.game.platformAdapter.updateRPC(rpstate);
     }
 
@@ -799,4 +805,3 @@ implements Telegraph {
         }
     }
 }
-
