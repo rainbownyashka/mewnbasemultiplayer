@@ -50,6 +50,8 @@ public class PlayerAnimController {
     private boolean fireParticlesPlaying = false;
     // When a remote flip is enforced by network, keep it persistent so updateWalkDirection doesn't overwrite it
     private float forcedScale = Float.NaN;
+    // Track last scale we broadcast to avoid spamming
+    private float lastNetScale = Float.NaN;
 
     public PlayerAnimController(Player player) {
         this.player = player;
@@ -349,6 +351,14 @@ public class PlayerAnimController {
         }
         // Re-apply any network-enforced forcedScale so local updates don't overwrite it
         try { this.applyForcedScale(); } catch (Exception ignored) {}
+        // Broadcast flip changes even if animation didn't change (fixes diagonal/held input cases)
+        try {
+            float effectiveScale = !Float.isNaN(this.forcedScale) ? this.forcedScale : this.skeleton.getScaleX();
+            if (Float.isNaN(this.lastNetScale) || this.lastNetScale != effectiveScale) {
+                this.lastNetScale = effectiveScale;
+                this.broadcastFlipOnly(effectiveScale);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void footStepSoundFx(Event event) {
@@ -411,6 +421,26 @@ public class PlayerAnimController {
                     com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipOverride);
                     com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipPayload);
                     com.cairn4.moonbase.NetworkHelper.sendPayload(gs, animPayload);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void broadcastFlipOnly(float scaleX) {
+        try {
+            if (this.player != null && this.player.world != null && this.player.world.gameScreen != null) {
+                try {
+                    com.cairn4.moonbase.ui.GameScreen gs = this.player.world.gameScreen;
+                    boolean hasNet = false;
+                    try { hasNet = (gs.client != null) || (com.cairn4.moonbase.Server.getActiveServer() != null); } catch (Exception ignored) {}
+                    if (!hasNet) {
+                        return;
+                    }
+                    int owner = this.player.ownerId;
+                    String flipOverride = "FLIP_OVERRIDE:PLAYER:" + owner + ":" + scaleX;
+                    String flipPayload = "FLIP:PLAYER:" + owner + ":" + scaleX;
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipOverride);
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipPayload);
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}

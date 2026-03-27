@@ -52,6 +52,7 @@ Changes
 - PlayerAnimController: send FLIP_OVERRIDE alongside FLIP so remote flip persists.
 - Client: cache FLIP scale when remote player not spawned yet.
 - Hud: force-hide interact/build cursor for mouse users each frame to prevent white square.
+- PlayerAnimController: broadcast flip-only when direction changes to fix diagonal/held-input flip not applying.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -87,6 +88,7 @@ Verification
 - Added tools/patch_manual.ps1 (not executed yet).
 - Compiled PlayerAnimController.java, Hud.java, BuildingPlacementCursor.java with patch_manual.ps1 (2026-03-27).
 - Compiled PlayerAnimController.java, Client.java, Hud.java with patch_manual.ps1 (2026-03-27).
+- Compiled PlayerAnimController.java with patch_manual.ps1 (2026-03-27).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
