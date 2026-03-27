@@ -36,7 +36,15 @@ public class Server {
     private GameScreen gameScreen = null;
     private volatile boolean hostPosThreadStarted = false;
     private volatile long lastTimeWeatherSyncMs = 0L;
-    private static final long TIME_WEATHER_SYNC_INTERVAL_MS = 2000L;
+    private static final long TIME_WEATHER_SYNC_INTERVAL_MS = 60000L;
+    private int lastTwDay = -1;
+    private String lastTwPeriod = "";
+    private float lastTwPeriodTime = -9999.0f;
+    private String lastTwDayMode = "";
+    private String lastTwWeatherMode = "";
+    private String lastTwWeatherId = "";
+    private float lastTwWeatherTime = -9999.0f;
+    private float lastTwWeatherDur = -9999.0f;
 
     public Server(int port) {
         this.port = port;
@@ -111,26 +119,62 @@ public class Server {
                             // Periodic time/weather sync from host world to all clients
                             try {
                                 long now = System.currentTimeMillis();
-                                if (now - Server.this.lastTimeWeatherSyncMs >= TIME_WEATHER_SYNC_INTERVAL_MS) {
-                                    Server.this.lastTimeWeatherSyncMs = now;
-                                    try {
-                                        com.cairn4.moonbase.World w = Server.this.gameScreen.world;
-                                        com.cairn4.moonbase.DayCycle dc = w.dayCycle;
-                                        com.cairn4.moonbase.WeatherManager wm = w.weatherManager;
-                                        String period = (dc != null && dc.currentPeriod != null) ? dc.currentPeriod.toString() : "day";
-                                        float periodTime = (dc != null) ? dc.timer : 0.0f;
-                                        int day = (dc != null) ? dc.getDay() : 0;
-                                        String dayMode = "defaultDay";
-                                        try { if (dc != null) dayMode = dc.dayCycleMode.toString(); } catch (Exception ignored) {}
-                                        String weatherMode = "normal";
-                                        try { if (w.gameScreen != null && w.gameScreen.game != null && w.gameScreen.game.getCurrentMission() != null) weatherMode = w.gameScreen.game.getCurrentMission().weatherMode.toString(); } catch (Exception ignored) {}
-                                        String weatherId = (wm != null && wm.getCurrentData() != null) ? wm.getCurrentData().id : "clear";
-                                        float weatherTime = (wm != null) ? wm.getTimer() : 0.0f;
-                                        float weatherDur = (wm != null) ? wm.getDuration() : 0.0f;
+                                try {
+                                    com.cairn4.moonbase.World w = Server.this.gameScreen.world;
+                                    com.cairn4.moonbase.DayCycle dc = w.dayCycle;
+                                    com.cairn4.moonbase.WeatherManager wm = w.weatherManager;
+                                    String period = (dc != null && dc.currentPeriod != null) ? dc.currentPeriod.toString() : "day";
+                                    float periodTime = (dc != null) ? dc.timer : 0.0f;
+                                    int day = (dc != null) ? dc.getDay() : 0;
+                                    String dayMode = "defaultDay";
+                                    try { if (dc != null) dayMode = dc.dayCycleMode.toString(); } catch (Exception ignored) {}
+                                    String weatherMode = "normal";
+                                    try { if (w.gameScreen != null && w.gameScreen.game != null && w.gameScreen.game.getCurrentMission() != null) weatherMode = w.gameScreen.game.getCurrentMission().weatherMode.toString(); } catch (Exception ignored) {}
+                                    String weatherId = (wm != null && wm.getCurrentData() != null) ? wm.getCurrentData().id : "clear";
+                                    float weatherTime = (wm != null) ? wm.getTimer() : 0.0f;
+                                    float weatherDur = (wm != null) ? wm.getDuration() : 0.0f;
+                                    boolean changed = false;
+                                    if (day != Server.this.lastTwDay) changed = true;
+                                    else if (!period.equals(Server.this.lastTwPeriod)) changed = true;
+                                    else if (Math.abs(periodTime - Server.this.lastTwPeriodTime) > 5.0f) changed = true;
+                                    else if (!dayMode.equals(Server.this.lastTwDayMode)) changed = true;
+                                    else if (!weatherMode.equals(Server.this.lastTwWeatherMode)) changed = true;
+                                    else if (!weatherId.equals(Server.this.lastTwWeatherId)) changed = true;
+                                    else if (Math.abs(weatherTime - Server.this.lastTwWeatherTime) > 5.0f) changed = true;
+                                    else if (Math.abs(weatherDur - Server.this.lastTwWeatherDur) > 5.0f) changed = true;
+                                    if (changed || (now - Server.this.lastTimeWeatherSyncMs >= TIME_WEATHER_SYNC_INTERVAL_MS)) {
+                                        Server.this.lastTwDay = day;
+                                        Server.this.lastTwPeriod = period;
+                                        Server.this.lastTwPeriodTime = periodTime;
+                                        Server.this.lastTwDayMode = dayMode;
+                                        Server.this.lastTwWeatherMode = weatherMode;
+                                        Server.this.lastTwWeatherId = weatherId;
+                                        Server.this.lastTwWeatherTime = weatherTime;
+                                        Server.this.lastTwWeatherDur = weatherDur;
+                                        Server.this.lastTimeWeatherSyncMs = now;
                                         String tw = "TIMEWEATHER:" + day + ":" + period + ":" + periodTime + ":" + dayMode + ":" + weatherMode + ":" + weatherId + ":" + weatherTime + ":" + weatherDur;
                                         Server.this.broadcast("0:" + tw, null);
-                                    } catch (Exception ignored) {}
-                                }
+                                    }
+                                } catch (Exception ignored) {}
+
+                                // Vehicle state sync from host-driven vehicles
+                                try {
+                                    for (com.cairn4.moonbase.entities.Entity e : Server.this.gameScreen.world.entityList) {
+                                        if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                                        com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                        if (v.driverOwnerId != 0) continue;
+                                        float vvx = 0f, vvy = 0f, vrot = 0f;
+                                        try { vrot = v.getRotation(); } catch (Exception ignored) {}
+                                        try {
+                                            if (v.body != null) {
+                                                vvx = v.body.getLinearVelocity().x * 256.0f;
+                                                vvy = v.body.getLinearVelocity().y * 256.0f;
+                                            }
+                                        } catch (Exception ignored) {}
+                                        String vs = "VEH_STATE:" + v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + vrot + ":" + vvx + ":" + vvy;
+                                        Server.this.broadcast("0:" + vs, null);
+                                    }
+                                } catch (Exception ignored) {}
                             } catch (Exception ignored2) {}
                         }
                         try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
@@ -259,6 +303,30 @@ public class Server {
                     broadcast("DISCONNECTED:" + clientId, null);
                 }
             } catch (Exception ignored) {}
+            // Clear any vehicle seats held by this client
+            try {
+                if (this.gameScreen != null && this.gameScreen.world != null) {
+                    final int rid = clientId;
+                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                        try {
+                            for (com.cairn4.moonbase.entities.Entity e : Server.this.gameScreen.world.entityList) {
+                                if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                boolean changed = false;
+                                if (v.driverOwnerId == rid) { v.driverOwnerId = -1; changed = true; }
+                                if (v.passengerOwnerId == rid) { v.passengerOwnerId = -1; changed = true; }
+                                if (v.driverOwnerId < 0 && v.passengerOwnerId >= 0) { v.promotePassengerToDriver(); changed = true; }
+                                if (changed) {
+                                    if (!v.hasDriver() && !v.hasPassenger()) v.setState(com.cairn4.moonbase.entities.Vehicle.STATES.empty);
+                                    String occ = "VEH_OCCUPY:" + v.id + ":" + v.driverOwnerId + ":" + v.passengerOwnerId;
+                                    Server.this.broadcast("0:" + occ, null);
+                                    try { MultiplayerNetworkHelper.handleVehicleOccupy(Server.this.gameScreen, occ, 0); } catch (Exception ignored) {}
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }});
+                }
+            } catch (Exception ignored) {}
             // Remove remote player from host GameScreen if present
             try {
                 if (this.gameScreen != null) {
@@ -381,11 +449,11 @@ public class Server {
                     }
                 }
                 // Send host info (spawn + appearance) to the new client so it sees the host even though host is not a network client
-                try {
-                    if (server.gameScreen != null) {
-                        try {
-                            sendMessage("0:SPAWNREMOTE:0");
-                        } catch (Exception ignored) {}
+                    try {
+                        if (server.gameScreen != null) {
+                            try {
+                                sendMessage("0:SPAWNREMOTE:0");
+                            } catch (Exception ignored) {}
                         try {
                             int face = 0; String color = ""; String nick = "";
                             try { face = server.gameScreen.world.player.characterFaceOption; } catch (Exception ignored) {}
@@ -394,6 +462,20 @@ public class Server {
                             String app = "0:APPEARANCE:0:" + face + "|" + URLEncoder.encode(color == null ? "" : color, "UTF-8") + "|" + URLEncoder.encode(nick == null ? "" : nick, "UTF-8");
                             sendMessage(app);
                         } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+
+                // Send current vehicle occupancy to the new client
+                try {
+                    if (server.gameScreen != null && server.gameScreen.world != null) {
+                        for (com.cairn4.moonbase.entities.Entity e : server.gameScreen.world.entityList) {
+                            if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                            if (v.hasDriver() || v.hasPassenger()) {
+                                String occ = "0:VEH_OCCUPY:" + v.id + ":" + v.driverOwnerId + ":" + v.passengerOwnerId;
+                                sendMessage(occ);
+                            }
+                        }
                     }
                 } catch (Exception ignored) {}
 
@@ -861,11 +943,7 @@ public class Server {
                                     final String finalItemId = itemId;
                                     com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
                                         try {
-                                            String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(wx, wy);
-                                            int ckx = Integer.parseInt(chunkKey.split(",")[0]);
-                                            int cky = Integer.parseInt(chunkKey.split(",")[1]);
-                                            com.cairn4.moonbase.Chunk ch = server.gameScreen.world.getChunk(ckx, cky);
-                                            if (ch == null) ch = server.gameScreen.world.createChunk(ckx, cky);
+                                            com.cairn4.moonbase.Chunk ch = server.gameScreen.world.ensureChunkLoadedForNetwork(wx, wy);
                                             com.badlogic.gdx.math.GridPoint2 local = com.cairn4.moonbase.World.convertWorldToLocal(new com.badlogic.gdx.math.GridPoint2(0,0), wx, wy);
                                             com.cairn4.moonbase.ItemStack stack = new com.cairn4.moonbase.ItemStack(finalItemId, amount);
                                             new com.cairn4.moonbase.tiles.ItemPile(server.gameScreen.world, ch, local.x, local.y, stack);
@@ -892,6 +970,7 @@ public class Server {
                                                 // Use removeline's method 2 to ensure physics and visuals are cleaned up
                                                 server.gameScreen.world.suppressNetworkTileEvents = true;
                                                 try {
+                                                    server.gameScreen.world.ensureChunkLoadedForNetwork(fwx, fwy);
                                                     com.cairn4.moonbase.tiles.Tile t = server.gameScreen.world.getTile(fwx, fwy);
                                                     if (t != null) t.readyToRemove = true;
                                                 } catch (Exception ignored) {}
@@ -912,6 +991,119 @@ public class Server {
                             } catch (Exception e) {
                                 Gdx.app.error("Server", "Failed to schedule TILE_REMOVE application", e);
                             }
+                        }
+                        // Vehicle enter/exit and state sync
+                        if (message.startsWith("VEH_ENTER:") && server.gameScreen != null) {
+                            try {
+                                final int vehId = safeParseInt(message.substring("VEH_ENTER:".length()), -1);
+                                if (vehId >= 0) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
+                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                                boolean changed = false;
+                                                if (!v.hasDriver()) {
+                                                    v.setDriver(ClientHandler.this.clientId);
+                                                    changed = true;
+                                                } else if (!v.hasPassenger()) {
+                                                    v.setPassenger(ClientHandler.this.clientId);
+                                                    changed = true;
+                                                }
+                                                if (changed) {
+                                                    String occ = "VEH_OCCUPY:" + v.id + ":" + v.driverOwnerId + ":" + v.passengerOwnerId;
+                                                    server.broadcast("0:" + occ, null);
+                                                    try { MultiplayerNetworkHelper.handleVehicleOccupy(server.gameScreen, occ, 0); } catch (Exception ignored) {}
+                                                }
+                                            }
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to handle VEH_ENTER", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to schedule VEH_ENTER", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_EXIT:") && server.gameScreen != null) {
+                            try {
+                                final int vehId = safeParseInt(message.substring("VEH_EXIT:".length()), -1);
+                                if (vehId >= 0) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
+                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                                boolean changed = false;
+                                                if (v.driverOwnerId == ClientHandler.this.clientId) {
+                                                    v.driverOwnerId = -1;
+                                                    changed = true;
+                                                }
+                                                if (v.passengerOwnerId == ClientHandler.this.clientId) {
+                                                    v.passengerOwnerId = -1;
+                                                    changed = true;
+                                                }
+                                                if (v.driverOwnerId < 0 && v.passengerOwnerId >= 0) {
+                                                    v.promotePassengerToDriver();
+                                                    changed = true;
+                                                }
+                                                if (changed) {
+                                                    if (!v.hasDriver() && !v.hasPassenger()) v.setState(com.cairn4.moonbase.entities.Vehicle.STATES.empty);
+                                                    String occ = "VEH_OCCUPY:" + v.id + ":" + v.driverOwnerId + ":" + v.passengerOwnerId;
+                                                    server.broadcast("0:" + occ, null);
+                                                    try { MultiplayerNetworkHelper.handleVehicleOccupy(server.gameScreen, occ, 0); } catch (Exception ignored) {}
+                                                }
+                                            }
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to handle VEH_EXIT", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to schedule VEH_EXIT", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_STATE:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                // relay to others
+                                server.broadcast("0:" + payload, this);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            if (!payload.startsWith("VEH_STATE:")) return;
+                                            String[] parts = payload.split(":", 7);
+                                            if (parts.length < 7) return;
+                                            int vehId = safeParseInt(parts[1], -1);
+                                            float x = safeParseFloat(parts[2], Float.NaN);
+                                            float y = safeParseFloat(parts[3], Float.NaN);
+                                            float rot = safeParseFloat(parts[4], 0.0f);
+                                            float vx = safeParseFloat(parts[5], 0.0f);
+                                            float vy = safeParseFloat(parts[6], 0.0f);
+                                            if (vehId < 0) return;
+                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
+                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                                if (v.driverOwnerId != senderId) return;
+                                                if (v.body != null) {
+                                                    try { v.body.setTransform(x / 256.0f, y / 256.0f, rot * com.badlogic.gdx.math.MathUtils.degreesToRadians); } catch (Exception ignored) {}
+                                                    try { v.body.setLinearVelocity(vx / 256.0f, vy / 256.0f); } catch (Exception ignored) {}
+                                                } else {
+                                                    try { v.setWorldPos(x, y); } catch (Exception ignored) {}
+                                                }
+                                            }
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply VEH_STATE locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay VEH_STATE", e);
+                            }
+                            continue;
                         }
                         // If client sends POS updates, parse once, apply to host GameScreen (if present)
                         // and perform server-side rate-limiting before rebroadcasting to other clients.

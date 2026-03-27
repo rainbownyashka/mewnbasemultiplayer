@@ -646,6 +646,49 @@ public class World {
         return c;
     }
 
+    // Ensure a chunk exists and is loaded with saved data for network-applied changes.
+    public Chunk ensureChunkLoadedForNetwork(int worldX, int worldY) {
+        try {
+            String chunkKey = World.convertWorldTileToChunkKey(worldX, worldY);
+            if (this.worldChunks.containsKey(chunkKey)) {
+                return this.worldChunks.get(chunkKey);
+            }
+            int ckx = Integer.parseInt(chunkKey.split(",")[0]);
+            int cky = Integer.parseInt(chunkKey.split(",")[1]);
+            try {
+                if (this.gameScreen != null && this.gameScreen.gameLoader != null &&
+                    this.gameScreen.gameLoader.worldData != null &&
+                    this.gameScreen.gameLoader.worldData.chunkDataMap != null) {
+                    String key = "chunk_" + ckx + "," + cky;
+                    com.cairn4.moonbase.worlddata.ChunkData cd = this.gameScreen.gameLoader.worldData.chunkDataMap.get(key);
+                    if (cd != null) {
+                        Chunk c = new Chunk(this, cd.x, cd.y, true);
+                        try {
+                            if (cd.gtBiomeArray[0] == null) {
+                                for (com.cairn4.moonbase.worlddata.GroundTileData gtd : cd.groundTiles.values()) {
+                                    c.gtDiscoveryArray[gtd.y * 10 + gtd.x] = gtd.disovered;
+                                    c.gtBiomeArray[gtd.y * 10 + gtd.x] = com.cairn4.moonbase.tiles.GroundTile.Biomes.valueOf(gtd.biome);
+                                }
+                            } else {
+                                c.gtBiomeArray = cd.gtBiomeArray;
+                                c.gtDiscoveryArray = cd.gtDiscoveryArray;
+                            }
+                        } catch (Exception ignored) {}
+                        try { c.parseGroundTileData(cd); } catch (Exception ignored) {}
+                        try { c.parseFloorTileData(cd); } catch (Exception ignored) {}
+                        try { c.parseTileData(cd); } catch (Exception ignored) {}
+                        try { c.setMapDirty(false); } catch (Exception ignored) {}
+                        try { c.hide(); } catch (Exception ignored) {}
+                        this.putChunk(c);
+                        return c;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return this.createChunk(ckx, cky);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     public void addChunk(Chunk chunk) {
         Gdx.app.debug("MoonBase", "World: Adding loaded chunk: " + chunk.chunkX + ", " + chunk.chunkY);
         this.putChunk(chunk);
@@ -748,11 +791,7 @@ public class World {
 
                     com.badlogic.gdx.math.GridPoint2 local = com.cairn4.moonbase.World.getGridPointFromPoolAndSet(0,0);
                     local = com.cairn4.moonbase.World.convertWorldToLocal(local, fwx, fwy);
-                    String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(fwx, fwy);
-                    com.cairn4.moonbase.Chunk chunk = this.worldChunks.get(chunkKey);
-                    if (chunk == null) {
-                        chunk = this.createChunk(com.cairn4.moonbase.Chunk.getChunkX(fwx), com.cairn4.moonbase.Chunk.getChunkY(fwy));
-                    }
+                    com.cairn4.moonbase.Chunk chunk = this.ensureChunkLoadedForNetwork(fwx, fwy);
                         
                     com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS orientation = com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS.north;
                     try { 
@@ -771,6 +810,7 @@ public class World {
                     final int fwx = Integer.parseInt(parts[1]);
                     final int fwy = Integer.parseInt(parts[2]);
                     
+                    com.cairn4.moonbase.Chunk chunk = this.ensureChunkLoadedForNetwork(fwx, fwy);
                     com.cairn4.moonbase.tiles.Tile t = this.getTile(fwx, fwy);
                     if (t != null) {
                         t.readyToRemove = true;
@@ -784,13 +824,7 @@ public class World {
                     final String itemId = java.net.URLDecoder.decode(parts[3], "UTF-8");
                     final int amount = Integer.parseInt(parts[4]);
 
-                    String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(wx, wy);
-                    int ckx = Integer.parseInt(chunkKey.split(",")[0]); 
-                    int cky = Integer.parseInt(chunkKey.split(",")[1]);
-                    com.cairn4.moonbase.Chunk ch = this.getChunk(ckx, cky); 
-                    if (ch == null) {
-                        ch = this.createChunk(ckx, cky);
-                    }
+                    com.cairn4.moonbase.Chunk ch = this.ensureChunkLoadedForNetwork(wx, wy);
                     com.badlogic.gdx.math.GridPoint2 local = com.cairn4.moonbase.World.convertWorldToLocal(new com.badlogic.gdx.math.GridPoint2(0,0), wx, wy);
                     com.cairn4.moonbase.ItemStack stack = new com.cairn4.moonbase.ItemStack(itemId, amount);
                     new com.cairn4.moonbase.tiles.ItemPile(this, ch, local.x, local.y, stack);
@@ -803,13 +837,7 @@ public class World {
                     final String encItemId = parts[3];
                     final String itemId = java.net.URLDecoder.decode(encItemId, "UTF-8");
 
-                    String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(wx, wy);
-                    int ckx = Integer.parseInt(chunkKey.split(",")[0]); 
-                    int cky = Integer.parseInt(chunkKey.split(",")[1]);
-                    com.cairn4.moonbase.Chunk ch = this.getChunk(ckx, cky); 
-                    if (ch == null) {
-                        ch = this.createChunk(ckx, cky);
-                    }
+                    com.cairn4.moonbase.Chunk ch = this.ensureChunkLoadedForNetwork(wx, wy);
                     com.badlogic.gdx.math.GridPoint2 local = com.cairn4.moonbase.World.convertWorldToLocal(new com.badlogic.gdx.math.GridPoint2(0,0), wx, wy);
                     com.cairn4.moonbase.tiles.Tile t = ch.getTile(local.x, local.y, true);
                     if (t instanceof com.cairn4.moonbase.tiles.ItemPile) {

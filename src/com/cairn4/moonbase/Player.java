@@ -237,6 +237,33 @@ implements Speaker {
         return this.vehicle;
     }
 
+    // Multiplayer helper: enter vehicle without camera changes (remote players)
+    public void enterVehicleRemote(Vehicle v, boolean asDriver) {
+        try {
+            if (v == null) return;
+            this.setFlashLight(false);
+            this.spineActor.setVisible(false);
+            this.vehicle = v;
+            if (asDriver) v.setDriver(this.ownerId);
+            else v.setPassenger(this.ownerId);
+            try { this.body.getFixtureList().get(0).setSensor(true); } catch (Exception ignored) {}
+            this.setChanged();
+            this.notifyObservers("enterVehicle");
+        } catch (Exception ignored) {}
+    }
+
+    public void exitVehicleRemote() {
+        try {
+            if (this.vehicle != null) {
+                this.vehicle.clearSeat(this.ownerId);
+                this.vehicle = null;
+            }
+            try { this.body.getFixtureList().get(0).setSensor(false); } catch (Exception ignored) {}
+            this.setChanged();
+            this.notifyObservers("exitVehicle");
+        } catch (Exception ignored) {}
+    }
+
     public boolean isFlyingRocket() {
         return this.flyingRocket;
     }
@@ -1019,6 +1046,10 @@ implements Speaker {
     }
 
     private void handleBuggieInput() {
+        if (this.vehicle != null && !this.vehicle.isDriver(this.ownerId)) {
+            // Passenger: no driving input
+            return;
+        }
         Entity entity;
         boolean steering2 = false;
         if (PlayerInput.isDown(0)) {
@@ -1417,16 +1448,38 @@ implements Speaker {
                 closestBuggie = v;
             }
             if (closestBuggie != null) {
+                if (!closestBuggie.hasFreeSeat()) {
+                    MoonBase.log("Player: Vehicle is full");
+                    return;
+                }
                 this.setFlashLight(false);
                 this.spineActor.setVisible(false);
                 this.vehicle = closestBuggie;
                 this.vehicle.setState(Vehicle.STATES.inUse);
+                if (!this.vehicle.hasDriver()) {
+                    this.vehicle.setDriver(this.ownerId);
+                } else if (!this.vehicle.hasPassenger()) {
+                    this.vehicle.setPassenger(this.ownerId);
+                }
                 this.body.getFixtureList().get(0).setSensor(true);
                 Gdx.app.debug("MewnBase", "Player: Enter closest vehicle (distance = " + minDistance + ")");
                 this.setChanged();
                 this.notifyObservers("enterVehicle");
                 this.world.gameScreen.cameraLag.setZoom(CameraLag.DRIVEZOOM);
                 this.world.gameScreen.cameraLag.toggleBuggie();
+                try {
+                    if (this.world != null && this.world.gameScreen != null) {
+                        if (this.world.gameScreen.client != null) {
+                            NetworkHelper.sendPayload(this.world.gameScreen, "VEH_ENTER:" + this.vehicle.id);
+                        } else {
+                            com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+                            if (s != null) {
+                                String occ = "VEH_OCCUPY:" + this.vehicle.id + ":" + this.vehicle.driverOwnerId + ":" + this.vehicle.passengerOwnerId;
+                                s.broadcastFromServer(occ);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
         } else {
             double xd = Math.floor(this.vehicle.body.getTransform().getPosition().x * 256.0f / Tile.GRID_SIZE);
@@ -1457,7 +1510,24 @@ implements Speaker {
                 MoonBase.log("gp: " + gp + " - dist: " + dist + " / " + closetToCursorDist);
             }
             if (closetGP != null) {
-                this.vehicle.setState(Vehicle.STATES.empty);
+                int exitedVehicleId = -1;
+                int exitedDriver = -1;
+                int exitedPassenger = -1;
+                try {
+                    if (this.vehicle != null) {
+                        exitedVehicleId = (int)this.vehicle.id;
+                    }
+                } catch (Exception ignored) {}
+                try {
+                    if (this.vehicle != null) {
+                        this.vehicle.clearSeat(this.ownerId);
+                        if (this.vehicle.driverOwnerId < 0 && this.vehicle.passengerOwnerId >= 0) {
+                            this.vehicle.promotePassengerToDriver();
+                        }
+                        exitedDriver = this.vehicle.driverOwnerId;
+                        exitedPassenger = this.vehicle.passengerOwnerId;
+                    }
+                } catch (Exception ignored) {}
                 this.vehicle = null;
                 this.body.getFixtureList().get(0).setSensor(false);
                 MoonBase.log("Player: Exit vehicle at " + closetGP);
@@ -1470,6 +1540,19 @@ implements Speaker {
                 this.spineActor.setVisible(true);
                 this.setChanged();
                 this.notifyObservers("exitVehicle");
+                try {
+                    if (exitedVehicleId >= 0 && this.world != null && this.world.gameScreen != null) {
+                        if (this.world.gameScreen.client != null) {
+                            NetworkHelper.sendPayload(this.world.gameScreen, "VEH_EXIT:" + exitedVehicleId);
+                        } else {
+                            com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+                            if (s != null) {
+                                String occ = "VEH_OCCUPY:" + exitedVehicleId + ":" + exitedDriver + ":" + exitedPassenger;
+                                s.broadcastFromServer(occ);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
             } else {
                 MoonBase.log("Player: Cant exit vehicle here.");
             }

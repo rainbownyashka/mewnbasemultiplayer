@@ -56,6 +56,11 @@ Changes
 - Server: broadcast TIMEWEATHER sync from host (day/period/weather).
 - Client: apply TIMEWEATHER sync to dayCycle/weatherManager.
 - Client: avoid reapplying identical TIMEWEATHER values to prevent HUD day spam.
+- Vehicle MP: added driver/passenger seats (2 players per vehicle, 1 driver).
+- Vehicle MP: sync occupancy via VEH_OCCUPY and sync vehicle state via VEH_STATE.
+- Client: send vehicle state when driving (driver only).
+- Server: relay/apply vehicle state and broadcast occupancy; clear seats on disconnect.
+- World: ensure chunks are loaded from save data for network-applied tile/item changes.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -94,6 +99,7 @@ Verification
 - Compiled PlayerAnimController.java with patch_manual.ps1 (2026-03-27).
 - Compiled Server.java and Client.java with patch_manual.ps1 (2026-03-27).
 - Compiled Client.java with patch_manual.ps1 (2026-03-27).
+- Compiled Server.java, Client.java, Player.java, Vehicle.java, MultiplayerNetworkHelper.java, World.java with patch_manual.ps1 (2026-03-27).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

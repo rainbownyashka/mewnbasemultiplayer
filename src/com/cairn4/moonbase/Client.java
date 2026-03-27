@@ -49,9 +49,10 @@ package com.cairn4.moonbase;
      private Thread readerThread;
      private volatile boolean running = false;
      private boolean sendEnabled = true;
-     private float lastSentX = Float.NaN;
-     private float lastSentY = Float.NaN;
-     private long lastSentMillis = 0L;
+    private float lastSentX = Float.NaN;
+    private float lastSentY = Float.NaN;
+    private long lastSentMillis = 0L;
+    private long lastVehSentMillis = 0L;
      private boolean diagnosticMode = false;
      private String host;
      private int port;
@@ -398,6 +399,22 @@ package com.cairn4.moonbase;
                                     return;
                                 }
                             } catch (Exception ignored) {}
+                        } else if (frag.startsWith("VEH_OCCUPY:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleOccupy(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_OCCUPY", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_OCCUPY", e);
+                            }
+                        } else if (frag.startsWith("VEH_STATE:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleState(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_STATE", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_STATE", e);
+                            }
                         } else if (frag.startsWith("INVENTORY_UPDATE:")) {
                              try {
                                  String enc = frag.substring("INVENTORY_UPDATE:".length());
@@ -945,11 +962,11 @@ package com.cairn4.moonbase;
          this.senderThread = new Thread(() -> {
              while (this.running) {
                  try {
-                     if (this.sendEnabled && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
-                         float x = this.screen.world.player.getXPos();
-                         float y = this.screen.world.player.getYPos();
-                         long now = System.currentTimeMillis();
-                         if (Float.isNaN(this.lastSentX) || Float.isNaN(this.lastSentY) || now - this.lastSentMillis >= 50L) {
+                        if (this.sendEnabled && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
+                            float x = this.screen.world.player.getXPos();
+                            float y = this.screen.world.player.getYPos();
+                            long now = System.currentTimeMillis();
+                            if (Float.isNaN(this.lastSentX) || Float.isNaN(this.lastSentY) || now - this.lastSentMillis >= 50L) {
                              this.lastSentX = x;
                              this.lastSentY = y;
                              this.lastSentMillis = now;
@@ -962,9 +979,31 @@ package com.cairn4.moonbase;
                                      Gdx.app.log("Client", "[POS:send] x=" + x + " y=" + y + " vx=" + vx + " vy=" + vy);
                                  }
                              } catch (Exception ignored) {}
-                             sendMessage(this.clientId + ":" + payload);
-                         }
-                     }
+                                sendMessage(this.clientId + ":" + payload);
+                            }
+
+                            // Vehicle state sync when driving (driver only)
+                            try {
+                                if (this.screen.world.player.isDrivingVehicle()) {
+                                    com.cairn4.moonbase.entities.Vehicle v = this.screen.world.player.getVehicle();
+                                    if (v != null && v.isDriver(this.screen.world.player.ownerId)) {
+                                        if (now - this.lastVehSentMillis >= 50L) {
+                                            this.lastVehSentMillis = now;
+                                            float vx = 0f, vy = 0f, rot = 0f;
+                                            try { rot = v.getRotation(); } catch (Exception ignored) {}
+                                            try {
+                                                if (v.body != null) {
+                                                    vx = v.body.getLinearVelocity().x * 256.0f;
+                                                    vy = v.body.getLinearVelocity().y * 256.0f;
+                                                }
+                                            } catch (Exception ignored) {}
+                                            String vp = "VEH_STATE:" + v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + rot + ":" + vx + ":" + vy;
+                                            sendMessage(this.clientId + ":" + vp);
+                                        }
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        }
                      try {
                          Thread.sleep(50L);
                      } catch (InterruptedException interruptedException) {

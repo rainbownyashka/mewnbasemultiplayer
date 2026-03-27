@@ -297,11 +297,7 @@ public class MultiplayerNetworkHelper {
                         try {
                             com.badlogic.gdx.math.GridPoint2 local = new com.badlogic.gdx.math.GridPoint2(0,0);
                             local = com.cairn4.moonbase.World.convertWorldToLocal(local, fwx, fwy);
-                            String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(fwx, fwy);
-                            com.cairn4.moonbase.Chunk chunk = gameScreen.world.worldChunks.get(chunkKey);
-                            if (chunk == null) {
-                                chunk = gameScreen.world.createChunk(com.cairn4.moonbase.Chunk.getChunkX(fwx), com.cairn4.moonbase.Chunk.getChunkY(fwy));
-                            }
+                            com.cairn4.moonbase.Chunk chunk = gameScreen.world.ensureChunkLoadedForNetwork(fwx, fwy);
                                 
                             // Decode orientation and use it when creating the ProtoBase
                             com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS orientation = com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS.north;
@@ -325,6 +321,103 @@ public class MultiplayerNetworkHelper {
             }
         } catch (Exception e) {
             Gdx.app.error("NetworkHelper", "Error handling TILE_BUILD_START message", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles vehicle occupancy sync (VEH_OCCUPY:vehId:driverId:passengerId)
+     */
+    public static boolean handleVehicleOccupy(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("VEH_OCCUPY:")) return false;
+            String[] parts = message.split(":", 4);
+            if (parts.length < 4 || gameScreen == null || gameScreen.world == null) return false;
+            final int vehId = safeParseInt(parts[1], -1);
+            final int driverId = safeParseInt(parts[2], -1);
+            final int passengerId = safeParseInt(parts[3], -1);
+            if (vehId < 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity e = gameScreen.world.getEntityById(vehId);
+                    if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) return;
+                    com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                    int oldDriver = v.driverOwnerId;
+                    int oldPassenger = v.passengerOwnerId;
+
+                    // Clear seats then reapply
+                    v.clearAllSeats();
+                    if (driverId >= 0) v.setDriver(driverId);
+                    if (passengerId >= 0) v.setPassenger(passengerId);
+
+                    // Handle old occupants leaving
+                    if (oldDriver >= 0 && oldDriver != driverId) {
+                        com.cairn4.moonbase.Player p = (oldDriver == gameScreen.world.player.ownerId) ? gameScreen.world.player : gameScreen.getRemotePlayer(oldDriver);
+                        if (p != null && p.getVehicle() == v) p.exitVehicleRemote();
+                    }
+                    if (oldPassenger >= 0 && oldPassenger != passengerId) {
+                        com.cairn4.moonbase.Player p = (oldPassenger == gameScreen.world.player.ownerId) ? gameScreen.world.player : gameScreen.getRemotePlayer(oldPassenger);
+                        if (p != null && p.getVehicle() == v) p.exitVehicleRemote();
+                    }
+
+                    // Apply new occupants (skip local player to avoid camera changes)
+                    if (driverId >= 0 && driverId != gameScreen.world.player.ownerId) {
+                        com.cairn4.moonbase.Player rp = gameScreen.getRemotePlayer(driverId);
+                        if (rp != null && rp.getVehicle() != v) rp.enterVehicleRemote(v, true);
+                    }
+                    if (passengerId >= 0 && passengerId != gameScreen.world.player.ownerId) {
+                        com.cairn4.moonbase.Player rp = gameScreen.getRemotePlayer(passengerId);
+                        if (rp != null && rp.getVehicle() != v) rp.enterVehicleRemote(v, false);
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_OCCUPY", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_OCCUPY", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles vehicle state sync (VEH_STATE:vehId:x:y:rot:vx:vy)
+     */
+    public static boolean handleVehicleState(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("VEH_STATE:")) return false;
+            String[] parts = message.split(":", 7);
+            if (parts.length < 7 || gameScreen == null || gameScreen.world == null) return false;
+            final int vehId = safeParseInt(parts[1], -1);
+            final float x = safeParseFloat(parts[2], Float.NaN);
+            final float y = safeParseFloat(parts[3], Float.NaN);
+            final float rot = safeParseFloat(parts[4], 0.0f);
+            final float vx = safeParseFloat(parts[5], 0.0f);
+            final float vy = safeParseFloat(parts[6], 0.0f);
+            if (vehId < 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity e = gameScreen.world.getEntityById(vehId);
+                    if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) return;
+                    com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                    try {
+                        if (gameScreen.world.player != null && v.isDriver(gameScreen.world.player.ownerId)) {
+                            return; // local driver ignores remote state
+                        }
+                    } catch (Exception ignored) {}
+                    if (v.body != null) {
+                        try { v.body.setTransform(x / 256.0f, y / 256.0f, rot * com.badlogic.gdx.math.MathUtils.degreesToRadians); } catch (Exception ignored) {}
+                        try { v.body.setLinearVelocity(vx / 256.0f, vy / 256.0f); } catch (Exception ignored) {}
+                    } else {
+                        try { v.setWorldPos(x, y); } catch (Exception ignored) {}
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_STATE", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_STATE", e);
         }
         return false;
     }

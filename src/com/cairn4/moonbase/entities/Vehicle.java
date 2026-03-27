@@ -101,6 +101,9 @@ DamageTaker {
     private DamageStates currentDamageState;
     boolean powerSliding = false;
     private boolean specialAbility = false;
+    // Multiplayer seat ownership (ownerId values). -1 means empty.
+    public int driverOwnerId = -1;
+    public int passengerOwnerId = -1;
     protected ArrayList<Wheel> wheels = new ArrayList();
     public BuggieTrunkUI trunkUI;
     public BuggieTrunk trunk;
@@ -131,6 +134,44 @@ DamageTaker {
 
     public void setSpecialAbility(boolean b) {
         this.specialAbility = b;
+    }
+
+    public boolean hasDriver() { return this.driverOwnerId >= 0; }
+    public boolean hasPassenger() { return this.passengerOwnerId >= 0; }
+    public boolean hasFreeSeat() { return !hasDriver() || !hasPassenger(); }
+    public boolean isDriver(int ownerId) { return ownerId >= 0 && this.driverOwnerId == ownerId; }
+    public boolean isPassenger(int ownerId) { return ownerId >= 0 && this.passengerOwnerId == ownerId; }
+
+    public void setDriver(int ownerId) {
+        this.driverOwnerId = ownerId;
+        if (this.currentState != STATES.inUse) this.setState(STATES.inUse);
+    }
+
+    public void setPassenger(int ownerId) {
+        this.passengerOwnerId = ownerId;
+        if (this.currentState != STATES.inUse) this.setState(STATES.inUse);
+    }
+
+    public void clearSeat(int ownerId) {
+        if (this.driverOwnerId == ownerId) this.driverOwnerId = -1;
+        if (this.passengerOwnerId == ownerId) this.passengerOwnerId = -1;
+        if (!hasDriver() && !hasPassenger()) {
+            this.setState(STATES.empty);
+        }
+    }
+
+    public void clearAllSeats() {
+        this.driverOwnerId = -1;
+        this.passengerOwnerId = -1;
+        this.setState(STATES.empty);
+    }
+
+    public void promotePassengerToDriver() {
+        if (!hasDriver() && hasPassenger()) {
+            this.driverOwnerId = this.passengerOwnerId;
+            this.passengerOwnerId = -1;
+            if (this.currentState != STATES.inUse) this.setState(STATES.inUse);
+        }
     }
 
     public Vehicle(World world, float xPos, float yPos, float rotation, String vehicleId) {
@@ -814,4 +855,3 @@ DamageTaker {
 
     }
 }
-
