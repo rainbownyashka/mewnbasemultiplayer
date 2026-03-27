@@ -27,6 +27,8 @@ implements Behavior {
     public Array<InventoryItemData> storageDataList = new Array();
     public CooldownCallback updateCallback;
     public boolean canDeposit = true;
+    // Multiplayer lock for storage UI interactions (-1 = unlocked)
+    public int inventoryLockOwnerId = -1;
 
     public ArrayList<ItemStack> getItemList() {
         return this.itemList;
@@ -183,6 +185,38 @@ implements Behavior {
         MessageManager.getInstance().dispatchMessage(32, this.baseModule);
     }
 
+    public ArrayList<InventoryItemData> buildItemDataList() {
+        ArrayList<InventoryItemData> list = new ArrayList<InventoryItemData>();
+        try {
+            for (ItemStack stack : this.itemList) {
+                InventoryItemData iid = new InventoryItemData();
+                iid.itemId = stack.getId();
+                iid.amount = stack.getAmount();
+                try { iid.durability = stack.item.durability; } catch (Exception ignored) {}
+                list.add(iid);
+            }
+        } catch (Exception ignored) {}
+        return list;
+    }
+
+    public void applyItemDataList(ArrayList<InventoryItemData> list) {
+        if (list == null) return;
+        try {
+            this.itemList.clear();
+            for (InventoryItemData iid : list) {
+                int durabilityForThisType = ItemFactory.getDurability(iid.itemId);
+                if (durabilityForThisType > 0 && iid.durability == 0) {
+                    iid.durability = durabilityForThisType;
+                }
+                try {
+                    ItemStack newStack = new ItemStack(iid.itemId, iid.amount, iid.durability);
+                    this.itemList.add(newStack);
+                } catch (Exception ignored) {}
+            }
+            this.itemsChanged();
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public void update(float delta) {
     }
@@ -219,4 +253,3 @@ implements Behavior {
         return this.canDeposit;
     }
 }
-

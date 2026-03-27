@@ -1,9 +1,14 @@
 package com.cairn4.moonbase;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Json;
 import com.cairn4.moonbase.ui.GameScreen;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import com.cairn4.moonbase.worlddata.InventoryItemData;
+import com.cairn4.moonbase.tiles.BaseModule;
+import com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior;
 
 /**
  * Unified handler for network messages for client and server.
@@ -418,6 +423,236 @@ public class MultiplayerNetworkHelper {
             return true;
         } catch (Exception e) {
             Gdx.app.error("NetworkHelper", "Error handling VEH_STATE", e);
+        }
+        return false;
+    }
+
+    /**
+     * Builds vehicle meta payload (VEH_META:vehId:<json>)
+     */
+    public static String buildVehicleMeta(com.cairn4.moonbase.entities.Vehicle v) {
+        try {
+            if (v == null) return null;
+            Json json = new Json();
+            String data = json.toJson(v.getNetState());
+            return "VEH_META:" + v.id + ":" + data;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Handles vehicle meta/state sync (VEH_META:vehId:<json>)
+     */
+    public static boolean handleVehicleMeta(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("VEH_META:")) return false;
+            int idx1 = message.indexOf(':');
+            int idx2 = message.indexOf(':', idx1 + 1);
+            if (idx2 < 0 || gameScreen == null || gameScreen.world == null) return false;
+            String idStr = message.substring(idx1 + 1, idx2);
+            final int vehId = safeParseInt(idStr, -1);
+            if (vehId < 0) return false;
+            final String jsonStr = message.substring(idx2 + 1);
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity e = gameScreen.world.getEntityById(vehId);
+                    if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) return;
+                    com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                    try {
+                        if (gameScreen.world.player != null && v.isDriver(gameScreen.world.player.ownerId)) {
+                            return; // local driver ignores remote meta
+                        }
+                    } catch (Exception ignored) {}
+                    Json json = new Json();
+                    @SuppressWarnings("unchecked")
+                    java.util.HashMap<String, Object> state = json.fromJson(java.util.HashMap.class, jsonStr);
+                    v.applyNetState(state);
+                } catch (Exception e2) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_META", e2);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_META", e);
+        }
+        return false;
+    }
+
+    /**
+     * Builds vehicle inventory sync payload (VEH_INV_SYNC:vehId:<urlencoded json>)
+     */
+    public static String buildVehicleInvSync(com.cairn4.moonbase.entities.Vehicle v) {
+        try {
+            if (v == null || v.trunk == null) return null;
+            Json json = new Json();
+            ArrayList<InventoryItemData> list = v.buildTrunkItemDataList();
+            String data = json.toJson(list);
+            String enc = URLEncoder.encode(data, "UTF-8");
+            return "VEH_INV_SYNC:" + v.id + ":" + enc;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Handles vehicle inventory sync (VEH_INV_SYNC:vehId:<urlencoded json>)
+     */
+    public static boolean handleVehicleInvSync(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("VEH_INV_SYNC:")) return false;
+            int idx1 = message.indexOf(':');
+            int idx2 = message.indexOf(':', idx1 + 1);
+            if (idx2 < 0 || gameScreen == null || gameScreen.world == null) return false;
+            String idStr = message.substring(idx1 + 1, idx2);
+            final int vehId = safeParseInt(idStr, -1);
+            if (vehId < 0) return false;
+            final String enc = message.substring(idx2 + 1);
+            final String jsonStr = URLDecoder.decode(enc == null ? "" : enc, "UTF-8");
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity e = gameScreen.world.getEntityById(vehId);
+                    if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) return;
+                    com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                    if (v.trunk == null) return;
+                    Json json = new Json();
+                    @SuppressWarnings("unchecked")
+                    ArrayList<InventoryItemData> list = json.fromJson(ArrayList.class, InventoryItemData.class, jsonStr);
+                    v.applyTrunkItemDataList(list);
+                    try { com.badlogic.gdx.ai.msg.MessageManager.getInstance().dispatchMessage(31); } catch (Exception ignored) {}
+                } catch (Exception e2) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_INV_SYNC", e2);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_INV_SYNC", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles vehicle inventory lock/unlock (VEH_LOCK/VEH_UNLOCK/VEH_LOCK_DENY)
+     */
+    public static boolean handleVehicleLock(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!(message.startsWith("VEH_LOCK:") || message.startsWith("VEH_UNLOCK:") || message.startsWith("VEH_LOCK_DENY:"))) return false;
+            String[] parts = message.split(":", 4);
+            if (parts.length < 3 || gameScreen == null || gameScreen.world == null) return false;
+            final String kind = parts[0];
+            final int vehId = safeParseInt(parts[1], -1);
+            final int ownerId = safeParseInt(parts[2], -1);
+            if (vehId < 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity e = gameScreen.world.getEntityById(vehId);
+                    if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                        com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                        if ("VEH_LOCK".equals(kind)) {
+                            v.inventoryLockOwnerId = ownerId;
+                        } else if ("VEH_UNLOCK".equals(kind)) {
+                            if (v.inventoryLockOwnerId == ownerId) v.inventoryLockOwnerId = -1;
+                        } else if ("VEH_LOCK_DENY".equals(kind)) {
+                            // handled on client UI side
+                            try { com.cairn4.moonbase.ui.BuggieTrunkUI.handleLockDenied(vehId, ownerId, gameScreen); } catch (Exception ignored) {}
+                        }
+                    }
+                } catch (Exception e2) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply VEH_LOCK", e2);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling VEH_LOCK", e);
+        }
+        return false;
+    }
+
+    /**
+     * Builds base storage inventory sync payload (BASE_INV_SYNC:x:y:<urlencoded json>)
+     */
+    public static String buildBaseInvSync(BaseModule bm, ItemStorageBehavior isb) {
+        try {
+            if (bm == null || isb == null) return null;
+            Json json = new Json();
+            ArrayList<InventoryItemData> list = isb.buildItemDataList();
+            String data = json.toJson(list);
+            String enc = URLEncoder.encode(data, "UTF-8");
+            return "BASE_INV_SYNC:" + bm.worldX + ":" + bm.worldY + ":" + enc;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Handles base storage inventory sync (BASE_INV_SYNC:x:y:<urlencoded json>)
+     */
+    public static boolean handleBaseInvSync(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("BASE_INV_SYNC:")) return false;
+            String[] parts = message.split(":", 4);
+            if (parts.length < 4 || gameScreen == null || gameScreen.world == null) return false;
+            final int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+            final int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+            if (wx == Integer.MIN_VALUE || wy == Integer.MIN_VALUE) return false;
+            final String jsonStr = URLDecoder.decode(parts[3], "UTF-8");
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.tiles.Tile t = gameScreen.world.getTile(wx, wy);
+                    if (!(t instanceof BaseModule)) return;
+                    BaseModule bm = (BaseModule)t;
+                    ItemStorageBehavior isb = (ItemStorageBehavior) bm.getBehavior(ItemStorageBehavior.class);
+                    if (isb == null) return;
+                    Json json = new Json();
+                    @SuppressWarnings("unchecked")
+                    ArrayList<InventoryItemData> list = json.fromJson(ArrayList.class, InventoryItemData.class, jsonStr);
+                    isb.applyItemDataList(list);
+                } catch (Exception e2) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply BASE_INV_SYNC", e2);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling BASE_INV_SYNC", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles base storage lock/unlock (BASE_LOCK/BASE_UNLOCK/BASE_LOCK_DENY)
+     */
+    public static boolean handleBaseLock(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!(message.startsWith("BASE_LOCK:") || message.startsWith("BASE_UNLOCK:") || message.startsWith("BASE_LOCK_DENY:"))) return false;
+            String[] parts = message.split(":", 4);
+            if (parts.length < 4 || gameScreen == null || gameScreen.world == null) return false;
+            final String kind = parts[0];
+            final int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+            final int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+            final int ownerId = safeParseInt(parts[3], -1);
+            if (wx == Integer.MIN_VALUE || wy == Integer.MIN_VALUE) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.tiles.Tile t = gameScreen.world.getTile(wx, wy);
+                    if (!(t instanceof BaseModule)) return;
+                    BaseModule bm = (BaseModule)t;
+                    ItemStorageBehavior isb = (ItemStorageBehavior) bm.getBehavior(ItemStorageBehavior.class);
+                    if (isb == null) return;
+                    if ("BASE_LOCK".equals(kind)) {
+                        isb.inventoryLockOwnerId = ownerId;
+                    } else if ("BASE_UNLOCK".equals(kind)) {
+                        if (isb.inventoryLockOwnerId == ownerId) isb.inventoryLockOwnerId = -1;
+                    } else if ("BASE_LOCK_DENY".equals(kind)) {
+                        try { com.cairn4.moonbase.ui.StorageUI.handleLockDenied(wx, wy, ownerId, gameScreen); } catch (Exception ignored) {}
+                        try { com.cairn4.moonbase.ui.MiningRigUI.handleLockDenied(wx, wy, ownerId, gameScreen); } catch (Exception ignored) {}
+                    }
+                } catch (Exception e2) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply BASE_LOCK", e2);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling BASE_LOCK", e);
         }
         return false;
     }

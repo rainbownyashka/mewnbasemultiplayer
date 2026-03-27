@@ -124,6 +124,32 @@ extends Vehicle {
     }
 
     @Override
+    public HashMap<String, Object> getNetState() {
+        HashMap<String, Object> s = super.getNetState();
+        if (this.parentVehicle != null) this.parentVehicleId = this.parentVehicle.id;
+        if (this.parentVehicleId != -1L) s.put("parentVehicleId", Long.valueOf(this.parentVehicleId));
+        return s;
+    }
+
+    @Override
+    public void applyNetState(HashMap<String, Object> s) {
+        super.applyNetState(s);
+        if (s == null) return;
+        try {
+            if (s.containsKey("parentVehicleId")) {
+                long pid = safeLong(s.get("parentVehicleId"), this.parentVehicleId);
+                if (pid != this.parentVehicleId && pid > 0) {
+                    this.parentVehicleId = pid;
+                    Entity e = this.world.getEntityById(this.parentVehicleId);
+                    if (e instanceof Vehicle) {
+                        this.setAttachment((Vehicle)e);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
     public void setState(Vehicle.STATES newState) {
     }
 
@@ -286,4 +312,3 @@ extends Vehicle {
         this.paintColorIndex = colorIndex;
     }
 }
-

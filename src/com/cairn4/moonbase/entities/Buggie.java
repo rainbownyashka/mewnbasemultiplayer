@@ -110,6 +110,46 @@ implements VehicleBattery {
     }
 
     @Override
+    public HashMap<String, Object> getNetState() {
+        HashMap<String, Object> s = super.getNetState();
+        s.put("charge", Float.valueOf(this.charge));
+        try { s.put("wheel0func", ((Wheel)this.wheels.get(0)).functioning); } catch (Exception ignored) {}
+        try { s.put("wheel1func", ((Wheel)this.wheels.get(1)).functioning); } catch (Exception ignored) {}
+        try { s.put("wheel2func", ((Wheel)this.wheels.get(2)).functioning); } catch (Exception ignored) {}
+        try { s.put("wheel3func", ((Wheel)this.wheels.get(3)).functioning); } catch (Exception ignored) {}
+        return s;
+    }
+
+    @Override
+    public void applyNetState(HashMap<String, Object> s) {
+        super.applyNetState(s);
+        if (s == null) return;
+        try {
+            if (s.containsKey("charge")) {
+                this.charge = safeFloat(s.get("charge"), this.charge);
+            }
+            try {
+                if (s.containsKey("wheel0func")) {
+                    boolean ok = safeBool(s.get("wheel0func"), ((Wheel)this.wheels.get(0)).functioning);
+                    if (ok) ((Wheel)this.wheels.get(0)).fix(); else ((Wheel)this.wheels.get(0)).damage();
+                }
+                if (s.containsKey("wheel1func")) {
+                    boolean ok = safeBool(s.get("wheel1func"), ((Wheel)this.wheels.get(1)).functioning);
+                    if (ok) ((Wheel)this.wheels.get(1)).fix(); else ((Wheel)this.wheels.get(1)).damage();
+                }
+                if (s.containsKey("wheel2func")) {
+                    boolean ok = safeBool(s.get("wheel2func"), ((Wheel)this.wheels.get(2)).functioning);
+                    if (ok) ((Wheel)this.wheels.get(2)).fix(); else ((Wheel)this.wheels.get(2)).damage();
+                }
+                if (s.containsKey("wheel3func")) {
+                    boolean ok = safeBool(s.get("wheel3func"), ((Wheel)this.wheels.get(3)).functioning);
+                    if (ok) ((Wheel)this.wheels.get(3)).fix(); else ((Wheel)this.wheels.get(3)).damage();
+                }
+            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+    }
+
+    @Override
     public void createDrawable(String sprite) {
         super.createDrawable(sprite);
         this.imageBase = new Image(this.world.gameScreen.skin.getDrawable("buggie-base-default"));
@@ -391,4 +431,3 @@ implements VehicleBattery {
         this.paintColorIndex = colorIndex;
     }
 }
-

@@ -53,6 +53,8 @@ package com.cairn4.moonbase;
     private float lastSentY = Float.NaN;
     private long lastSentMillis = 0L;
     private long lastVehSentMillis = 0L;
+    private long lastVehMetaSentMillis = 0L;
+    private String lastVehMeta = null;
      private boolean diagnosticMode = false;
      private String host;
      private int port;
@@ -204,21 +206,23 @@ package com.cairn4.moonbase;
          }, "MewnBase-Client-Connector").start();
      }
 
-     private void handleMessage(String msg) {
-         Gdx.app.log("Client", "Received: " + msg);
-         try {
-             System.out.println("[Client] Received: " + msg);
-         } catch (Exception exception) {
-         }
-         if (this.screen != null && this.screen.game != null && this.screen.game.console != null) {
-             final String raw = msg;
-             Gdx.app.postRunnable(() -> {
-                 try {
-                     this.screen.game.console.log("[NET] " + raw);
-                 } catch (Exception exception) {
-                 }
-             });
-         }
+    private void handleMessage(String msg) {
+        if (this.diagnosticMode) {
+            Gdx.app.log("Client", "Received: " + msg);
+            try {
+                System.out.println("[Client] Received: " + msg);
+            } catch (Exception exception) {
+            }
+            if (this.screen != null && this.screen.game != null && this.screen.game.console != null) {
+                final String raw = msg;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        this.screen.game.console.log("[NET] " + raw);
+                    } catch (Exception exception) {
+                    }
+                });
+            }
+        }
          try {
              // NOTE: Do not globally dedupe messages by exact string; handle throttling per-type if needed
              appendDebugLog("RECEIVED: " + msg);
@@ -430,6 +434,46 @@ package com.cairn4.moonbase;
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_STATE", e);
+                            }
+                        } else if (frag.startsWith("VEH_META:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleMeta(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_META", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_META", e);
+                            }
+                        } else if (frag.startsWith("VEH_INV_SYNC:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleInvSync(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_INV_SYNC", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_INV_SYNC", e);
+                            }
+                        } else if (frag.startsWith("VEH_LOCK:") || frag.startsWith("VEH_UNLOCK:") || frag.startsWith("VEH_LOCK_DENY:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleVehicleLock(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle VEH_LOCK", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling VEH_LOCK", e);
+                            }
+                        } else if (frag.startsWith("BASE_INV_SYNC:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleBaseInvSync(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle BASE_INV_SYNC", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling BASE_INV_SYNC", e);
+                            }
+                        } else if (frag.startsWith("BASE_LOCK:") || frag.startsWith("BASE_UNLOCK:") || frag.startsWith("BASE_LOCK_DENY:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleBaseLock(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle BASE_LOCK", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling BASE_LOCK", e);
                             }
                         } else if (frag.startsWith("GENERATOR_FUEL:")) {
                             try {
@@ -1023,6 +1067,17 @@ package com.cairn4.moonbase;
                                             } catch (Exception ignored) {}
                                             String vp = "VEH_STATE:" + v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + rot + ":" + vx + ":" + vy;
                                             sendMessage(this.clientId + ":" + vp);
+                                        }
+                                    }
+                                    // Vehicle meta/state sync (damage, power, abilities, etc.)
+                                    if (now - this.lastVehMetaSentMillis >= 200L) {
+                                        String meta = MultiplayerNetworkHelper.buildVehicleMeta(v);
+                                        if (meta != null && (!meta.equals(this.lastVehMeta) || now - this.lastVehMetaSentMillis >= 1000L)) {
+                                            this.lastVehMeta = meta;
+                                            this.lastVehMetaSentMillis = now;
+                                            sendMessage(this.clientId + ":" + meta);
+                                        } else {
+                                            this.lastVehMetaSentMillis = now;
                                         }
                                     }
                                 }

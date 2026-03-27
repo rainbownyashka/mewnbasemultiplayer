@@ -1,5 +1,6 @@
 @echo off
 setlocal
+pushd %~dp0
 set LOGDIR=%~dp0logs
 if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 set TS=%date:~-4%%date:~4,2%%date:~7,2%_%time:~0,2%%time:~3,2%%time:~6,2%
@@ -74,3 +75,4 @@ echo   %CLIENT_OUT%
 echo   %CLIENT_ERR%
 echo   %CLIENT_LOG%
 endlocal
+popd

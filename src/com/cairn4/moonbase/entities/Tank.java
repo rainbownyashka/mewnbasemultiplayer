@@ -179,6 +179,35 @@ VehicleCabin {
     }
 
     @Override
+    public HashMap<String, Object> getNetState() {
+        HashMap<String, Object> s = super.getNetState();
+        s.put("charge", Float.valueOf(this.charge));
+        s.put("drillOn", Boolean.valueOf(this.drillOn));
+        s.put("recharging", Boolean.valueOf(this.recharging));
+        s.put("overheated", Boolean.valueOf(this.overheated));
+        s.put("drillHeat", Float.valueOf(this.drillHeat));
+        s.put("drillOverheatCooldown", Float.valueOf(this.drillOverheatCooldown));
+        return s;
+    }
+
+    @Override
+    public void applyNetState(HashMap<String, Object> s) {
+        super.applyNetState(s);
+        if (s == null) return;
+        try {
+            if (s.containsKey("charge")) this.charge = safeFloat(s.get("charge"), this.charge);
+            if (s.containsKey("recharging")) this.recharging = safeBool(s.get("recharging"), this.recharging);
+            if (s.containsKey("overheated")) this.overheated = safeBool(s.get("overheated"), this.overheated);
+            if (s.containsKey("drillHeat")) this.drillHeat = safeFloat(s.get("drillHeat"), this.drillHeat);
+            if (s.containsKey("drillOverheatCooldown")) this.drillOverheatCooldown = safeFloat(s.get("drillOverheatCooldown"), this.drillOverheatCooldown);
+            if (s.containsKey("drillOn")) {
+                boolean b = safeBool(s.get("drillOn"), this.drillOn);
+                if (b != this.drillOn) this.setSpecialAbility(b);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
     public void createDrawable(String sprite) {
         super.createDrawable(sprite);
         this.group.setDebug(true, true);
@@ -796,4 +825,3 @@ VehicleCabin {
         return this.hasOxygen;
     }
 }
-

@@ -475,6 +475,28 @@ public class Server {
                                 String occ = "0:VEH_OCCUPY:" + v.id + ":" + v.driverOwnerId + ":" + v.passengerOwnerId;
                                 sendMessage(occ);
                             }
+                            if (v.inventoryLockOwnerId >= 0) {
+                                String lock = "0:VEH_LOCK:" + v.id + ":" + v.inventoryLockOwnerId;
+                                sendMessage(lock);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                // Send current base storage locks to the new client
+                try {
+                    if (server.gameScreen != null && server.gameScreen.world != null) {
+                        for (com.cairn4.moonbase.Chunk c : server.gameScreen.world.worldChunks.values()) {
+                            for (com.cairn4.moonbase.tiles.Tile t : c.tiles.values()) {
+                                if (!(t instanceof com.cairn4.moonbase.tiles.BaseModule)) continue;
+                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                if (isb != null && isb.inventoryLockOwnerId >= 0) {
+                                    String lock = "0:BASE_LOCK:" + bm.worldX + ":" + bm.worldY + ":" + isb.inventoryLockOwnerId;
+                                    sendMessage(lock);
+                                }
+                            }
                         }
                     }
                 } catch (Exception ignored) {}
@@ -1069,7 +1091,25 @@ public class Server {
                             try {
                                 final String payload = message;
                                 final int senderId = this.clientId;
-                                // relay to others
+                                // validate driver before relay/apply
+                                boolean allow = false;
+                                try {
+                                    if (server.gameScreen != null && server.gameScreen.world != null) {
+                                        String[] parts = payload.split(":", 3);
+                                        if (parts.length >= 2) {
+                                            int vehId = safeParseInt(parts[1], -1);
+                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
+                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                                allow = (v.driverOwnerId == senderId);
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!allow) {
+                                    continue;
+                                }
+                                // relay to others (validated)
                                 server.broadcast("0:" + payload, this);
                                 if (server.gameScreen != null) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
@@ -1102,6 +1142,266 @@ public class Server {
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Server", "Failed to relay VEH_STATE", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_META:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                // validate driver before relay/apply
+                                boolean allow = false;
+                                try {
+                                    if (server.gameScreen != null && server.gameScreen.world != null) {
+                                        int idx1 = payload.indexOf(':');
+                                        int idx2 = payload.indexOf(':', idx1 + 1);
+                                        if (idx2 > 0) {
+                                            int vehId = safeParseInt(payload.substring(idx1 + 1, idx2), -1);
+                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
+                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                                allow = (v.driverOwnerId == senderId);
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!allow) {
+                                    continue;
+                                }
+                                // relay to others (validated)
+                                server.broadcast("0:" + payload, this);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            if (!payload.startsWith("VEH_META:")) return;
+                                            int idx1 = payload.indexOf(':');
+                                            int idx2 = payload.indexOf(':', idx1 + 1);
+                                            if (idx2 < 0) return;
+                                            String idStr = payload.substring(idx1 + 1, idx2);
+                                            int vehId = safeParseInt(idStr, -1);
+                                            if (vehId < 0) return;
+                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
+                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                                if (v.driverOwnerId != senderId) return;
+                                                MultiplayerNetworkHelper.handleVehicleMeta(server.gameScreen, payload, senderId);
+                                            }
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply VEH_META locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay VEH_META", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_INV_SYNC:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                boolean allow = false;
+                                try {
+                                    if (server.gameScreen != null && server.gameScreen.world != null) {
+                                        int idx1 = payload.indexOf(':');
+                                        int idx2 = payload.indexOf(':', idx1 + 1);
+                                        if (idx2 > 0) {
+                                            int vehId = safeParseInt(payload.substring(idx1 + 1, idx2), -1);
+                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
+                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                                allow = (v.inventoryLockOwnerId == senderId);
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!allow) {
+                                    continue;
+                                }
+                                server.broadcast("0:" + payload, null);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            MultiplayerNetworkHelper.handleVehicleInvSync(server.gameScreen, payload, senderId);
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply VEH_INV_SYNC locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay VEH_INV_SYNC", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_LOCK:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                boolean granted = false;
+                                try {
+                                    String[] parts = payload.split(":", 3);
+                                    if (parts.length >= 2 && server.gameScreen != null && server.gameScreen.world != null) {
+                                        int vehId = safeParseInt(parts[1], -1);
+                                        com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
+                                        if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                            if (v.inventoryLockOwnerId < 0 || v.inventoryLockOwnerId == senderId) {
+                                                v.inventoryLockOwnerId = senderId;
+                                                granted = true;
+                                                String ok = "VEH_LOCK:" + v.id + ":" + senderId;
+                                                server.broadcast("0:" + ok, null);
+                                                try { MultiplayerNetworkHelper.handleVehicleLock(server.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!granted) {
+                                    try {
+                                        String[] parts = payload.split(":", 3);
+                                        int vehId = parts.length >= 2 ? safeParseInt(parts[1], -1) : -1;
+                                        String deny = "VEH_LOCK_DENY:" + vehId + ":" + senderId;
+                                        sendMessage("0:" + deny);
+                                    } catch (Exception ignored) {}
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to handle VEH_LOCK", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("VEH_UNLOCK:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                try {
+                                    String[] parts = payload.split(":", 3);
+                                    if (parts.length >= 2 && server.gameScreen != null && server.gameScreen.world != null) {
+                                        int vehId = safeParseInt(parts[1], -1);
+                                        com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
+                                        if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                            if (v.inventoryLockOwnerId == senderId) {
+                                                v.inventoryLockOwnerId = -1;
+                                                String ok = "VEH_UNLOCK:" + v.id + ":" + senderId;
+                                                server.broadcast("0:" + ok, null);
+                                                try { MultiplayerNetworkHelper.handleVehicleLock(server.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to handle VEH_UNLOCK", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("BASE_INV_SYNC:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                boolean allow = false;
+                                try {
+                                    String[] parts = payload.split(":", 4);
+                                    if (parts.length >= 3 && server.gameScreen != null && server.gameScreen.world != null) {
+                                        int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                                        int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                                        if (wx != Integer.MIN_VALUE && wy != Integer.MIN_VALUE) {
+                                            com.cairn4.moonbase.tiles.Tile t = server.gameScreen.world.getTile(wx, wy);
+                                            if (t instanceof com.cairn4.moonbase.tiles.BaseModule) {
+                                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                                if (isb != null && isb.inventoryLockOwnerId == senderId) {
+                                                    allow = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!allow) {
+                                    continue;
+                                }
+                                server.broadcast("0:" + payload, null);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            MultiplayerNetworkHelper.handleBaseInvSync(server.gameScreen, payload, senderId);
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply BASE_INV_SYNC locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay BASE_INV_SYNC", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("BASE_LOCK:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                boolean granted = false;
+                                try {
+                                    String[] parts = payload.split(":", 4);
+                                    if (parts.length >= 3 && server.gameScreen != null && server.gameScreen.world != null) {
+                                        int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                                        int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                                        if (wx != Integer.MIN_VALUE && wy != Integer.MIN_VALUE) {
+                                            com.cairn4.moonbase.tiles.Tile t = server.gameScreen.world.getTile(wx, wy);
+                                            if (t instanceof com.cairn4.moonbase.tiles.BaseModule) {
+                                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                                if (isb != null && (isb.inventoryLockOwnerId < 0 || isb.inventoryLockOwnerId == senderId)) {
+                                                    isb.inventoryLockOwnerId = senderId;
+                                                    granted = true;
+                                                    String ok = "BASE_LOCK:" + bm.worldX + ":" + bm.worldY + ":" + senderId;
+                                                    server.broadcast("0:" + ok, null);
+                                                    try { MultiplayerNetworkHelper.handleBaseLock(server.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                if (!granted) {
+                                    try {
+                                        String[] parts = payload.split(":", 4);
+                                        int wx = parts.length >= 3 ? safeParseInt(parts[1], Integer.MIN_VALUE) : Integer.MIN_VALUE;
+                                        int wy = parts.length >= 3 ? safeParseInt(parts[2], Integer.MIN_VALUE) : Integer.MIN_VALUE;
+                                        String deny = "BASE_LOCK_DENY:" + wx + ":" + wy + ":" + senderId;
+                                        sendMessage("0:" + deny);
+                                    } catch (Exception ignored) {}
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to handle BASE_LOCK", e);
+                            }
+                            continue;
+                        }
+                        if (message.startsWith("BASE_UNLOCK:")) {
+                            try {
+                                final String payload = message;
+                                final int senderId = this.clientId;
+                                try {
+                                    String[] parts = payload.split(":", 4);
+                                    if (parts.length >= 3 && server.gameScreen != null && server.gameScreen.world != null) {
+                                        int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                                        int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                                        if (wx != Integer.MIN_VALUE && wy != Integer.MIN_VALUE) {
+                                            com.cairn4.moonbase.tiles.Tile t = server.gameScreen.world.getTile(wx, wy);
+                                            if (t instanceof com.cairn4.moonbase.tiles.BaseModule) {
+                                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                                if (isb != null && isb.inventoryLockOwnerId == senderId) {
+                                                    isb.inventoryLockOwnerId = -1;
+                                                    String ok = "BASE_UNLOCK:" + bm.worldX + ":" + bm.worldY + ":" + senderId;
+                                                    server.broadcast("0:" + ok, null);
+                                                    try { MultiplayerNetworkHelper.handleBaseLock(server.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to handle BASE_UNLOCK", e);
                             }
                             continue;
                         }
@@ -1461,6 +1761,39 @@ public class Server {
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
                 }
+                // Release vehicle inventory locks held by this client
+                try {
+                    if (this.server != null && this.server.gameScreen != null && this.server.gameScreen.world != null) {
+                        for (com.cairn4.moonbase.entities.Entity e : this.server.gameScreen.world.entityList) {
+                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
+                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                if (v.inventoryLockOwnerId == this.clientId) {
+                                    v.inventoryLockOwnerId = -1;
+                                    String ok = "VEH_UNLOCK:" + v.id + ":" + this.clientId;
+                                    try { this.server.broadcast("0:" + ok, null); } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+                // Release base storage locks held by this client
+                try {
+                    if (this.server != null && this.server.gameScreen != null && this.server.gameScreen.world != null) {
+                        for (com.cairn4.moonbase.Chunk c : this.server.gameScreen.world.worldChunks.values()) {
+                            for (com.cairn4.moonbase.tiles.Tile t : c.tiles.values()) {
+                                if (!(t instanceof com.cairn4.moonbase.tiles.BaseModule)) continue;
+                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                if (isb != null && isb.inventoryLockOwnerId == this.clientId) {
+                                    isb.inventoryLockOwnerId = -1;
+                                    String ok = "BASE_UNLOCK:" + bm.worldX + ":" + bm.worldY + ":" + this.clientId;
+                                    try { this.server.broadcast("0:" + ok, null); } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
                 // Cleanup on close: remove puppet from host GameScreen and free nick count
                 try {
                     if (this.server != null && this.server.gameScreen != null) {

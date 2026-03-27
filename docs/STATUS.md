@@ -66,6 +66,12 @@ Changes
 - MP: added debug logs for ENTITY_SPAWN creation/skip to diagnose missing spawns.
 - fulltest.bat: enable runtime eval on server/client with separate ports and READY FOR EVAL log.
 - Base power: sync generator fuel via GENERATOR_FUEL so power state matches across clients.
+- Client: suppress per-packet net console spam unless diagnostic mode is enabled.
+- RuntimeEval: added in-process Java eval (in-memory compile) so eval can access live game classes/ctx.
+- Vehicle MP: added VEH_META sync for vehicle state (health, color, charge, drill, wheels, trailer parent).
+- Vehicle MP: server now validates vehicle packets strictly by driver before relaying.
+- Vehicle inventory: added lock + full resync (VEH_LOCK/UNLOCK + VEH_INV_SYNC).
+- Base storage: added lock + full resync for all ItemStorageBehavior inventories (BASE_LOCK/UNLOCK + BASE_INV_SYNC).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -109,6 +115,9 @@ Verification
 - Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-27).
 - Updated basegame/fulltest.bat (not executed yet).
+- Compiled RuntimeEval.java, Client.java, Server.java, MultiplayerNetworkHelper.java, Vehicle.java, Buggie.java, Tank.java, VehicleTrailer.java with patch_manual.ps1 (2026-03-27).
+- Compiled ItemStorageBehavior.java, StorageUI.java, MiningRigUI.java with patch_manual.ps1 (2026-03-27).
+- Inventory lock/sync changes not yet verified in-game (needs manual test).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

@@ -5,3 +5,11 @@
 - Review and port multiplayer diffs from old decompiledsafeedit to current src (see old/_diff_list_decompiledsafeedit_vs_src.txt).
 - Phase 1 multiplayer fixes from docs/MP_DRAFT.md (thread safety, pending spawns, protocol, menu timeouts).
 - Clean up duplicate archives in old/ if no longer needed.
+- Multiplayer test checklist:
+- Vehicle: driver control, passenger seat, VEH_META (drill/charge/wheels), trailer attach, generator fuel.
+- Inventory locks: vehicle trunk, storage crates, mining rigs (lock deny, unlock on close/disconnect).
+- Base inventory sync: item move in storage/rig reflects on other client.
+- Time/weather sync stability + HUD day spam check.
+- Net spam off by default; diagclient on/off behavior.
+- Eval server: run Java eval against live ctx.
+- Server save extension: decide format + frequency for saving other players (pos/stats/inv).

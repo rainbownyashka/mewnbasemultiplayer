@@ -20,20 +20,25 @@ import com.cairn4.moonbase.ItemFactory;
 import com.cairn4.moonbase.ItemStack;
 import com.cairn4.moonbase.MoonBase;
 import com.cairn4.moonbase.PlayerInventory;
+import com.cairn4.moonbase.NetworkHelper;
 import com.cairn4.moonbase.entities.BuggieTrunk;
+import com.cairn4.moonbase.entities.Vehicle;
 import com.cairn4.moonbase.ui.GameScreen;
 import com.cairn4.moonbase.ui.ItemButton;
 import com.cairn4.moonbase.ui.Localization;
 import com.cairn4.moonbase.ui.Menu;
 import com.cairn4.moonbase.ui.Popup;
+import com.cairn4.moonbase.MultiplayerNetworkHelper;
 import java.util.ArrayList;
 
 public class BuggieTrunkUI
 extends Popup
 implements Telegraph {
+    private static BuggieTrunkUI active = null;
     public GameScreen gameScreen;
     private BuggieTrunk itemStorage;
     private PlayerInventory playerInventory;
+    private Vehicle vehicle;
     private ArrayList<ItemButton> inventoryButtonList = new ArrayList();
     private ArrayList<ItemButton> storageButtonList = new ArrayList();
     private Group inventoryButtonGroup;
@@ -45,9 +50,16 @@ implements Telegraph {
         this.gameScreen = gameScreen;
         this.itemStorage = itemStorage;
         this.playerInventory = playerInventory;
+        try { this.vehicle = (itemStorage != null) ? itemStorage.buggie : null; } catch (Exception ignored) {}
         MessageManager.getInstance().addListener(this, 31);
         this.setup();
         this.show();
+        active = this;
+        try {
+            if (this.vehicle != null) {
+                NetworkHelper.sendPayload(this.gameScreen, "VEH_LOCK:" + this.vehicle.id);
+            }
+        } catch (Exception ignored) {}
         gameScreen.hud.hudNotifications.reparentGroup(this.stage.getRoot());
     }
 
@@ -126,6 +138,60 @@ implements Telegraph {
             storageTable.row();
         }
         this.updateGrid();
+    }
+
+    private boolean isLockedByOther() {
+        try {
+            if (this.vehicle == null) return false;
+            int ownerId = (this.gameScreen != null && this.gameScreen.world != null && this.gameScreen.world.player != null) ? this.gameScreen.world.player.ownerId : -1;
+            return this.vehicle.inventoryLockOwnerId >= 0 && this.vehicle.inventoryLockOwnerId != ownerId;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void notifyLocked() {
+        try {
+            if (this.gameScreen != null && this.gameScreen.hud != null) {
+                this.gameScreen.hud.hudNotifications.newMessage(null, Localization.get("storage_in_use"), Color.valueOf("ff6b6b"));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void sendInvSync() {
+        try {
+            if (this.vehicle != null) {
+                String payload = MultiplayerNetworkHelper.buildVehicleInvSync(this.vehicle);
+                if (payload != null) NetworkHelper.sendPayload(this.gameScreen, payload);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void back() {
+        try {
+            if (this.vehicle != null) {
+                NetworkHelper.sendPayload(this.gameScreen, "VEH_UNLOCK:" + this.vehicle.id);
+            }
+        } catch (Exception ignored) {}
+        active = null;
+        super.back();
+    }
+
+    public static void handleLockDenied(int vehId, int ownerId, GameScreen gs) {
+        try {
+            if (active != null && active.vehicle != null && active.vehicle.id == vehId) {
+                int localId = (gs != null && gs.world != null && gs.world.player != null) ? gs.world.player.ownerId : -1;
+                if (localId == ownerId) {
+                    try {
+                        if (gs != null && gs.hud != null) {
+                            gs.hud.hudNotifications.newMessage(null, Localization.get("storage_in_use"), Color.valueOf("ff6b6b"));
+                        }
+                    } catch (Exception ignored) {}
+                    active.back();
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private void updateGrid() {
@@ -249,6 +315,10 @@ implements Telegraph {
     }
 
     private void moveToInventory(int storageIndex, boolean moveStack) {
+        if (isLockedByOther()) {
+            notifyLocked();
+            return;
+        }
         if (storageIndex < this.itemStorage.getItemList().size()) {
             int spaceAvailableForItem = this.playerInventory.getSpaceAvailableFor(this.itemStorage.getItemList().get(storageIndex).getId());
             if (spaceAvailableForItem > 0) {
@@ -273,6 +343,7 @@ implements Telegraph {
                     this.itemStorage.removeSingle(storageIndex);
                 }
                 this.updateGrid();
+                this.sendInvSync();
             } else {
                 this.gameScreen.hud.hudNotifications.newMessage(Localization.format("inventory_full", new Object[0]), Color.RED);
             }
@@ -282,6 +353,10 @@ implements Telegraph {
     }
 
     private void moveToStorage(int inventoryIndex, boolean moveStack) {
+        if (isLockedByOther()) {
+            notifyLocked();
+            return;
+        }
         if (inventoryIndex < this.playerInventory.getItemList().size()) {
             int spaceAvailableForItem = this.itemStorage.getSpaceAvailableFor(this.playerInventory.getItemList().get(inventoryIndex).getId());
             if (spaceAvailableForItem > 0) {
@@ -302,6 +377,7 @@ implements Telegraph {
                     this.playerInventory.consumeItem(this.playerInventory.getItemList().get(inventoryIndex), 1);
                 }
                 this.updateGrid();
+                this.sendInvSync();
             } else {
                 this.gameScreen.hud.hudNotifications.newMessage(Localization.format("storage_full", new Object[0]), Color.RED);
             }
@@ -327,4 +403,3 @@ implements Telegraph {
         super.hide();
     }
 }
-

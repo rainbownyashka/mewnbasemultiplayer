@@ -57,6 +57,7 @@ import com.cairn4.moonbase.worlddata.VehicleData;
 import com.cairn4.moonbase.worlddata.VehicleDataList;
 import com.cairn4.moonbase.worlddata.WheelData;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Vehicle
 extends Entity
@@ -109,6 +110,8 @@ DamageTaker {
     public BuggieTrunk trunk;
     public Array<InventoryItemData> inventoryItemDataList = new Array();
     public ArrayList<ItemStack> trunkItems = new ArrayList();
+    // Multiplayer lock for inventory UI interactions (-1 = unlocked)
+    public int inventoryLockOwnerId = -1;
     float startCrashSpeed = 0.0f;
     private boolean repairing = false;
     private boolean prevRepairCheck;
@@ -134,6 +137,10 @@ DamageTaker {
 
     public void setSpecialAbility(boolean b) {
         this.specialAbility = b;
+    }
+
+    public boolean isSpecialAbilityEnabled() {
+        return this.specialAbility;
     }
 
     public boolean hasDriver() { return this.driverOwnerId >= 0; }
@@ -465,6 +472,114 @@ DamageTaker {
         this.image.setColor(Vars.vehicleColors[colorIndex]);
         this.image.getColor().a = 1.0f;
         this.paintColorIndex = colorIndex;
+    }
+
+    public ArrayList<InventoryItemData> buildTrunkItemDataList() {
+        ArrayList<InventoryItemData> list = new ArrayList<InventoryItemData>();
+        try {
+            for (ItemStack s : this.trunkItems) {
+                InventoryItemData iid = new InventoryItemData();
+                iid.itemId = s.getId();
+                iid.amount = s.getAmount();
+                try { iid.durability = s.item.durability; } catch (Exception ignored) {}
+                list.add(iid);
+            }
+        } catch (Exception ignored) {}
+        return list;
+    }
+
+    public void applyTrunkItemDataList(ArrayList<InventoryItemData> list) {
+        if (list == null) return;
+        try {
+            this.trunkItems.clear();
+            for (InventoryItemData iid : list) {
+                try {
+                    ItemStack newStack = new ItemStack(iid.itemId, iid.amount, iid.durability);
+                    int durabilityForThisType = ItemFactory.getDurability(iid.itemId);
+                    if (durabilityForThisType > 0 && iid.durability == 0) {
+                        iid.durability = durabilityForThisType;
+                        try { newStack.item.durability = iid.durability; } catch (Exception ignored) {}
+                    }
+                    this.trunkItems.add(newStack);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    // Network state snapshot for multiplayer sync (vehicle-only).
+    public HashMap<String, Object> getNetState() {
+        HashMap<String, Object> s = new HashMap<String, Object>();
+        s.put("health", Float.valueOf(this.health));
+        s.put("paintColorIndex", Integer.valueOf(this.paintColorIndex));
+        s.put("enginePowerAvailable", Boolean.valueOf(this.enginePowerAvailable));
+        if (this.currentState != null) s.put("state", this.currentState.toString());
+        s.put("specialAbility", Boolean.valueOf(this.specialAbility));
+        return s;
+    }
+
+    public void applyNetState(HashMap<String, Object> s) {
+        if (s == null) return;
+        try {
+            if (s.containsKey("paintColorIndex")) {
+                int idx = safeInt(s.get("paintColorIndex"), this.paintColorIndex);
+                if (idx != this.paintColorIndex) this.setColor(idx);
+            }
+            if (s.containsKey("health")) {
+                float h = safeFloat(s.get("health"), this.health);
+                this.health = h;
+                if (this.health < this.vd.damagedThreshold) {
+                    this.setDamageSprite();
+                    try { this.damageSmoke.pfx.start(); } catch (Exception ignored) {}
+                } else {
+                    this.setFixedSprite();
+                    try { this.damageSmoke.pfx.allowCompletion(); } catch (Exception ignored) {}
+                }
+            }
+            if (s.containsKey("enginePowerAvailable")) {
+                this.enginePowerAvailable = safeBool(s.get("enginePowerAvailable"), this.enginePowerAvailable);
+            }
+            if (s.containsKey("state")) {
+                try {
+                    String st = String.valueOf(s.get("state"));
+                    if (st != null && st.length() > 0) {
+                        STATES ns = STATES.valueOf(st);
+                        if (this.currentState != ns) this.setState(ns);
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (s.containsKey("specialAbility")) {
+                boolean b = safeBool(s.get("specialAbility"), this.specialAbility);
+                if (b != this.specialAbility) this.setSpecialAbility(b);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    protected int safeInt(Object o, int def) {
+        try {
+            if (o instanceof Number) return ((Number)o).intValue();
+            return Integer.parseInt(String.valueOf(o));
+        } catch (Exception e) { return def; }
+    }
+
+    protected float safeFloat(Object o, float def) {
+        try {
+            if (o instanceof Number) return ((Number)o).floatValue();
+            return Float.parseFloat(String.valueOf(o));
+        } catch (Exception e) { return def; }
+    }
+
+    protected boolean safeBool(Object o, boolean def) {
+        try {
+            if (o instanceof Boolean) return ((Boolean)o).booleanValue();
+            return Boolean.parseBoolean(String.valueOf(o));
+        } catch (Exception e) { return def; }
+    }
+
+    protected long safeLong(Object o, long def) {
+        try {
+            if (o instanceof Number) return ((Number)o).longValue();
+            return Long.parseLong(String.valueOf(o));
+        } catch (Exception e) { return def; }
     }
 
     public void startCollision() {

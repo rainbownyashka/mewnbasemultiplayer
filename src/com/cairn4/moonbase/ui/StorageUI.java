@@ -24,6 +24,7 @@ import com.cairn4.moonbase.Item;
 import com.cairn4.moonbase.ItemFactory;
 import com.cairn4.moonbase.ItemStack;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.NetworkHelper;
 import com.cairn4.moonbase.PlayerInventory;
 import com.cairn4.moonbase.tiles.StorageColorOptions;
 import com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior;
@@ -34,11 +35,13 @@ import com.cairn4.moonbase.ui.Localization;
 import com.cairn4.moonbase.ui.Menu;
 import com.cairn4.moonbase.ui.Popup;
 import com.cairn4.moonbase.ui.StorageCrateColorCallback;
+import com.cairn4.moonbase.MultiplayerNetworkHelper;
 import java.util.ArrayList;
 
 public class StorageUI
 extends Popup
 implements Telegraph {
+    private static StorageUI active = null;
     public GameScreen gameScreen;
     private ItemStorageBehavior itemStorageBehavior;
     private PlayerInventory playerInventory;
@@ -60,11 +63,23 @@ implements Telegraph {
         this.playerInventory = playerInventory;
         this.setup();
         this.show();
+        active = this;
+        try {
+            if (this.itemStorageBehavior != null && this.itemStorageBehavior.baseModule != null) {
+                NetworkHelper.sendPayload(this.gameScreen, "BASE_LOCK:" + this.itemStorageBehavior.baseModule.worldX + ":" + this.itemStorageBehavior.baseModule.worldY);
+            }
+        } catch (Exception ignored) {}
         gameScreen.hud.hudNotifications.reparentGroup(this.stage.getRoot());
     }
 
     @Override
     public void back() {
+        try {
+            if (this.itemStorageBehavior != null && this.itemStorageBehavior.baseModule != null) {
+                NetworkHelper.sendPayload(this.gameScreen, "BASE_UNLOCK:" + this.itemStorageBehavior.baseModule.worldX + ":" + this.itemStorageBehavior.baseModule.worldY);
+            }
+        } catch (Exception ignored) {}
+        active = null;
         super.back();
         if (this.closeCallback != null) {
             this.closeCallback.closeAnim();
@@ -77,6 +92,32 @@ implements Telegraph {
         MessageManager.getInstance().removeListener((Telegraph)this, 49);
         super.hide();
         this.gameScreen.hud.hudNotifications.resetGroup();
+    }
+
+    private boolean isLockedByOther() {
+        try {
+            int ownerId = (this.gameScreen != null && this.gameScreen.world != null && this.gameScreen.world.player != null) ? this.gameScreen.world.player.ownerId : -1;
+            return this.itemStorageBehavior != null && this.itemStorageBehavior.inventoryLockOwnerId >= 0 && this.itemStorageBehavior.inventoryLockOwnerId != ownerId;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void notifyLocked() {
+        try {
+            if (this.gameScreen != null && this.gameScreen.hud != null) {
+                this.gameScreen.hud.hudNotifications.newMessage(null, Localization.get("storage_in_use"), Color.valueOf("ff6b6b"));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void sendInvSync() {
+        try {
+            if (this.itemStorageBehavior != null && this.itemStorageBehavior.baseModule != null) {
+                String payload = MultiplayerNetworkHelper.buildBaseInvSync(this.itemStorageBehavior.baseModule, this.itemStorageBehavior);
+                if (payload != null) NetworkHelper.sendPayload(this.gameScreen, payload);
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -335,6 +376,10 @@ implements Telegraph {
     }
 
     private void moveToInventory(int storageIndex, boolean moveStack) {
+        if (isLockedByOther()) {
+            notifyLocked();
+            return;
+        }
         if (storageIndex < this.itemStorageBehavior.getItemList().size()) {
             int spaceAvailableForItem = this.playerInventory.getSpaceAvailableFor(this.itemStorageBehavior.getItemList().get(storageIndex).getId());
             if (spaceAvailableForItem > 0) {
@@ -356,6 +401,7 @@ implements Telegraph {
                     this.itemStorageBehavior.removeSingle(storageIndex);
                 }
                 this.updateGrid();
+                this.sendInvSync();
             } else {
                 this.gameScreen.hud.hudNotifications.newMessage(Localization.format("inventory_full", new Object[0]), Color.RED);
             }
@@ -363,6 +409,10 @@ implements Telegraph {
     }
 
     private void moveToStorage(int inventoryIndex, boolean moveStack) {
+        if (isLockedByOther()) {
+            notifyLocked();
+            return;
+        }
         if (inventoryIndex < this.playerInventory.getItemList().size()) {
             int spaceAvailableForItem = this.itemStorageBehavior.getSpaceAvailableFor(this.playerInventory.getItemList().get(inventoryIndex).getId());
             if (spaceAvailableForItem > 0) {
@@ -383,10 +433,29 @@ implements Telegraph {
                     this.playerInventory.consumeItem(this.playerInventory.getItemList().get(inventoryIndex), 1);
                 }
                 this.updateGrid();
+                this.sendInvSync();
             } else {
                 this.gameScreen.hud.hudNotifications.newMessage(Localization.format("storage_full", new Object[0]), Color.RED);
             }
         }
+    }
+
+    public static void handleLockDenied(int wx, int wy, int ownerId, GameScreen gs) {
+        try {
+            if (active != null && active.itemStorageBehavior != null && active.itemStorageBehavior.baseModule != null) {
+                if (active.itemStorageBehavior.baseModule.worldX == wx && active.itemStorageBehavior.baseModule.worldY == wy) {
+                    int localId = (gs != null && gs.world != null && gs.world.player != null) ? gs.world.player.ownerId : -1;
+                    if (localId == ownerId) {
+                        try {
+                            if (gs != null && gs.hud != null) {
+                                gs.hud.hudNotifications.newMessage(null, Localization.get("storage_in_use"), Color.valueOf("ff6b6b"));
+                            }
+                        } catch (Exception ignored) {}
+                        active.back();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -395,4 +464,3 @@ implements Telegraph {
         return false;
     }
 }
-
