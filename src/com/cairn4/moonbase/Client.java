@@ -356,15 +356,40 @@ package com.cairn4.moonbase;
                                                 try {
                                                     if (this.screen.world.dayCycle != null) {
                                                         try { this.screen.world.dayCycle.setDayCycleMode(com.cairn4.moonbase.Mission.dayCycleModes.valueOf(dayMode)); } catch (Exception ignored) {}
-                                                        try { this.screen.world.dayCycle.setDay(day); } catch (Exception ignored) {}
-                                                        try { this.screen.world.dayCycle.setPeriod(period); } catch (Exception ignored) {}
-                                                        try { this.screen.world.dayCycle.setTime(periodTime); } catch (Exception ignored) {}
+                                                        try {
+                                                            if (this.screen.world.dayCycle.getDay() != day) {
+                                                                this.screen.world.dayCycle.setDay(day);
+                                                            }
+                                                        } catch (Exception ignored) {}
+                                                        try {
+                                                            if (this.screen.world.dayCycle.currentPeriod == null || !this.screen.world.dayCycle.currentPeriod.toString().equals(period)) {
+                                                                this.screen.world.dayCycle.setPeriod(period);
+                                                            }
+                                                        } catch (Exception ignored) {}
+                                                        try {
+                                                            if (Math.abs(this.screen.world.dayCycle.timer - periodTime) > 0.5f) {
+                                                                this.screen.world.dayCycle.setTime(periodTime);
+                                                            }
+                                                        } catch (Exception ignored) {}
                                                     }
                                                     if (this.screen.world.weatherManager != null) {
                                                         try { this.screen.world.weatherManager.setMode(com.cairn4.moonbase.Mission.weatherModes.valueOf(weatherMode)); } catch (Exception ignored) {}
-                                                        try { this.screen.world.weatherManager.setWeather(weatherId); } catch (Exception ignored) {}
-                                                        try { this.screen.world.weatherManager.setTimer(weatherTime); } catch (Exception ignored) {}
-                                                        try { this.screen.world.weatherManager.setDuration(weatherDur); } catch (Exception ignored) {}
+                                                        try {
+                                                            String curId = this.screen.world.weatherManager.getCurrentData() != null ? this.screen.world.weatherManager.getCurrentData().id : "";
+                                                            if (curId == null || !curId.equals(weatherId)) {
+                                                                this.screen.world.weatherManager.setWeather(weatherId);
+                                                            }
+                                                        } catch (Exception ignored) {}
+                                                        try {
+                                                            if (Math.abs(this.screen.world.weatherManager.getTimer() - weatherTime) > 1.0f) {
+                                                                this.screen.world.weatherManager.setTimer(weatherTime);
+                                                            }
+                                                        } catch (Exception ignored) {}
+                                                        try {
+                                                            if (Math.abs(this.screen.world.weatherManager.getDuration() - weatherDur) > 1.0f) {
+                                                                this.screen.world.weatherManager.setDuration(weatherDur);
+                                                            }
+                                                        } catch (Exception ignored) {}
                                                     }
                                                 } catch (Exception ignored) {}
                                             }
