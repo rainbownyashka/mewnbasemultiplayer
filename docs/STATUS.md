@@ -62,6 +62,7 @@ Changes
 - Server: relay/apply vehicle state and broadcast occupancy; clear seats on disconnect.
 - World: ensure chunks are loaded from save data for network-applied tile/item changes.
 - Vehicle MP: broadcast and apply vehicle spawns (VEH_SPAWN) so crafted vehicles appear on clients.
+- MP: added generic ENTITY_SPAWN (whitelisted types) for shared entity creation.
 - Base power: sync generator fuel via GENERATOR_FUEL so power state matches across clients.
 
 Impact
@@ -103,6 +104,7 @@ Verification
 - Compiled Client.java with patch_manual.ps1 (2026-03-27).
 - Compiled Server.java, Client.java, Player.java, Vehicle.java, MultiplayerNetworkHelper.java, World.java with patch_manual.ps1 (2026-03-27).
 - Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, World.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
+- Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

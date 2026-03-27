@@ -415,6 +415,14 @@ package com.cairn4.moonbase;
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_SPAWN", e);
                             }
+                        } else if (frag.startsWith("ENTITY_SPAWN:")) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleEntitySpawn(this.screen, frag, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle ENTITY_SPAWN", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling ENTITY_SPAWN", e);
+                            }
                         } else if (frag.startsWith("VEH_STATE:")) {
                             try {
                                 if (!MultiplayerNetworkHelper.handleVehicleState(this.screen, frag, srcId)) {

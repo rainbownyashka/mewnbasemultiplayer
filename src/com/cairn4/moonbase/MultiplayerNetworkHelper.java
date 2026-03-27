@@ -468,6 +468,52 @@ public class MultiplayerNetworkHelper {
     }
 
     /**
+     * Handles generic entity spawn sync (ENTITY_SPAWN:type:id:x:y:rot)
+     * Whitelist only known safe types.
+     */
+    public static boolean handleEntitySpawn(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("ENTITY_SPAWN:")) return false;
+            String[] parts = message.split(":", 6);
+            if (parts.length < 6 || gameScreen == null || gameScreen.world == null) return false;
+            final String type = parts[1];
+            final long entId = Long.parseLong(parts[2]);
+            final float x = safeParseFloat(parts[3], Float.NaN);
+            final float y = safeParseFloat(parts[4], Float.NaN);
+            final float rot = safeParseFloat(parts[5], 0.0f);
+            if (entId <= 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    if (gameScreen.world.getEntityById(entId) != null) return;
+                    com.cairn4.moonbase.entities.Entity ent = null;
+                    if ("buggie".equals(type)) {
+                        ent = new com.cairn4.moonbase.entities.Buggie(gameScreen.world, x, y, rot);
+                    } else if ("tank".equals(type)) {
+                        ent = new com.cairn4.moonbase.entities.Tank(gameScreen.world, x, y, rot);
+                    } else if ("rover".equals(type)) {
+                        ent = new com.cairn4.moonbase.entities.Vehicle2(gameScreen.world, x, y, rot);
+                    } else if ("trailer".equals(type)) {
+                        ent = new com.cairn4.moonbase.entities.VehicleTrailer(gameScreen.world, x, y, rot);
+                    }
+                    if (ent != null) {
+                        gameScreen.world.registerNetworkEntity(ent, entId);
+                        try {
+                            java.lang.reflect.Method m = ent.getClass().getMethod("spawnAnim");
+                            m.invoke(ent);
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply ENTITY_SPAWN", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling ENTITY_SPAWN", e);
+        }
+        return false;
+    }
+
+    /**
      * Handles generator fuel sync (GENERATOR_FUEL:wx:wy:amount)
      */
     public static boolean handleGeneratorFuel(GameScreen gameScreen, String message, int srcId) {

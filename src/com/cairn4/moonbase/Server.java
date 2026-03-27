@@ -1123,6 +1123,24 @@ public class Server {
                             }
                             continue;
                         }
+                        if (message.startsWith("ENTITY_SPAWN:")) {
+                            try {
+                                final String payload = message;
+                                server.broadcast("0:" + payload, this);
+                                if (server.gameScreen != null) {
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            MultiplayerNetworkHelper.handleEntitySpawn(server.gameScreen, payload, this.clientId);
+                                        } catch (Exception e2) {
+                                            Gdx.app.error("Server", "Failed to apply ENTITY_SPAWN locally", e2);
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Server", "Failed to relay ENTITY_SPAWN", e);
+                            }
+                            continue;
+                        }
                         if (message.startsWith("GENERATOR_FUEL:")) {
                             try {
                                 final String payload = message;

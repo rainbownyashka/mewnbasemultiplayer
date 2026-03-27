@@ -32,7 +32,7 @@ extends ItemCrafter {
                 v.spawnAnim();
                 try {
                     com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
-                        "VEH_SPAWN:buggie:" + v.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                        "ENTITY_SPAWN:buggie:" + v.id + ":" + spawnX + ":" + spawnY + ":-90.0");
                 } catch (Exception ignored) {}
                 break;
             }
@@ -42,7 +42,7 @@ extends ItemCrafter {
                 tank.spawnAnim();
                 try {
                     com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
-                        "VEH_SPAWN:tank:" + tank.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                        "ENTITY_SPAWN:tank:" + tank.id + ":" + spawnX + ":" + spawnY + ":-90.0");
                 } catch (Exception ignored) {}
                 break;
             }
@@ -50,7 +50,7 @@ extends ItemCrafter {
                 Vehicle2 rv = new Vehicle2(this.chunk.world, spawnX, spawnY, -90.0f);
                 try {
                     com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
-                        "VEH_SPAWN:rover:" + rv.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                        "ENTITY_SPAWN:rover:" + rv.id + ":" + spawnX + ":" + spawnY + ":-90.0");
                 } catch (Exception ignored) {}
                 break;
             }
@@ -59,7 +59,7 @@ extends ItemCrafter {
                 t.spawnAnim();
                 try {
                     com.cairn4.moonbase.NetworkHelper.sendPayload(this.chunk.world.gameScreen,
-                        "VEH_SPAWN:trailer:" + t.id + ":" + spawnX + ":" + spawnY + ":-90.0");
+                        "ENTITY_SPAWN:trailer:" + t.id + ":" + spawnX + ":" + spawnY + ":-90.0");
                 } catch (Exception ignored) {}
                 break;
             }
