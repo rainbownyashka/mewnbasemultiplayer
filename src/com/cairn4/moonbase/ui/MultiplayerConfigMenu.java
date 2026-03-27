@@ -23,6 +23,7 @@ public class MultiplayerConfigMenu extends Menu {
     public MultiplayerConfigMenu(BaseScreen baseScreen) {
         super(baseScreen);
         this.setup();
+        this.scheduleAutoConnect();
     }
 
     @Override
@@ -150,7 +151,6 @@ public class MultiplayerConfigMenu extends Menu {
     public void show() {
         super.show();
         this.baseScreen.mainGroup.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
-        this.scheduleAutoConnect();
     }
 
     @Override
