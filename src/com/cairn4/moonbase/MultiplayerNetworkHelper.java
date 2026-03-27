@@ -438,7 +438,10 @@ public class MultiplayerNetworkHelper {
             if (entId <= 0) return false;
             Gdx.app.postRunnable(() -> {
                 try {
-                    if (gameScreen.world.getEntityById(entId) != null) return;
+                    if (gameScreen.world.getEntityById(entId) != null) {
+                        Gdx.app.log("NetworkHelper", "ENTITY_SPAWN skipped, id already exists: " + entId + " type=" + type);
+                        return;
+                    }
                     com.cairn4.moonbase.entities.Vehicle v = null;
                     if ("buggie".equals(type)) {
                         v = new com.cairn4.moonbase.entities.Buggie(gameScreen.world, x, y, rot);
@@ -501,6 +504,7 @@ public class MultiplayerNetworkHelper {
                             java.lang.reflect.Method m = ent.getClass().getMethod("spawnAnim");
                             m.invoke(ent);
                         } catch (Exception ignored) {}
+                        Gdx.app.log("NetworkHelper", "ENTITY_SPAWN created type=" + type + " id=" + entId + " x=" + x + " y=" + y + " rot=" + rot);
                     }
                 } catch (Exception e) {
                     Gdx.app.error("NetworkHelper", "Failed to apply ENTITY_SPAWN", e);
