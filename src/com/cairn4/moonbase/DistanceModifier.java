@@ -1,0 +1,9 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package com.cairn4.moonbase;
+
+public interface DistanceModifier {
+    public float distanceMod(float var1, float var2, float var3);
+}
+

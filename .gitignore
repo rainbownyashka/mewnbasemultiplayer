@@ -1,0 +1,27 @@
+# Build/output
+out/
+work/
+
+# Game binaries and data
+basegame/
+
+# Archives and old copies
+old/
+backups/
+repos/
+
+# Logs
+*.log
+*.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# JARs and zips
+*.jar
+*.zip
+
+# IDE
+.vscode/
+*.code-workspace

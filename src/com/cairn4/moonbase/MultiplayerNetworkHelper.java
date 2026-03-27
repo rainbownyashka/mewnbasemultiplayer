@@ -1,0 +1,353 @@
+package com.cairn4.moonbase;
+
+import com.badlogic.gdx.Gdx;
+import com.cairn4.moonbase.ui.GameScreen;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+
+/**
+ * Unified handler for network messages for client and server.
+ * Provides common methods for processing messages that can be used
+ * both on client and server side.
+ */
+public class MultiplayerNetworkHelper {
+
+    /**
+     * Handles SPAWNREMOTE message, creating a remote player.
+     * @param gameScreen game screen for adding a player
+     * @param message full message to process
+     * @param srcId sender identifier
+     * @return true if the message was processed successfully
+     */
+    public static boolean handleSpawnRemote(GameScreen gameScreen, String message, int srcId) {
+        try {
+            int id;
+            if ("SPAWNREMOTE".equals(message)) {
+                id = srcId;
+            } else if (message.startsWith("SPAWNREMOTE:")) {
+                id = safeParseInt(message.substring("SPAWNREMOTE:".length()), Integer.MIN_VALUE);
+            } else {
+                return false;
+            }
+            
+            if (id != Integer.MIN_VALUE && gameScreen != null) {
+                Gdx.app.log("NetworkHelper", "Adding remote player with ID: " + id);
+                final int playerId = id;
+                Gdx.app.postRunnable(() -> { 
+                    try { 
+                        gameScreen.addPlayer(playerId, 0, 0); 
+                        Gdx.app.log("NetworkHelper", "Successfully added player with ID: " + playerId);
+                    } catch (Exception e) { 
+                        Gdx.app.error("NetworkHelper", "Failed to add player with ID: " + playerId, e);
+                    } 
+                });
+                return true;
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling SPAWNREMOTE message", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles APPEARANCE message, updating player appearance.
+     * @param gameScreen game screen for updating appearance
+     * @param message message to process
+     * @param srcId sender identifier
+     * @return true if the message was processed successfully
+     */
+    public static boolean handleAppearance(GameScreen gameScreen, String message, int srcId) {
+        try {
+            // Check if this is a direct APPEARANCE message or with prefix
+            if (message.startsWith("APPEARANCE:")) {
+                message = message.substring("APPEARANCE:".length());
+            } else {
+                return false;
+            }
+
+            String rest = message;
+            int idx = rest.indexOf(":");
+            if (idx > 0) {
+                final int id = safeParseInt(rest.substring(0, idx), -1);
+                final String data = rest.substring(idx + 1);
+
+                String[] parts = data.split("\\|");
+                final int face = safeParseInt((parts.length > 0) ? parts[0] : "0", 0);
+                final String color = (parts.length > 1) ? parts[1] : "";
+                
+                if (gameScreen != null) {
+                    Gdx.app.postRunnable(() -> {
+                        try {
+                            gameScreen.updatePlayerAppearance(id, face, color);
+                            try {
+                                String nick = (parts.length > 2) ? java.net.URLDecoder.decode(parts[2], "UTF-8") : "";
+                                gameScreen.setPlayerDisplayName(id, nick);
+                            } catch (Exception ignored) {}
+                        } catch (Exception e) {
+                            Gdx.app.error("NetworkHelper", "Failed to update appearance on render thread", e);
+                        }
+                    });
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling APPEARANCE message", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles player position messages (POS)
+     * @param gameScreen game screen for position updates
+     * @param message position message
+     * @param srcId sender identifier
+     * @return true if message was processed successfully
+     */
+    public static boolean handlePosition(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("POS:")) {
+                return false;
+            }
+
+            String rest = message.substring("POS:".length());
+            String[] parts = rest.split(":", 6);
+            
+            // Check both formats: "POS:x:y" and "POS:PLAYER:id:x:y:vx:vy"
+            if (parts.length >= 2 && !"PLAYER".equals(parts[0])) {
+                // Simple format POS:x:y (from server)
+                try {
+                    final float px = safeParseFloat(parts[0], Float.NaN);
+                    final float py = safeParseFloat(parts[1], Float.NaN);
+                    final int owner = srcId; // Use sender's ID
+                    
+                    if (gameScreen != null) {
+                        Gdx.app.postRunnable(() -> {
+                            try {
+                                // Don't update local player position
+                                if (gameScreen.world != null && gameScreen.world.player != null && 
+                                    gameScreen.world.player.ownerId == owner) {
+                                    return;
+                                }
+                                
+                                // Update remote player position
+                                Player remote = gameScreen.getRemotePlayer(owner);
+                                if (remote == null) {
+                                    return;
+                                }
+                                
+                                // Set targetPosition for interpolation
+                                try {
+                                    java.lang.reflect.Field targetPosField = Player.class.getDeclaredField("targetPosition");
+                                    targetPosField.setAccessible(true);
+                                    Object vec = targetPosField.get(remote);
+                                    if (vec instanceof com.badlogic.gdx.math.Vector2) {
+                                        ((com.badlogic.gdx.math.Vector2)vec).set(px, py);
+                                    }
+                                } catch (Exception ignored) {}
+                                // On simple POS we have no velocities; rely on interpolation only to avoid snaps
+                            } catch (Exception e) {
+                                Gdx.app.error("NetworkHelper", "Failed applying simple POS", e);
+                            }
+                        });
+                        return true;
+                    }
+                    return false;
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Error parsing simple POS format", e);
+                    return false;
+                }
+            } else if (parts.length >= 5 && "PLAYER".equals(parts[0])) {
+                final int owner = safeParseInt(parts[1], Integer.MIN_VALUE);
+                final float px = safeParseFloat(parts[2], Float.NaN);
+                final float py = safeParseFloat(parts[3], Float.NaN);
+                final float vx = safeParseFloat(parts[4], 0.0F);
+                final float vy = (parts.length > 5) ? safeParseFloat(parts[5], 0.0F) : 0.0F;
+                
+                if (gameScreen != null) {
+                    Gdx.app.postRunnable(() -> {
+                        try {
+                            // Don't update local player position
+                            if (gameScreen.world != null && gameScreen.world.player != null && 
+                                gameScreen.world.player.ownerId == owner) {
+                                return;
+                            }
+                            
+                            // Update remote player position
+                            Player remote = gameScreen.getRemotePlayer(owner);
+                            if (remote == null) {
+                                return;
+                            }
+                            
+                            // Push target into small buffer for interpolation playback
+                            try {
+                                java.lang.reflect.Field targetPosField = Player.class.getDeclaredField("targetPosition");
+                                targetPosField.setAccessible(true);
+                                Object vec = targetPosField.get(remote);
+                                if (vec instanceof com.badlogic.gdx.math.Vector2) {
+                                    try {
+                                        java.lang.reflect.Method enq = Player.class.getMethod("enqueueNetPos", float.class, float.class);
+                                        enq.invoke(remote, px, py);
+                                    } catch (Exception ignored2) {
+                                        ((com.badlogic.gdx.math.Vector2)vec).set(px, py);
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                            // Apply velocity only when speed is meaningful to avoid stop-snaps
+                            float speed = Math.abs(vx) + Math.abs(vy);
+                            if (speed > 1.0f) {
+                                try {
+                                    java.lang.reflect.Field velField = Player.class.getDeclaredField("velX");
+                                    velField.setAccessible(true);
+                                    velField.setFloat(remote, vx);
+                                } catch (Exception ignored) {}
+                                try {
+                                    java.lang.reflect.Field velField = Player.class.getDeclaredField("velY");
+                                    velField.setAccessible(true);
+                                    velField.setFloat(remote, vy);
+                                } catch (Exception ignored) {}
+                                try { remote.body.setLinearVelocity(vx / 256.0f, vy / 256.0f); } catch (Exception ignored) {}
+                            } else {
+                                try { remote.body.setLinearVelocity(0f, 0f); } catch (Exception ignored) {}
+                            }
+                        } catch (Exception e) {
+                            Gdx.app.error("NetworkHelper", "Failed applying POS", e);
+                        }
+                    });
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling POS message", e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles chat messages
+     * @param gameScreen game screen for displaying messages
+     * @param message chat message
+     * @param srcId sender identifier
+     * @return true if message was processed successfully
+     */
+    public static boolean handleChat(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("CHAT:")) {
+                return false;
+            }
+
+            String rest = message.substring("CHAT:".length());
+            int idx = rest.indexOf(":");
+            final String encNick = (idx >= 0) ? rest.substring(0, idx) : "";
+            final String encText = (idx >= 0) ? rest.substring(idx + 1) : rest;
+            
+            final String nick = URLDecoder.decode((encNick == null) ? "" : encNick, "UTF-8");
+            final String text = URLDecoder.decode((encText == null) ? "" : encText, "UTF-8");
+            
+            if (gameScreen != null && gameScreen.game != null && gameScreen.game.console != null) {
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        gameScreen.game.console.log("[CHAT] " + nick + ": " + text);
+                    } catch (Exception ignored) {}
+                });
+                
+                final String fnick = (nick == null) ? "" : nick;
+                final String ftext = (text == null) ? "" : text;
+                
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        gameScreen.hud.hudNotifications.newChatMessage(fnick, ftext);
+                    } catch (Exception ignored) {}
+                });
+                return true;
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Failed to handle CHAT payload", e);
+        }
+        return false;
+    }
+    
+    /**
+     * Handles tile building start messages (TILE_BUILD_START)
+     * @param gameScreen game screen for building creation
+     * @param message message with building data
+     * @param srcId sender identifier
+     * @return true if message was handled successfully
+     */
+    public static boolean handleTileBuildStart(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("TILE_BUILD_START:")) {
+                return false;
+            }
+            
+            String[] parts = message.split(":", 8);
+            if (parts.length >= 7 && gameScreen != null) {
+                final int fwx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                final int fwy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                final String encName = parts[3];
+                final String encItemId = parts[4];
+                final int fbuildTime = safeParseInt(parts[5], 0);
+                final String encOrientation = parts[6];
+                
+                try {
+                    final String className = URLDecoder.decode(encName, "UTF-8");
+                    final String itemId = URLDecoder.decode(encItemId, "UTF-8");
+                    
+                    // Execute on render thread
+                    Gdx.app.postRunnable(() -> {
+                        try {
+                            com.badlogic.gdx.math.GridPoint2 local = new com.badlogic.gdx.math.GridPoint2(0,0);
+                            local = com.cairn4.moonbase.World.convertWorldToLocal(local, fwx, fwy);
+                            String chunkKey = com.cairn4.moonbase.World.convertWorldTileToChunkKey(fwx, fwy);
+                            com.cairn4.moonbase.Chunk chunk = gameScreen.world.worldChunks.get(chunkKey);
+                            if (chunk == null) {
+                                chunk = gameScreen.world.createChunk(com.cairn4.moonbase.Chunk.getChunkX(fwx), com.cairn4.moonbase.Chunk.getChunkY(fwy));
+                            }
+                                
+                            // Decode orientation and use it when creating the ProtoBase
+                            com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS orientation = com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS.north;
+                            try { 
+                                String decOrient = URLDecoder.decode(encOrientation, "UTF-8"); 
+                                if (decOrient != null && decOrient.length() > 0) {
+                                    orientation = com.cairn4.moonbase.ui.BuildingPlacementCursor.ORIENTATIONS.valueOf(decOrient); 
+                                }
+                            } catch (Exception ignore) {}
+                            
+                            new com.cairn4.moonbase.tiles.ProtoBase(gameScreen.world, chunk, local.x, local.y, itemId, className, fbuildTime, orientation);
+                            Gdx.app.log("NetworkHelper", "Applied TILE_BUILD_START for " + className + " at (" + fwx + "," + fwy + ") buildTime=" + fbuildTime + " orientation=" + orientation);
+                        } catch (Exception e) {
+                            Gdx.app.error("NetworkHelper", "Failed to apply TILE_BUILD_START in render thread", e);
+                        }
+                    });
+                    return true;
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Error decoding TILE_BUILD_START params", e);
+                }
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling TILE_BUILD_START message", e);
+        }
+        return false;
+    }
+    
+    /**
+     * Utility for safe parsing of int with default value
+     */
+    private static int safeParseInt(String s, int def) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+    
+    /**
+     * Utility for safe parsing of float with default value
+     */
+    private static float safeParseFloat(String s, float def) {
+        try {
+            return Float.parseFloat(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+}

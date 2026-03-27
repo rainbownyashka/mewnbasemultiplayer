@@ -1,0 +1,11 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package com.cairn4.moonbase.dialog;
+
+public class DialogNode {
+    public String speaker;
+    public String message;
+    public String[] stringArgs;
+}
+
