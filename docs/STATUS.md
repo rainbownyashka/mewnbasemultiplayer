@@ -14,6 +14,7 @@ Changes
 - Server: keep host position broadcaster alive even if GameScreen is attached before server starts.
 - Basegame: restored `basegame/data` folder by moving core JSON/PNG data files into it so runtime lookup works.
 - Basegame: moved `locale/` under `data/locale/` to match runtime lookup path `data/locale/mewnbase`.
+- Basegame: structure check recorded in docs/STRUCTURE_CHECK.txt (no issues found).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.

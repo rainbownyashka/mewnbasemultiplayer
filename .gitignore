@@ -13,6 +13,7 @@ repos/
 # Logs
 *.log
 *.txt
+!docs/STRUCTURE_CHECK.txt
 
 # Python
 __pycache__/
