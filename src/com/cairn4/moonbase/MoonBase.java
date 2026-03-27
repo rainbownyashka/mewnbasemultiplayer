@@ -109,6 +109,16 @@ implements Telegraph {
 
     @Override
     public void create() {
+        // Optional file logger to avoid stdout buffering when redirected.
+        try {
+            String logFile = System.getProperty("mewnbase.logfile");
+            if (logFile != null && !logFile.trim().isEmpty()) {
+                Gdx.app.setApplicationLogger(new com.cairn4.moonbase.debug.FileLogger(logFile.trim()));
+                Gdx.app.log("MewnBase", "File logger enabled: " + logFile.trim());
+            }
+        } catch (Throwable t) {
+            try { Gdx.app.error("MewnBase", "Failed to enable file logger", t); } catch (Exception ignored) {}
+        }
         MoonBase.log("MoonBase.coreFolder = " + coreFolder);
         if (!Gdx.files.local(coreFolder).exists()) {
             GdxRuntimeException e = new GdxRuntimeException("Can't find the data folder here:" + coreFolder);

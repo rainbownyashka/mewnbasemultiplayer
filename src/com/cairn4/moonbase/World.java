@@ -172,11 +172,12 @@ public class World {
                     new Thread(() -> {
                         try {
                             int attempts = 0;
-                            while (attempts < 200) { // ~20s max (200 * 100ms)
+                            while (attempts < 600) { // ~60s max (600 * 100ms)
                                 try {
                                     com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
                                     com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
-                                    if (g.exists() || d.exists()) {
+                                    com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
+                                    if (w.exists() && (g.exists() || d.exists())) {
                                         Gdx.app.log("MewnBase", "World: detected multiplayer_received save files, scheduling load...");
                                         com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                             try {
@@ -193,11 +194,8 @@ public class World {
                                 attempts++;
                                 try { Thread.sleep(100L); } catch (InterruptedException ie) { break; }
                             }
-                            // timeout: attempt a load once anyway to surface errors
-                            Gdx.app.log("MewnBase", "World: timed out waiting for multiplayer_received files; attempting load once more");
-                            com.badlogic.gdx.Gdx.app.postRunnable(() -> {
-                                try { gameScreen.gameLoader.loadGame(this); this.gameState = GameStates.playing; } catch (Exception e) { Gdx.app.error("MewnBase", "World: deferred load failed after timeout", e); this.gameState = GameStates.start; }
-                            });
+                            // timeout: keep in start state; do not attempt load without worldData.json
+                            Gdx.app.log("MewnBase", "World: timed out waiting for multiplayer_received files; staying in start state");
                         } catch (Exception e) {
                             Gdx.app.error("MewnBase", "World: error while waiting for multiplayer_received files", e);
                         }
@@ -300,6 +298,9 @@ public class World {
         this.rayHandler.setCombinedMatrix(this.gameScreen.b2dCam);
         switch (this.gameState) {
             case start: {
+                if (this.lander == null) {
+                    break;
+                }
                 this.gameScreen.camera.position.set(this.lander.getXCenter(), this.lander.getYCenter() - Tile.TILE_SIZE, 0.0f);
                 this.updateChunks(delta);
                 this.updatePlayerSpine(delta);
@@ -837,4 +838,3 @@ public class World {
 
     }
 }
-
