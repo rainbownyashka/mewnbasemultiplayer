@@ -12,6 +12,7 @@ Changes
 - Client: made multiplayer state thread-safe and added pending-spawn flush to prevent remote players getting stuck.
 - MultiplayerConfigMenu: added socket read timeout and rollback of multiplayer flags on failed connect.
 - Server: keep host position broadcaster alive even if GameScreen is attached before server starts.
+- Basegame: restored `basegame/data` folder by moving core JSON/PNG data files into it so runtime lookup works.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -19,6 +20,7 @@ Impact
 
 Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
+- Game launch not run in this environment.
 
 Risks
 - Any external references/scripts may still point to old paths; update as needed.
