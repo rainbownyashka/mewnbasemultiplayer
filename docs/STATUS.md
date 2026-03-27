@@ -53,6 +53,8 @@ Changes
 - Client: cache FLIP scale when remote player not spawned yet.
 - Hud: force-hide interact/build cursor for mouse users each frame to prevent white square.
 - PlayerAnimController: broadcast flip-only when direction changes to fix diagonal/held-input flip not applying.
+- Server: broadcast TIMEWEATHER sync from host (day/period/weather).
+- Client: apply TIMEWEATHER sync to dayCycle/weatherManager.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -89,6 +91,7 @@ Verification
 - Compiled PlayerAnimController.java, Hud.java, BuildingPlacementCursor.java with patch_manual.ps1 (2026-03-27).
 - Compiled PlayerAnimController.java, Client.java, Hud.java with patch_manual.ps1 (2026-03-27).
 - Compiled PlayerAnimController.java with patch_manual.ps1 (2026-03-27).
+- Compiled Server.java and Client.java with patch_manual.ps1 (2026-03-27).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

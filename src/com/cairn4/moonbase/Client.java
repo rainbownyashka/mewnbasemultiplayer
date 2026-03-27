@@ -333,11 +333,47 @@ package com.cairn4.moonbase;
                              if (!MultiplayerNetworkHelper.handleChat(this.screen, frag, srcId)) {
                                  Gdx.app.error("Client", "Failed to handle CHAT payload via helper", null);
                              }
-                         } else if (frag.startsWith("APPEARANCE:")) {
-                             try {
-                                 MultiplayerNetworkHelper.handleAppearance(this.screen, frag, srcId);
-                             } catch (Exception ignored) {}
-                         } else if (frag.startsWith("INVENTORY_UPDATE:")) {
+                        } else if (frag.startsWith("APPEARANCE:")) {
+                            try {
+                                MultiplayerNetworkHelper.handleAppearance(this.screen, frag, srcId);
+                            } catch (Exception ignored) {}
+                        } else if (frag.startsWith("TIMEWEATHER:")) {
+                            try {
+                                String rest = frag.substring("TIMEWEATHER:".length());
+                                String[] parts = rest.split(":", 8);
+                                if (parts.length >= 8 && this.screen != null) {
+                                    final int day = safeParseInt(parts[0], 0);
+                                    final String period = parts[1];
+                                    final float periodTime = safeParseFloat(parts[2], 0.0f);
+                                    final String dayMode = parts[3];
+                                    final String weatherMode = parts[4];
+                                    final String weatherId = parts[5];
+                                    final float weatherTime = safeParseFloat(parts[6], 0.0f);
+                                    final float weatherDur = safeParseFloat(parts[7], 0.0f);
+                                    Gdx.app.postRunnable(() -> {
+                                        try {
+                                            if (this.screen.world != null) {
+                                                try {
+                                                    if (this.screen.world.dayCycle != null) {
+                                                        try { this.screen.world.dayCycle.setDayCycleMode(com.cairn4.moonbase.Mission.dayCycleModes.valueOf(dayMode)); } catch (Exception ignored) {}
+                                                        try { this.screen.world.dayCycle.setDay(day); } catch (Exception ignored) {}
+                                                        try { this.screen.world.dayCycle.setPeriod(period); } catch (Exception ignored) {}
+                                                        try { this.screen.world.dayCycle.setTime(periodTime); } catch (Exception ignored) {}
+                                                    }
+                                                    if (this.screen.world.weatherManager != null) {
+                                                        try { this.screen.world.weatherManager.setMode(com.cairn4.moonbase.Mission.weatherModes.valueOf(weatherMode)); } catch (Exception ignored) {}
+                                                        try { this.screen.world.weatherManager.setWeather(weatherId); } catch (Exception ignored) {}
+                                                        try { this.screen.world.weatherManager.setTimer(weatherTime); } catch (Exception ignored) {}
+                                                        try { this.screen.world.weatherManager.setDuration(weatherDur); } catch (Exception ignored) {}
+                                                    }
+                                                } catch (Exception ignored) {}
+                                            }
+                                        } catch (Exception ignored) {}
+                                    });
+                                    return;
+                                }
+                            } catch (Exception ignored) {}
+                        } else if (frag.startsWith("INVENTORY_UPDATE:")) {
                              try {
                                  String enc = frag.substring("INVENTORY_UPDATE:".length());
                                  String json = java.net.URLDecoder.decode(enc, "UTF-8");

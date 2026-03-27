@@ -35,6 +35,8 @@ public class Server {
     // so the server can apply received world updates (host authoritative installs)
     private GameScreen gameScreen = null;
     private volatile boolean hostPosThreadStarted = false;
+    private volatile long lastTimeWeatherSyncMs = 0L;
+    private static final long TIME_WEATHER_SYNC_INTERVAL_MS = 2000L;
 
     public Server(int port) {
         this.port = port;
@@ -105,6 +107,31 @@ public class Server {
                             try { vy = Server.this.gameScreen.world.player.getVelocity().y; } catch (Exception ignored2) {}
                             String payload = "POS:PLAYER:0:" + x + ":" + y + ":" + vx + ":" + vy;
                             try { Server.this.broadcast("0:" + payload, null); } catch (Exception ignored2) {}
+
+                            // Periodic time/weather sync from host world to all clients
+                            try {
+                                long now = System.currentTimeMillis();
+                                if (now - Server.this.lastTimeWeatherSyncMs >= TIME_WEATHER_SYNC_INTERVAL_MS) {
+                                    Server.this.lastTimeWeatherSyncMs = now;
+                                    try {
+                                        com.cairn4.moonbase.World w = Server.this.gameScreen.world;
+                                        com.cairn4.moonbase.DayCycle dc = w.dayCycle;
+                                        com.cairn4.moonbase.WeatherManager wm = w.weatherManager;
+                                        String period = (dc != null && dc.currentPeriod != null) ? dc.currentPeriod.toString() : "day";
+                                        float periodTime = (dc != null) ? dc.timer : 0.0f;
+                                        int day = (dc != null) ? dc.getDay() : 0;
+                                        String dayMode = "defaultDay";
+                                        try { if (dc != null) dayMode = dc.dayCycleMode.toString(); } catch (Exception ignored) {}
+                                        String weatherMode = "normal";
+                                        try { if (w.gameScreen != null && w.gameScreen.game != null && w.gameScreen.game.getCurrentMission() != null) weatherMode = w.gameScreen.game.getCurrentMission().weatherMode.toString(); } catch (Exception ignored) {}
+                                        String weatherId = (wm != null && wm.getCurrentData() != null) ? wm.getCurrentData().id : "clear";
+                                        float weatherTime = (wm != null) ? wm.getTimer() : 0.0f;
+                                        float weatherDur = (wm != null) ? wm.getDuration() : 0.0f;
+                                        String tw = "TIMEWEATHER:" + day + ":" + period + ":" + periodTime + ":" + dayMode + ":" + weatherMode + ":" + weatherId + ":" + weatherTime + ":" + weatherDur;
+                                        Server.this.broadcast("0:" + tw, null);
+                                    } catch (Exception ignored) {}
+                                }
+                            } catch (Exception ignored2) {}
                         }
                         try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
                     } catch (Exception ignored2) {}
