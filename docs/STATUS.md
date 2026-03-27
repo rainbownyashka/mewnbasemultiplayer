@@ -26,7 +26,7 @@ Impact
 Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
 - Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
-- Game launch not run in this environment.
+- UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
 
 Risks
 - Any external references/scripts may still point to old paths; update as needed.
