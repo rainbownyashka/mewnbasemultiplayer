@@ -132,13 +132,6 @@ implements Telegraph {
             // -Dmewnbase.startServer=<port>   -> start an in-process server on the given port
             // -Dmewnbase.connect=<host:port>  -> auto-connect client to host:port
             try {
-                String save = System.getProperty("mewnbase.save");
-                if (save != null && !save.isEmpty()) {
-                    currentSaveFolder = save;
-                    INSTANT_RUN = true; // trigger immediate load of the save
-                    Gdx.app.log("MoonBase", "Auto-set save folder from JVM property: " + save);
-                }
-
                 String startServer = System.getProperty("mewnbase.startServer");
                 if (startServer != null && !startServer.isEmpty()) {
                     try {
@@ -169,20 +162,42 @@ implements Telegraph {
                 }
 
                 String connect = System.getProperty("mewnbase.connect");
+                boolean connectRequested = false;
                 if (connect != null && !connect.isEmpty()) {
                     // Expect host:port
                     String[] parts = connect.split(":");
                     if (parts.length == 2) {
-                        multiplayerHost = parts[0];
+                        String host = parts[0];
                         try {
-                            multiplayerPort = Integer.parseInt(parts[1]);
-                            isMultiplayer = true;
-                            Gdx.app.log("MoonBase", "Auto-configured client connection to " + multiplayerHost + ":" + multiplayerPort);
+                            int port = Integer.parseInt(parts[1]);
+                            if (port < 1 || port > 65535) {
+                                throw new NumberFormatException("port out of range");
+                            }
+                            connectRequested = true;
+                            // Route legacy connect args through the new menu-based flow.
+                            System.setProperty("mewnbase.autoMenu", "multiplayer");
+                            System.setProperty("mewnbase.mp.host", host);
+                            System.setProperty("mewnbase.mp.port", Integer.toString(port));
+                            if (System.getProperty("mewnbase.mp.autoconnect") == null) {
+                                System.setProperty("mewnbase.mp.autoconnect", "1");
+                            }
+                            Gdx.app.log("MoonBase", "Legacy connect mapped to menu auto-connect: " + host + ":" + port);
                         } catch (NumberFormatException nfe) {
                             Gdx.app.error("MoonBase", "Invalid port in mewnbase.connect: " + connect, nfe);
                         }
                     } else {
                         Gdx.app.error("MoonBase", "Invalid format for mewnbase.connect (expected host:port): " + connect);
+                    }
+                }
+
+                String save = System.getProperty("mewnbase.save");
+                if (save != null && !save.isEmpty()) {
+                    if (connectRequested) {
+                        Gdx.app.log("MoonBase", "Ignoring mewnbase.save for legacy connect; using menu-based multiplayer flow.");
+                    } else {
+                        currentSaveFolder = save;
+                        INSTANT_RUN = true; // trigger immediate load of the save
+                        Gdx.app.log("MoonBase", "Auto-set save folder from JVM property: " + save);
                     }
                 }
             } catch (Throwable t) {

@@ -225,7 +225,6 @@ extends Menu {
         });
         this.buttonTable.add(btnMultiplayer).fill().minWidth(buttonWidth).height(buttonHeight).space(buttonSpacing);
         this.buttonTable.layout();
-        this.maybeAutoOpenMultiplayer();
         this.credit = new Label((CharSequence)creditText, this.labelStyle);
         this.credit.setAlignment(10);
         this.credit.setFontScale(0.5f);
@@ -366,6 +365,7 @@ extends Menu {
     @Override
     protected void finishedShowAnim() {
         MoonBase.log("finished showing main menu");
+        this.maybeAutoOpenMultiplayer();
     }
 
     private void maybeAutoOpenMultiplayer() {
