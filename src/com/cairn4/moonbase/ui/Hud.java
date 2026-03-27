@@ -217,6 +217,7 @@ implements Observer {
     private Vector2 entityEllipsePos;
     ReturnToLanderUI returnUI;
     public boolean showingPaintSelector = false;
+    private boolean activated = false;
 
     public boolean isHudVisible() {
         return this.hudGroup.isVisible();
@@ -301,7 +302,9 @@ implements Observer {
 
     public void activate(World world) {
         this.world = world;
-        this.player = this.world.player;
+        if (this.player == null && this.world != null) {
+            this.player = this.world.player;
+        }
         // Update HUD elements that don't require a player first
         try {
             if (this.world != null && this.world.dayCycle != null) {
@@ -318,6 +321,15 @@ implements Observer {
         this.updateDateTimeLabel();
         this.updateDebugText();
 
+        if (this.player == null) {
+            Gdx.app.log("Hud", "activate: player is not yet present, deferring player-specific init");
+            try { if (this.interactCursor != null) this.interactCursor.setVisible(false); } catch (Exception ignored) {}
+            return;
+        }
+        if (this.activated) {
+            return;
+        }
+        this.activated = true;
         if (this.player != null) {
             try { this.player.addObserver(this); } catch (Exception ignored) {}
             try { this.player.playerStatus.update(0.0f); } catch (Exception ignored) {}
@@ -340,9 +352,6 @@ implements Observer {
             if (gameScreen3.game.getCurrentMission().missionType != Mission.MissionTypes.tutorial && this.gameScreen.newGame) {
                 this.gameScreen.hud.hudNotifications.newMessage(Localization.get("findSupplyCrates"));
             }
-        } else {
-            Gdx.app.log("Hud", "activate: player is not yet present, deferring player-specific init");
-            try { if (this.interactCursor != null) this.interactCursor.setVisible(false); } catch (Exception ignored) {}
         }
         // Ensure letterbox (black bars) are hidden after HUD init
         try { this.hideLetterbox(); } catch (Exception ignored) {}
@@ -1074,6 +1083,9 @@ implements Observer {
     @Override
     public void update(float delta) {
         super.update(delta);
+        if (!this.activated && this.world != null && this.world.player != null) {
+            this.activate(this.world);
+        }
         if (this.player != null) {
             for (TileProgressBar tpb : this.tileProgressBars) {
                 tpb.update();
