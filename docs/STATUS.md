@@ -15,6 +15,7 @@ Changes
 - Basegame: restored `basegame/data` folder by moving core JSON/PNG data files into it so runtime lookup works.
 - Basegame: moved `locale/` under `data/locale/` to match runtime lookup path `data/locale/mewnbase`.
 - Basegame: structure check recorded in docs/STRUCTURE_CHECK.txt (no issues found).
+- Added optional runtime eval server (disabled by default, enable with -Dmewnbase.eval=1).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -22,6 +23,7 @@ Impact
 
 Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
+- Compiled MoonBase.java and debug/RuntimeEval.java with javac --release 8.
 - Game launch not run in this environment.
 
 Risks

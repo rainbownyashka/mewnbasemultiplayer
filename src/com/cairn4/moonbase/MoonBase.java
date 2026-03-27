@@ -112,6 +112,13 @@ implements Telegraph {
             GdxRuntimeException e = new GdxRuntimeException("Can't find the data folder here:" + coreFolder);
             throw e;
         }
+        // Optional dangerous runtime eval for local debugging only.
+        try {
+            com.cairn4.moonbase.debug.RuntimeEval.setContext(this);
+            com.cairn4.moonbase.debug.RuntimeEval.startIfEnabled();
+        } catch (Throwable t) {
+            try { Gdx.app.error("RuntimeEval", "Failed to init runtime eval", t); } catch (Exception ignored) {}
+        }
             // Check for JVM system properties to allow command-line automation.
             // Supported properties (pass with -Dmewnbase.save=saveName etc):
             // -Dmewnbase.save=<saveFolder>    -> set the current save to load
@@ -598,4 +605,3 @@ implements Telegraph {
         cursorVisible = true;
     }
 }
-
