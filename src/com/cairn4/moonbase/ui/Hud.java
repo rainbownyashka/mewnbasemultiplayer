@@ -1446,7 +1446,7 @@ implements Observer {
             this.buildingPlacementCursor.setPosition(this.interactCursorPoint.x, this.interactCursorPoint.y);
             boolean proxyInRange = this.buildingPlacementCursor.proxyPlacementInRange(this.gameScreen.world, this.interactCursorPoint.x, this.interactCursorPoint.y);
             if (this.player.interactWithinRange() || proxyInRange) {
-                if (PlayerInput.lastUsedMouse) {
+                if (!SettingsLoader.getInstance().settingsData.USE_CONTROLLER || PlayerInput.lastUsedMouse) {
                     this.interactCursor.setVisible(false);
                 } else {
                     this.interactCursor.setVisible(true);

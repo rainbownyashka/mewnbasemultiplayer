@@ -43,6 +43,8 @@ Changes
 - fulltest.bat now uses absolute game jar path so it works when run from basegame/.
 - Server: defer client broadcast registration until after INIT_DONE + READY handshake to avoid binary/text interleaving.
 - Hud: re-activate once multiplayer player becomes available so HUD groups (health/oxygen/icons) are restored.
+- Hud: only show the interact white-square cursor when controller mode is enabled (prevents stuck cursor for mouse users).
+- fulltest.bat: default run has no time limit; pass seconds to auto-stop (e.g., `fulltest.bat 40`).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -72,8 +74,8 @@ Verification
 - Ran basegame/fulltest.bat (2026-03-27) and confirmed client reached deferred load and remained stable (no crash in logs).
 - Compiled Server.java with javac --release 8 (including all Server$*.class) and patched jar.
 - Ran basegame/fulltest.bat (2026-03-27) and verified no INIT_DONE/read errors in client log.
-- Compiled Hud.java with javac --release 8 (including all Hud$*.class) and patched jar.
 - Ran basegame/fulltest.bat (2026-03-27); no client/server errors in logs (HUD visibility to be confirmed visually).
+- Compiled Hud.java with javac --release 8 (including all Hud$*.class) and patched jar.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
