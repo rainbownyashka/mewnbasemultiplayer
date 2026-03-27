@@ -30,6 +30,7 @@ Changes
 - tools/mewnbase_autoupdate_ai.py now also kills cmd.exe instances running run_*.bat scripts.
 - basegame/run_client.bat updated to pass mp nick and autoconnect.
 - MultiplayerConfigMenu: trigger auto-connect scheduling at construction time (BaseScreen.showMenu does not call show()).
+- Hud: guard mission observer attach when current mission is null during multiplayer join.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -43,6 +44,7 @@ Verification
 - Compiled Hud.java with javac --release 8 and patched jar.
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
+- Compiled Hud.java with javac --release 8 and patched jar.
 - Compiled DesktopLauncher.java with javac --release 8 and patched jar.
 - Updated tools/mewnbase_autoupdate_ai.py (not executed yet).
 - Updated basegame/run_client.bat (not executed yet).

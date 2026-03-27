@@ -352,7 +352,11 @@ implements Observer {
             this.gameScreen.world.techManager.notifyHud();
         }
         GameScreen gameScreen4 = world.gameScreen;
-        gameScreen4.game.getCurrentMission().addObserver(this);
+        if (gameScreen4.game.getCurrentMission() != null) {
+            gameScreen4.game.getCurrentMission().addObserver(this);
+        } else {
+            Gdx.app.log("Hud", "activate: current mission not initialized yet, deferring mission observer attach");
+        }
     }
 
     private void setupLowHealthBorder() {
