@@ -17,6 +17,7 @@ Changes
 - Basegame: structure check recorded in docs/STRUCTURE_CHECK.txt (no issues found).
 - Added optional runtime eval server (disabled by default, enable with -Dmewnbase.eval=1).
 - Added optional UI test server (disabled by default, enable with -Dmewnbase.uitest=1) to list/click buttons safely.
+- UiTestServer: added menu-aware commands (MENU_FOCUS, MENU_STACK, MENU_LIST, CLICK_MENU) for custom menu structure.
 - Added basegame/run_log.bat to persist game logs to basegame/logs/.
 
 Impact
@@ -26,6 +27,7 @@ Impact
 Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
 - Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
+- Compiled updated UiTestServer.java with javac --release 8 and patched jar.
 - UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
 
 Risks

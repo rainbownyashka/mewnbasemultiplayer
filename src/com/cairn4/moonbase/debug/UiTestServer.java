@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.cairn4.moonbase.MoonBase;
 import com.cairn4.moonbase.ui.BaseScreen;
+import com.cairn4.moonbase.ui.Menu;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -84,8 +85,12 @@ public final class UiTestServer {
         if (cmd.length() == 0) return "ERR: empty";
         if ("PING".equalsIgnoreCase(cmd)) return "OK";
         if ("SCREEN".equalsIgnoreCase(cmd)) return getScreenName();
+        if ("MENU_FOCUS".equalsIgnoreCase(cmd)) return getMenuFocusName();
+        if ("MENU_STACK".equalsIgnoreCase(cmd)) return getMenuStackNames();
         if ("LIST".equalsIgnoreCase(cmd)) return listButtons();
+        if ("MENU_LIST".equalsIgnoreCase(cmd)) return listMenuButtons();
         if ("COUNT".equalsIgnoreCase(cmd)) return String.valueOf(getButtons().size());
+        if ("MENU_COUNT".equalsIgnoreCase(cmd)) return String.valueOf(getMenuButtons().size());
         if (cmd.startsWith("CLICK_INDEX ")) {
             String idxStr = cmd.substring("CLICK_INDEX ".length()).trim();
             try {
@@ -95,9 +100,22 @@ public final class UiTestServer {
                 return "ERR: bad index";
             }
         }
+        if (cmd.startsWith("CLICK_MENU_INDEX ")) {
+            String idxStr = cmd.substring("CLICK_MENU_INDEX ".length()).trim();
+            try {
+                int idx = Integer.parseInt(idxStr);
+                return clickMenuIndex(idx);
+            } catch (Exception e) {
+                return "ERR: bad index";
+            }
+        }
         if (cmd.startsWith("CLICK ")) {
             String text = cmd.substring("CLICK ".length()).trim();
             return clickText(text);
+        }
+        if (cmd.startsWith("CLICK_MENU ")) {
+            String text = cmd.substring("CLICK_MENU ".length()).trim();
+            return clickMenuText(text);
         }
         return "ERR: unknown";
     }
@@ -122,6 +140,16 @@ public final class UiTestServer {
         return sb.toString().trim();
     }
 
+    private static String listMenuButtons() {
+        List<TextButton> buttons = getMenuButtons();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < buttons.size(); i++) {
+            TextButton b = buttons.get(i);
+            sb.append(i).append(":").append(b.getText()).append("\n");
+        }
+        return sb.toString().trim();
+    }
+
     private static List<TextButton> getButtons() {
         List<TextButton> out = new ArrayList<TextButton>();
         try {
@@ -133,6 +161,20 @@ public final class UiTestServer {
             if (stage == null) return out;
             for (Actor a : stage.getActors()) {
                 collectButtons(a, out);
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    private static List<TextButton> getMenuButtons() {
+        List<TextButton> out = new ArrayList<TextButton>();
+        try {
+            Menu m = getMenuFocus();
+            if (m == null) return out;
+            Group g = getMenuGroup(m);
+            if (g == null) return out;
+            for (Actor child : g.getChildren()) {
+                collectButtons(child, out);
             }
         } catch (Exception ignored) {}
         return out;
@@ -158,6 +200,14 @@ public final class UiTestServer {
         return "OK";
     }
 
+    private static String clickMenuIndex(int idx) {
+        List<TextButton> buttons = getMenuButtons();
+        if (idx < 0 || idx >= buttons.size()) return "ERR: out_of_range";
+        TextButton b = buttons.get(idx);
+        clickButton(b);
+        return "OK";
+    }
+
     private static String clickText(String text) {
         if (text == null) return "ERR: empty";
         List<TextButton> buttons = getButtons();
@@ -168,6 +218,63 @@ public final class UiTestServer {
             }
         }
         return "ERR: not_found";
+    }
+
+    private static String clickMenuText(String text) {
+        if (text == null) return "ERR: empty";
+        List<TextButton> buttons = getMenuButtons();
+        for (TextButton b : buttons) {
+            if (text.equalsIgnoreCase(String.valueOf(b.getText()))) {
+                clickButton(b);
+                return "OK";
+            }
+        }
+        return "ERR: not_found";
+    }
+
+    private static Menu getMenuFocus() {
+        try {
+            MoonBase mb = MoonBase.instance;
+            if (mb == null || mb.getScreen() == null) return null;
+            if (!(mb.getScreen() instanceof BaseScreen)) return null;
+            BaseScreen bs = (BaseScreen) mb.getScreen();
+            return bs.menuFocus;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String getMenuFocusName() {
+        Menu m = getMenuFocus();
+        return m == null ? "NONE" : m.getClass().getName();
+    }
+
+    private static String getMenuStackNames() {
+        try {
+            MoonBase mb = MoonBase.instance;
+            if (mb == null || mb.getScreen() == null) return "NONE";
+            if (!(mb.getScreen() instanceof BaseScreen)) return "NONE";
+            BaseScreen bs = (BaseScreen) mb.getScreen();
+            if (bs.menuStack == null || bs.menuStack.size() == 0) return "EMPTY";
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bs.menuStack.size(); i++) {
+                Menu m = bs.menuStack.get(i);
+                sb.append(i).append(":").append(m.getClass().getName()).append("\n");
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            return "ERR";
+        }
+    }
+
+    private static Group getMenuGroup(Menu m) {
+        try {
+            java.lang.reflect.Field f = Menu.class.getDeclaredField("menuGroup");
+            f.setAccessible(true);
+            Object g = f.get(m);
+            if (g instanceof Group) return (Group) g;
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private static void clickButton(final TextButton b) {
@@ -189,4 +296,3 @@ public final class UiTestServer {
         } catch (Exception ignored) {}
     }
 }
-
