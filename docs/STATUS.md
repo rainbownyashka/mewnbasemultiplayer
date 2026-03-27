@@ -19,6 +19,8 @@ Changes
 - Added optional UI test server (disabled by default, enable with -Dmewnbase.uitest=1) to list/click buttons safely.
 - UiTestServer: added menu-aware commands (MENU_FOCUS, MENU_STACK, MENU_LIST, CLICK_MENU) for custom menu structure.
 - Added basegame/run_log.bat to persist game logs to basegame/logs/.
+- MainMenu: auto-opens Multiplayer menu when new MP properties are present.
+- MultiplayerConfigMenu: added MP auto-fill/auto-connect via JVM properties (client-only, no server auto-start).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -28,7 +30,11 @@ Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
 - Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
 - Compiled updated UiTestServer.java with javac --release 8 and patched jar.
+- Compiled MainMenu.java and MultiplayerConfigMenu.java with javac --release 8 and patched jar.
 - UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
+
+Risks
+- Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
 
 Risks
 - Any external references/scripts may still point to old paths; update as needed.

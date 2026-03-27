@@ -225,6 +225,7 @@ extends Menu {
         });
         this.buttonTable.add(btnMultiplayer).fill().minWidth(buttonWidth).height(buttonHeight).space(buttonSpacing);
         this.buttonTable.layout();
+        this.maybeAutoOpenMultiplayer();
         this.credit = new Label((CharSequence)creditText, this.labelStyle);
         this.credit.setAlignment(10);
         this.credit.setFontScale(0.5f);
@@ -365,6 +366,31 @@ extends Menu {
     @Override
     protected void finishedShowAnim() {
         MoonBase.log("finished showing main menu");
+    }
+
+    private void maybeAutoOpenMultiplayer() {
+        String autoMenu = System.getProperty("mewnbase.autoMenu");
+        String autoConnect = System.getProperty("mewnbase.mp.autoconnect");
+        String host = System.getProperty("mewnbase.mp.host");
+        String port = System.getProperty("mewnbase.mp.port");
+        String nick = System.getProperty("mewnbase.mp.nick");
+
+        boolean shouldOpen = false;
+        if (autoMenu != null && autoMenu.trim().length() > 0) {
+            String v = autoMenu.trim().toLowerCase();
+            shouldOpen = v.equals("mp") || v.equals("multiplayer");
+        }
+        if (!shouldOpen) {
+            shouldOpen = (autoConnect != null && autoConnect.trim().length() > 0)
+                    || (host != null && host.trim().length() > 0)
+                    || (port != null && port.trim().length() > 0)
+                    || (nick != null && nick.trim().length() > 0);
+        }
+
+        if (!shouldOpen) {
+            return;
+        }
+        Gdx.app.postRunnable(() -> MainMenu.this.baseScreen.showMenu(new MultiplayerConfigMenu(MainMenu.this.baseScreen)));
     }
 
     private void addTwitterButton() {
@@ -572,4 +598,3 @@ extends Menu {
         PlayerInput.update();
     }
 }
-
