@@ -1086,6 +1086,14 @@ implements Observer {
         if (!this.activated && this.world != null && this.world.player != null) {
             this.activate(this.world);
         }
+        try {
+            if (!SettingsLoader.getInstance().settingsData.USE_CONTROLLER && this.interactCursor != null) {
+                this.interactCursor.setVisible(false);
+            }
+            if (!this.buildingEquipped && this.buildingPlacementCursor != null) {
+                this.buildingPlacementCursor.hide();
+            }
+        } catch (Exception ignored) {}
         if (this.player != null) {
             for (TileProgressBar tpb : this.tileProgressBars) {
                 tpb.update();

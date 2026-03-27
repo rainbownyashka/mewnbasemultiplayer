@@ -405,8 +405,10 @@ public class PlayerAnimController {
                     int owner = this.player.ownerId;
                     // decide effective scale to send: prefer forcedScale if set
                     float effectiveScale = !Float.isNaN(this.forcedScale) ? this.forcedScale : scaleX;
+                    String flipOverride = "FLIP_OVERRIDE:PLAYER:" + owner + ":" + effectiveScale;
                     String flipPayload = "FLIP:PLAYER:" + owner + ":" + effectiveScale;
                     String animPayload = "ANIMPLAY:PLAYER:" + owner + ":" + animName + ":true:" + effectiveScale;
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipOverride);
                     com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipPayload);
                     com.cairn4.moonbase.NetworkHelper.sendPayload(gs, animPayload);
                 } catch (Exception ignored) {}

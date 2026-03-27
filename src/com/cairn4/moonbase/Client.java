@@ -453,10 +453,12 @@ package com.cairn4.moonbase;
                                                  if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == owner) {
                                                      return;
                                                  }
-                                                 Player remote = this.screen.getRemotePlayer(owner);
-                                                 if (remote == null) {
-                                                     return;
-                                                 }
+                                                Player remote = this.screen.getRemotePlayer(owner);
+                                                if (remote == null) {
+                                                    // cache flip so it applies when the remote player spawns
+                                                    try { this.flipOverrides.put(Integer.valueOf(owner), Float.valueOf(scale)); } catch (Exception ignored) {}
+                                                    return;
+                                                }
                                                  int mode = this.screen.getAnimTestMode();
                                                  if (mode == 1) {
                                                      try {
