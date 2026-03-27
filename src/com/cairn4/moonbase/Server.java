@@ -276,6 +276,10 @@ public class Server {
                 in = new DataInputStream(socket.getInputStream());
                 
                 sendInitialWorldData();
+                // Signal end of binary init payload so client can safely start reading UTF messages
+                try {
+                    sendMessage("INIT_DONE");
+                } catch (Exception ignored) {}
 
                 // Announce new player to everyone else
                 server.broadcast("CONNECTED:" + clientId, this);

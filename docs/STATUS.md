@@ -36,6 +36,7 @@ Changes
 - fulltest.bat now passes -Dmewnbase.logfile for both server and client.
 - GameScreen: guard updateRichPresence when mission/dayCycle not yet initialized during MP join.
 - MultiplayerConfigMenu: on successful sync fetch, use vanilla LoadingScreen pipeline instead of direct GameScreen.
+- Server: send INIT_DONE marker after binary init so client doesn't consume SPAWNREMOTE as init marker.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -51,6 +52,7 @@ Verification
 - Compiled FileLogger.java and MoonBase.java with javac --release 8 and patched jar.
 - Compiled GameScreen.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
+- Compiled Server.java with javac --release 8 and patched jar.
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled Hud.java with javac --release 8 and patched jar.
