@@ -35,6 +35,7 @@ Changes
 - Added FileLogger and -Dmewnbase.logfile to force flushed logs when stdout is redirected.
 - fulltest.bat now passes -Dmewnbase.logfile for both server and client.
 - GameScreen: guard updateRichPresence when mission/dayCycle not yet initialized during MP join.
+- MultiplayerConfigMenu: on successful sync fetch, use vanilla LoadingScreen pipeline instead of direct GameScreen.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -49,6 +50,7 @@ Verification
 - Added basegame/fulltest.bat (not executed yet).
 - Compiled FileLogger.java and MoonBase.java with javac --release 8 and patched jar.
 - Compiled GameScreen.java with javac --release 8 and patched jar.
+- Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled Hud.java with javac --release 8 and patched jar.

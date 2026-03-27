@@ -277,9 +277,9 @@ public class MultiplayerConfigMenu extends Menu {
                         com.cairn4.moonbase.MoonBase.multiplayerHost = ip;
                         com.cairn4.moonbase.MoonBase.multiplayerPort = port;
                         com.cairn4.moonbase.MoonBase.multiplayerNick = nick;
-                        baseScreen.game.loadGameAssets();
-                        com.cairn4.moonbase.AssetManagerSingleton.getInstance().finishLoading();
-                        baseScreen.game.setScreen(new com.cairn4.moonbase.ui.GameScreen(baseScreen.game, false));
+                        // Use vanilla loading pipeline to initialize mission/assets reliably
+                        com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received";
+                        baseScreen.game.setScreen(new com.cairn4.moonbase.ui.LoadingScreen(baseScreen.game, false));
                     } catch (Exception e) {
                         com.badlogic.gdx.Gdx.app.error("ClientSync", "Failed to start GameScreen after sync fetch", e);
                     }
