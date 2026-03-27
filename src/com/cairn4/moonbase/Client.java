@@ -55,6 +55,7 @@ package com.cairn4.moonbase;
     private long lastVehSentMillis = 0L;
     private long lastVehMetaSentMillis = 0L;
     private String lastVehMeta = null;
+    private long lastPlayerStateSentMillis = 0L;
      private boolean diagnosticMode = false;
      private String host;
      private int port;
@@ -517,6 +518,20 @@ package com.cairn4.moonbase;
                                                  try { p.playerStatus.setHealth(health); } catch (Exception ignored) {}
                                                  try { p.playerStatus.setFlashlight(flashlight); } catch (Exception ignored) {}
                                                  try { p.setSuitLevel(suitLevel, false); } catch (Exception ignored) {}
+                                                 try {
+                                                     float px = parseFloatField(payloadJson, "x", Float.NaN);
+                                                     float py = parseFloatField(payloadJson, "y", Float.NaN);
+                                                     if (!Float.isNaN(px) && !Float.isNaN(py)) {
+                                                         try {
+                                                             java.lang.reflect.Method mx = com.cairn4.moonbase.Player.class.getDeclaredMethod("setXPos", new Class[]{float.class});
+                                                             java.lang.reflect.Method my = com.cairn4.moonbase.Player.class.getDeclaredMethod("setYPos", new Class[]{float.class});
+                                                             mx.setAccessible(true);
+                                                             my.setAccessible(true);
+                                                             mx.invoke(p, new Object[]{Float.valueOf(px)});
+                                                             my.invoke(p, new Object[]{Float.valueOf(py)});
+                                                         } catch (Exception ignored) {}
+                                                     }
+                                                 } catch (Exception ignored) {}
                                              } catch (Exception ignored) {}
                                              // Inventory: clear and add
                                              try {
@@ -1082,6 +1097,20 @@ package com.cairn4.moonbase;
                                     }
                                 }
                             } catch (Exception ignored) {}
+
+                            // Periodic player state snapshot for persistence
+                            try {
+                                if (now - this.lastPlayerStateSentMillis >= 2000L) {
+                                    String stateJson = buildPlayerStateJson();
+                                    if (stateJson != null && stateJson.length() > 0) {
+                                        try {
+                                            String enc = java.net.URLEncoder.encode(stateJson, "UTF-8");
+                                            sendMessage(this.clientId + ":" + "PLAYER_STATE:" + enc);
+                                        } catch (Exception ignored) {}
+                                    }
+                                    this.lastPlayerStateSentMillis = now;
+                                }
+                            } catch (Exception ignored) {}
                         }
                      try {
                          Thread.sleep(50L);
@@ -1155,11 +1184,11 @@ package com.cairn4.moonbase;
          } catch (Exception e) { return def; }
      }
 
-     private static int parseIntField(String json, String key, int def) {
-         try { return (int)parseFloatField(json, key, def); } catch (Exception e) { return def; }
-     }
+    private static int parseIntField(String json, String key, int def) {
+        try { return (int)parseFloatField(json, key, def); } catch (Exception e) { return def; }
+    }
 
-     private static java.util.List<java.util.Map<String, String>> parseInventoryArray(String json) {
+    private static java.util.List<java.util.Map<String, String>> parseInventoryArray(String json) {
          java.util.List<java.util.Map<String, String>> res = new java.util.ArrayList<>();
          try {
              int idx = json.indexOf("\"inventory\"");
@@ -1184,7 +1213,62 @@ package com.cairn4.moonbase;
                  if (!map.isEmpty()) res.add(map);
              }
          } catch (Exception ignored) {}
-         return res;
-     }
+        return res;
+    }
+
+    private String buildPlayerStateJson() {
+        try {
+            if (this.screen == null || this.screen.world == null || this.screen.world.player == null) return null;
+            com.cairn4.moonbase.Player p = this.screen.world.player;
+            String nick = com.cairn4.moonbase.MoonBase.multiplayerNick != null ? com.cairn4.moonbase.MoonBase.multiplayerNick : "";
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            sb.append("\"nick\":\"").append(escapeJson(nick)).append("\",");
+            sb.append("\"ownerId\":").append(this.clientId).append(",");
+            try { sb.append("\"x\":").append(p.getXPos()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"y\":").append(p.getYPos()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"air\":").append(p.playerStatus.getAir()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"suitPower\":").append(p.playerStatus.getSuitPower()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"hunger\":").append(p.playerStatus.getHunger()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"health\":").append(p.playerStatus.getHealth()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"flashlight\":").append(p.playerStatus.getFlashlight()).append(","); } catch (Exception ignored) {}
+            try { sb.append("\"suitLevel\":").append(p.suitLevel).append(","); } catch (Exception ignored) {}
+            sb.append("\"inventory\":[");
+            boolean first = true;
+            try {
+                for (com.cairn4.moonbase.ItemStack stack : p.getPlayerInventory().itemList) {
+                    if (stack == null) continue;
+                    if (!first) sb.append(",");
+                    first = false;
+                    String id = stack.getId();
+                    int amt = stack.getAmount();
+                    int dur = 0;
+                    try { dur = stack.item != null ? stack.item.durability : 0; } catch (Exception ignored) {}
+                    sb.append("{\"id\":\"").append(escapeJson(id)).append("\",\"amount\":").append(amt).append(",\"durability\":").append(dur).append("}");
+                }
+            } catch (Exception ignored) {}
+            sb.append("]}");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String escapeJson(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\': sb.append("\\\\"); break;
+                case '"': sb.append("\\\""); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default: sb.append(c); break;
+            }
+        }
+        return sb.toString();
+    }
 
  }

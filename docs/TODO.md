@@ -12,4 +12,4 @@
 - Time/weather sync stability + HUD day spam check.
 - Net spam off by default; diagclient on/off behavior.
 - Eval server: run Java eval against live ctx.
-- Server save extension: decide format + frequency for saving other players (pos/stats/inv).
+- Player state persistence: verify reconnect restores inventory/stats/pos from multiplayer_players.json.

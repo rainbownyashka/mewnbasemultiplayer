@@ -25,6 +25,13 @@ public class Server {
     private Map<String, Integer> usedNames = new ConcurrentHashMap<>();
     // Flip overrides stored by ownerId -> scale
     private Map<Integer, Float> flipOverrides = new ConcurrentHashMap<>();
+    // Persisted multiplayer player states (keyed by nick or fallback id)
+    private Map<String, String> savedPlayerStates = new ConcurrentHashMap<>();
+    private final Object playerStateLock = new Object();
+    private volatile boolean playerStatesLoaded = false;
+    private volatile boolean playerStateDirty = false;
+    private volatile long lastPlayerStatePersistMs = 0L;
+    private static final long PLAYER_STATE_PERSIST_INTERVAL_MS = 5000L;
     private boolean running = false;
     private volatile boolean listening = false;
     private int nextClientId = 1;
@@ -50,6 +57,8 @@ public class Server {
         this.port = port;
     // register active server so GameScreen/ConsoleExecutor can find it when running in-process
     try { activeServer = this; } catch (Throwable ignored) {}
+    // preload player states if possible
+    try { ensurePlayerStatesLoaded(); } catch (Exception ignored) {}
     }
 
     // allow in-game server startup code to attach the running GameScreen
@@ -177,6 +186,7 @@ public class Server {
                                 } catch (Exception ignored) {}
                             } catch (Exception ignored2) {}
                         }
+                        try { Server.this.maybePersistPlayerStates(); } catch (Exception ignored2) {}
                         try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
                     } catch (Exception ignored2) {}
                 }
@@ -198,6 +208,7 @@ public class Server {
                 client.close();
             }
             clients.clear();
+            try { persistPlayerStatesNow(); } catch (Exception ignored) {}
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
                 Gdx.app.log("Server", "Server stopped.");
@@ -298,6 +309,7 @@ public class Server {
         ClientHandler removedClient = clients.remove(clientId);
         if (removedClient != null) {
             Gdx.app.log("Server", "Client " + clientId + " disconnected.");
+            try { persistPlayerStatesNow(); } catch (Exception ignored) {}
             try {
                 if (removedClient.announced) {
                     broadcast("DISCONNECTED:" + clientId, null);
@@ -342,6 +354,127 @@ public class Server {
         }
     }
 
+    private String getPlayerStateFilePath() {
+        try {
+            String folder = com.cairn4.moonbase.MoonBase.currentSaveFolder;
+            if (folder == null || folder.length() == 0) return null;
+            return "saves/" + folder + "/multiplayer_players.json";
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void ensurePlayerStatesLoaded() {
+        if (playerStatesLoaded) return;
+        synchronized (playerStateLock) {
+            if (playerStatesLoaded) return;
+            String path = getPlayerStateFilePath();
+            if (path == null) {
+                playerStatesLoaded = true;
+                return;
+            }
+            try {
+                com.badlogic.gdx.files.FileHandle fh = com.badlogic.gdx.Gdx.files.local(path);
+                if (fh.exists()) {
+                    String text = fh.readString("UTF-8");
+                    try {
+                        com.badlogic.gdx.utils.JsonReader jr = new com.badlogic.gdx.utils.JsonReader();
+                        com.badlogic.gdx.utils.JsonValue root = jr.parse(text);
+                        com.badlogic.gdx.utils.JsonValue child = root.child;
+                        while (child != null) {
+                            if (child.name != null) {
+                                savedPlayerStates.put(child.name, child.toString());
+                            }
+                            child = child.next;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            } catch (Exception ignored) {}
+            playerStatesLoaded = true;
+        }
+    }
+
+    private void maybePersistPlayerStates() {
+        if (!playerStateDirty) return;
+        long now = System.currentTimeMillis();
+        if (now - lastPlayerStatePersistMs < PLAYER_STATE_PERSIST_INTERVAL_MS) return;
+        persistPlayerStatesNow();
+    }
+
+    private void persistPlayerStatesNow() {
+        synchronized (playerStateLock) {
+            if (!playerStateDirty && (System.currentTimeMillis() - lastPlayerStatePersistMs) < PLAYER_STATE_PERSIST_INTERVAL_MS) {
+                return;
+            }
+            String path = getPlayerStateFilePath();
+            if (path == null) return;
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            boolean first = true;
+            for (Map.Entry<String, String> e : savedPlayerStates.entrySet()) {
+                String key = e.getKey();
+                String val = e.getValue();
+                if (key == null || val == null) continue;
+                if (!first) sb.append(",");
+                first = false;
+                sb.append("\n  \"").append(escapeJson(key)).append("\": ").append(val);
+            }
+            if (!savedPlayerStates.isEmpty()) sb.append("\n");
+            sb.append("}");
+            try {
+                com.badlogic.gdx.files.FileHandle fh = com.badlogic.gdx.Gdx.files.local(path);
+                fh.writeString(sb.toString(), false, "UTF-8");
+            } catch (Exception ignored) {}
+            playerStateDirty = false;
+            lastPlayerStatePersistMs = System.currentTimeMillis();
+        }
+    }
+
+    private String getSavedPlayerState(String key) {
+        if (key == null) return null;
+        ensurePlayerStatesLoaded();
+        return savedPlayerStates.get(key);
+    }
+
+    private boolean hasSavedPlayerState(String key) {
+        if (key == null) return false;
+        ensurePlayerStatesLoaded();
+        return savedPlayerStates.containsKey(key);
+    }
+
+    private void movePlayerState(String fromKey, String toKey) {
+        if (fromKey == null || toKey == null) return;
+        ensurePlayerStatesLoaded();
+        if (!savedPlayerStates.containsKey(fromKey)) return;
+        if (savedPlayerStates.containsKey(toKey)) return;
+        savedPlayerStates.put(toKey, savedPlayerStates.remove(fromKey));
+        playerStateDirty = true;
+    }
+
+    private void storePlayerState(String key, String json) {
+        if (key == null || json == null || json.length() == 0) return;
+        ensurePlayerStatesLoaded();
+        savedPlayerStates.put(key, json);
+        playerStateDirty = true;
+    }
+
+    private static String escapeJson(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\': sb.append("\\\\"); break;
+                case '"': sb.append("\\\""); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default: sb.append(c); break;
+            }
+        }
+        return sb.toString();
+    }
+
 
     private static class ClientHandler implements Runnable {
         private Socket socket;
@@ -352,6 +485,7 @@ public class Server {
         private String appearanceData;
         private boolean announced = false;
         private volatile boolean readyForMessages = false;
+        private volatile boolean sentSavedState = false;
         private final Object outLock = new Object(); // Add this line
         // rate-limiting state for POS broadcasts from this client
         private volatile float lastBroadcastPosX = Float.NaN;
@@ -507,6 +641,9 @@ public class Server {
                     // Prefix with 0: so client treats it as a server-origin request, include target id
                     sendMessage("0:REQUEST_APPEARANCE:" + this.clientId);
                 } catch (Exception ignored) {}
+
+                // If we already have a saved state (fallback key), send it now
+                try { sendSavedStateIfAvailable(); } catch (Exception ignored) {}
 
                 while (server.running) {
                     String message = in.readUTF();
@@ -883,6 +1020,17 @@ public class Server {
                             }
                         } catch (Exception ignored) {}
                         server.broadcast("APPEARANCE:" + this.clientId + ":" + this.appearanceData, this);
+                        // Migrate any fallback-saved state to nick key, then send saved state to client
+                        try {
+                            String nickKey = getPlayerStateKey();
+                            String fallbackKey = "id:" + this.clientId;
+                            if (!fallbackKey.equals(nickKey)) {
+                                if (server.hasSavedPlayerState(fallbackKey) && !server.hasSavedPlayerState(nickKey)) {
+                                    server.movePlayerState(fallbackKey, nickKey);
+                                }
+                            }
+                            sendSavedStateIfAvailable();
+                        } catch (Exception ignored) {}
                         // Also apply appearance to host GameScreen if present
                         try {
                             if (server.gameScreen != null && this.appearanceData != null) {
@@ -1665,16 +1813,50 @@ public class Server {
                                 } catch (Exception ignored) {}
                                 continue;
                             }
+                            if (message.startsWith("PLAYER_STATE:")) {
+                                try {
+                                    String data = message.substring("PLAYER_STATE:".length());
+                                    String json = java.net.URLDecoder.decode(data, "UTF-8");
+                                    String key = getPlayerStateKey();
+                                    server.storePlayerState(key, json);
+                                } catch (Exception ignored) {}
+                                continue;
+                            }
                             server.broadcast(this.clientId + ":" + message, this);
                         }
                     }
-                } // End of while (server.running) loop
-            } catch (IOException e) {
-                // Client disconnected or error
-            } finally {
-                server.removeClient(this.clientId);
-                close();
-            }
+        } // End of while (server.running) loop
+    } catch (IOException e) {
+        // Client disconnected or error
+    } finally {
+        server.removeClient(this.clientId);
+        close();
+    }
+}
+
+        private String getPlayerStateKey() {
+            try {
+                if (this.appearanceData != null) {
+                    String[] ps = this.appearanceData.split("\\|");
+                    if (ps.length > 2) {
+                        String decNick = java.net.URLDecoder.decode(ps[2], "UTF-8");
+                        if (decNick != null && decNick.trim().length() > 0) return decNick.trim();
+                    }
+                }
+            } catch (Exception ignored) {}
+            return "id:" + this.clientId;
+        }
+
+        private void sendSavedStateIfAvailable() {
+            if (sentSavedState) return;
+            try {
+                String key = getPlayerStateKey();
+                String json = server.getSavedPlayerState(key);
+                if (json == null || json.length() == 0) return;
+                String enc = java.net.URLEncoder.encode(json, "UTF-8");
+                sendMessage("INVENTORY_UPDATE:" + enc);
+                sentSavedState = true;
+            } catch (Exception ignored) {}
         }
 
         private void sendInitialWorldData() {

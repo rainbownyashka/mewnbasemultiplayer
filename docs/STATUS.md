@@ -72,6 +72,8 @@ Changes
 - Vehicle MP: server now validates vehicle packets strictly by driver before relaying.
 - Vehicle inventory: added lock + full resync (VEH_LOCK/UNLOCK + VEH_INV_SYNC).
 - Base storage: added lock + full resync for all ItemStorageBehavior inventories (BASE_LOCK/UNLOCK + BASE_INV_SYNC).
+- Client: send periodic PLAYER_STATE snapshots (stats + inventory + position) to server for persistence.
+- Server: persist multiplayer player state to `multiplayer_players.json` and restore via INVENTORY_UPDATE on reconnect.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -118,6 +120,8 @@ Verification
 - Compiled RuntimeEval.java, Client.java, Server.java, MultiplayerNetworkHelper.java, Vehicle.java, Buggie.java, Tank.java, VehicleTrailer.java with patch_manual.ps1 (2026-03-27).
 - Compiled ItemStorageBehavior.java, StorageUI.java, MiningRigUI.java with patch_manual.ps1 (2026-03-27).
 - Inventory lock/sync changes not yet verified in-game (needs manual test).
+- Compiled Client.java and Server.java with patch_manual.ps1 (2026-03-27).
+- Player state persistence (multiplayer_players.json + restore) not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
