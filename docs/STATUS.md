@@ -74,6 +74,9 @@ Changes
 - Base storage: added lock + full resync for all ItemStorageBehavior inventories (BASE_LOCK/UNLOCK + BASE_INV_SYNC).
 - Client: send periodic PLAYER_STATE snapshots (stats + inventory + position) to server for persistence.
 - Server: persist multiplayer player state to `multiplayer_players.json` and restore via INVENTORY_UPDATE on reconnect.
+- Headless/server-only: `-Dmewnbase.headless=1`/`-Dmewnbase.serverOnly=1` now auto-starts server (default 7777) and forces INSTANT_RUN.
+- DesktopLauncher: server-only mode can be triggered by `mewnbase.headless` as well as `mewnbase.serverOnly`.
+- MoonBase: disable Discord RPC when running headless/server-only.
 - DesktopLauncher: added `-Dmewnbase.serverOnly=1` to run with hidden 1x1 window, disabled audio, and lower FPS.
 - MoonBase: server-only mode forces INSTANT_RUN and disables Discord RPC.
 
@@ -124,6 +127,8 @@ Verification
 - Inventory lock/sync changes not yet verified in-game (needs manual test).
 - Compiled Client.java and Server.java with patch_manual.ps1 (2026-03-27).
 - Player state persistence (multiplayer_players.json + restore) not yet verified in-game.
+- Compiled MoonBase.java and DesktopLauncher.java with patch_manual.ps1 (2026-03-27).
+- Headless/server-only boot flow not yet verified in-game.
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
 
 Risks

@@ -25,7 +25,12 @@ public class DesktopLauncher {
         desktopAdapter = new DesktopAdapter();
         DesktopLauncher.desktopAdapter.achivementManager = achievementAdapter = new SteamAchievementAdapter(desktopAdapter);
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        boolean serverOnly = "1".equals(System.getProperty("mewnbase.serverOnly"));
+        boolean serverOnly = false;
+        try {
+            String so = System.getProperty("mewnbase.serverOnly");
+            String hl = System.getProperty("mewnbase.headless");
+            serverOnly = ("1".equals(so) || "true".equalsIgnoreCase(so) || "1".equals(hl) || "true".equalsIgnoreCase(hl));
+        } catch (Exception ignored) {}
         if (serverOnly) {
             config.setWindowedMode(1, 1);
             config.setWindowPosition(-10000, -10000);

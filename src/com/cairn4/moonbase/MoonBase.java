@@ -128,7 +128,9 @@ implements Telegraph {
         }
         try {
             String headless = System.getProperty("mewnbase.headless");
-            if (headless != null && (headless.equals("1") || headless.equalsIgnoreCase("true"))) {
+            String serverOnly = System.getProperty("mewnbase.serverOnly");
+            if ((headless != null && (headless.equals("1") || headless.equalsIgnoreCase("true"))) ||
+                (serverOnly != null && (serverOnly.equals("1") || serverOnly.equalsIgnoreCase("true")))) {
                 HEADLESS = true;
             }
         } catch (Exception ignored) {}
@@ -295,12 +297,15 @@ implements Telegraph {
         if (os.toLowerCase().indexOf("mac") >= 0) {
             DISCORD_ON = false;
         }
+        if (HEADLESS) {
+            DISCORD_ON = false;
+        }
         if (DISCORD_ON) {
             this.platformAdapter.initRPC();
+            RichPresenceState rpstate = new RichPresenceState();
+            rpstate.state = RichPresenceState.States.menu;
+            this.platformAdapter.updateRPC(rpstate);
         }
-        RichPresenceState rpstate = new RichPresenceState();
-        rpstate.state = RichPresenceState.States.menu;
-        this.platformAdapter.updateRPC(rpstate);
         MessageManager.getInstance().addListener(this, 999);
         MessageManager.getInstance().addListener(this, 1000);
     }
