@@ -29,17 +29,17 @@ package com.cairn4.moonbase;
  import java.net.Socket;
  import java.net.URLDecoder;
  import java.net.URLEncoder;
- import java.util.HashMap;
- import java.util.LinkedList;
  import java.util.Map;
- import java.util.Queue;
+ import java.util.Set;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.ConcurrentSkipListSet;
 
  public class Client {
      public GameScreen screen;
-     private Map<String, Long> recentMessages = new HashMap<>();
+     private Map<String, Long> recentMessages = new ConcurrentHashMap<>();
      private static final long DUPLICATE_WINDOW_MS = 500L;
-     private Map<Integer, Float> flipOverrides = new HashMap<>();
-     private Queue<Integer> pendingSpawns = new LinkedList<>();
+     private Map<Integer, Float> flipOverrides = new ConcurrentHashMap<>();
+     private Set<Integer> pendingSpawns = new ConcurrentSkipListSet<>();
      private int clientId = -1;
      private Socket socket;
      private DataInputStream in;
@@ -224,6 +224,7 @@ package com.cairn4.moonbase;
          } catch (Exception exception) {
          }
          try {
+             flushPendingSpawns();
              if (msg.startsWith("CONNECTED:")) {
                  final int id = safeParseInt(msg.substring("CONNECTED:".length()).trim(), -1);
                  Gdx.app.log("Client", "Noted CONNECTED:" + id + " (will send SPAWNREMOTE)");
@@ -308,12 +309,13 @@ package com.cairn4.moonbase;
             //
             if ("SPAWNREMOTE".equals(payload) || payload.startsWith("SPAWNREMOTE:")) {
                 if (MultiplayerNetworkHelper.handleSpawnRemote(screen, payload, srcId)) {
-                    final int id = "SPAWNREMOTE".equals(payload) ? srcId : safeParseInt(payload.substring("SPAWNREMOTE:".length()), Integer.MIN_VALUE);
-                    if (id != Integer.MIN_VALUE) {
-                        pendingSpawns.add(id);
-                    }
                     return;
                 }
+                final int id = "SPAWNREMOTE".equals(payload) ? srcId : safeParseInt(payload.substring("SPAWNREMOTE:".length()), Integer.MIN_VALUE);
+                if (id != Integer.MIN_VALUE) {
+                    pendingSpawns.add(id);
+                }
+                return;
             }
 
              if (payload.startsWith("PING:")) {
@@ -812,13 +814,30 @@ package com.cairn4.moonbase;
          }
      }
 
-     private int safeParseInt(String s, int def) {
-         try {
-             return Integer.parseInt(s.trim());
-         } catch (Exception e) {
-             return def;
-         }
-     }
+    private int safeParseInt(String s, int def) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private void flushPendingSpawns() {
+        if (this.screen == null || pendingSpawns.isEmpty()) {
+            return;
+        }
+        java.util.Iterator<Integer> it = pendingSpawns.iterator();
+        while (it.hasNext()) {
+            int id = it.next();
+            if (id == this.clientId) {
+                it.remove();
+                continue;
+            }
+            if (MultiplayerNetworkHelper.handleSpawnRemote(this.screen, "SPAWNREMOTE:" + id, id)) {
+                it.remove();
+            }
+        }
+    }
 
      private float safeParseFloat(String s, float def) {
          try {

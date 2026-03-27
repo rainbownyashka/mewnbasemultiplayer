@@ -9,6 +9,7 @@ Changes
 - Generated a diff list of multiplayer-related changes between old decompiled sources and current src (12 files).
 - Audited all old decompiled variants vs current src and captured counts in old/_diff_summary.txt.
 - Added multiplayer review draft in docs/MP_DRAFT.md.
+- Client: made multiplayer state thread-safe and added pending-spawn flush to prevent remote players getting stuck.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
