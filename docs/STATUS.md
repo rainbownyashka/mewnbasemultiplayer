@@ -37,6 +37,7 @@ Changes
 - GameScreen: guard updateRichPresence when mission/dayCycle not yet initialized during MP join.
 - MultiplayerConfigMenu: on successful sync fetch, use vanilla LoadingScreen pipeline instead of direct GameScreen.
 - Server: send INIT_DONE marker after binary init so client doesn't consume SPAWNREMOTE as init marker.
+- MultiplayerConfigMenu: removed custom sync socket; now uses vanilla LoadingScreen + Client.connect blob fetch.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -53,6 +54,7 @@ Verification
 - Compiled GameScreen.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled Server.java with javac --release 8 and patched jar.
+- Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled Hud.java with javac --release 8 and patched jar.

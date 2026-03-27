@@ -212,88 +212,12 @@ public class MultiplayerConfigMenu extends Menu {
     private void connectWithParams(final String ip, final int port, final String nick) {
         Gdx.app.log("MewnBase", "Preparing to connect to " + ip + ":" + port);
 
-        // Perform a synchronous initial-data fetch from the server before creating GameScreen.
-        // This avoids racing to load a world before the server has sent the save blobs.
-        final boolean prevIsMultiplayer = com.cairn4.moonbase.MoonBase.isMultiplayer;
-        final String prevHost = com.cairn4.moonbase.MoonBase.multiplayerHost;
-        final int prevPort = com.cairn4.moonbase.MoonBase.multiplayerPort;
-        final String prevNick = com.cairn4.moonbase.MoonBase.multiplayerNick;
-
-        new Thread(() -> {
-            boolean success = false;
-            try {
-                String saveDir = "saves/multiplayer_received/";
-                try { com.badlogic.gdx.Gdx.files.local(saveDir).deleteDirectory(); } catch (Exception ignored) {}
-                try { com.badlogic.gdx.Gdx.files.local(saveDir).mkdirs(); } catch (Exception ignored) {}
-
-                java.net.Socket tempSock = new Socket();
-                tempSock.connect(new InetSocketAddress(ip, port), 5000);
-                try { tempSock.setSoTimeout(15000); } catch (Exception ignored) {}
-                java.io.DataInputStream in = new java.io.DataInputStream(tempSock.getInputStream());
-                try { int assignedId = in.readInt(); } catch (Exception ignored) {}
-
-                // Read gameSave blob
-                try {
-                    int gameSaveLen = in.readInt();
-                    if (gameSaveLen > 0) {
-                        byte[] gameSaveBytes = new byte[gameSaveLen];
-                        in.readFully(gameSaveBytes);
-                        com.badlogic.gdx.files.FileHandle fh = com.badlogic.gdx.Gdx.files.local(saveDir + "gameSave.json");
-                        fh.writeBytes(gameSaveBytes, false);
-                        com.badlogic.gdx.Gdx.app.log("ClientSync", "wrote gameSave.json, len=" + gameSaveLen);
-                        com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received";
-                    }
-                } catch (Exception e) {
-                    com.badlogic.gdx.Gdx.app.error("ClientSync", "Failed reading gameSave blob", e);
-                }
-
-                // Read worldData blob
-                try {
-                    int worldDataLen = in.readInt();
-                    if (worldDataLen > 0) {
-                        byte[] worldDataBytes = new byte[worldDataLen];
-                        in.readFully(worldDataBytes);
-                        com.badlogic.gdx.files.FileHandle fh2 = com.badlogic.gdx.Gdx.files.local(saveDir + "worldData.json");
-                        fh2.writeBytes(worldDataBytes, false);
-                        com.badlogic.gdx.Gdx.app.log("ClientSync", "wrote worldData.json, len=" + worldDataLen);
-                        com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received";
-                    }
-                } catch (Exception e) {
-                    com.badlogic.gdx.Gdx.app.error("ClientSync", "Failed reading worldData blob", e);
-                }
-
-                try { in.close(); } catch (Exception ignored) {}
-                try { tempSock.close(); } catch (Exception ignored) {}
-                success = true;
-            } catch (Exception e) {
-                com.badlogic.gdx.Gdx.app.error("ClientSync", "Failed to fetch initial data synchronously", e);
-                success = false;
-            }
-
-            if (success) {
-                com.badlogic.gdx.Gdx.app.postRunnable(() -> {
-                    try {
-                        com.cairn4.moonbase.MoonBase.isMultiplayer = true;
-                        com.cairn4.moonbase.MoonBase.multiplayerHost = ip;
-                        com.cairn4.moonbase.MoonBase.multiplayerPort = port;
-                        com.cairn4.moonbase.MoonBase.multiplayerNick = nick;
-                        // Use vanilla loading pipeline to initialize mission/assets reliably
-                        com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received";
-                        baseScreen.game.setScreen(new com.cairn4.moonbase.ui.LoadingScreen(baseScreen.game, false));
-                    } catch (Exception e) {
-                        com.badlogic.gdx.Gdx.app.error("ClientSync", "Failed to start GameScreen after sync fetch", e);
-                    }
-                });
-            } else {
-                com.badlogic.gdx.Gdx.app.postRunnable(() -> {
-                    com.cairn4.moonbase.MoonBase.isMultiplayer = prevIsMultiplayer;
-                    com.cairn4.moonbase.MoonBase.multiplayerHost = prevHost;
-                    com.cairn4.moonbase.MoonBase.multiplayerPort = prevPort;
-                    com.cairn4.moonbase.MoonBase.multiplayerNick = prevNick;
-                    baseScreen.menuBackSound();
-                    com.badlogic.gdx.Gdx.app.log("ClientSync", "Connection failed, returning to menu");
-                });
-            }
-        }, "MewnBase-ClientSync").start();
+        com.cairn4.moonbase.MoonBase.isMultiplayer = true;
+        com.cairn4.moonbase.MoonBase.multiplayerHost = ip;
+        com.cairn4.moonbase.MoonBase.multiplayerPort = port;
+        com.cairn4.moonbase.MoonBase.multiplayerNick = nick;
+        // Use vanilla loading pipeline; the Client will fetch blobs on connect.
+        com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received";
+        baseScreen.game.setScreen(new com.cairn4.moonbase.ui.LoadingScreen(baseScreen.game, false));
     }
 }
