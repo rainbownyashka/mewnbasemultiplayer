@@ -42,6 +42,7 @@ import java.util.ArrayList;
 public class MoonBase
 extends Game
 implements Telegraph {
+    public static MoonBase instance = null;
     public static final int SAVE_DATA_VERSION = 9;
     public static int SCREEN_WIDTH = 1280;
     public static int SCREEN_HEIGHT = 720;
@@ -103,6 +104,7 @@ implements Telegraph {
         this.platformAdapter = a;
         MoonBase.achievementAdapter = achievementAdapter;
         MoonBase.coreFolder = coreFolder;
+        MoonBase.instance = this;
     }
 
     @Override
@@ -118,6 +120,11 @@ implements Telegraph {
             com.cairn4.moonbase.debug.RuntimeEval.startIfEnabled();
         } catch (Throwable t) {
             try { Gdx.app.error("RuntimeEval", "Failed to init runtime eval", t); } catch (Exception ignored) {}
+        }
+        try {
+            com.cairn4.moonbase.debug.UiTestServer.startIfEnabled();
+        } catch (Throwable t) {
+            try { Gdx.app.error("UiTest", "Failed to init UI test server", t); } catch (Exception ignored) {}
         }
             // Check for JVM system properties to allow command-line automation.
             // Supported properties (pass with -Dmewnbase.save=saveName etc):

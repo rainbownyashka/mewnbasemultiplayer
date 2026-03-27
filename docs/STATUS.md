@@ -16,6 +16,7 @@ Changes
 - Basegame: moved `locale/` under `data/locale/` to match runtime lookup path `data/locale/mewnbase`.
 - Basegame: structure check recorded in docs/STRUCTURE_CHECK.txt (no issues found).
 - Added optional runtime eval server (disabled by default, enable with -Dmewnbase.eval=1).
+- Added optional UI test server (disabled by default, enable with -Dmewnbase.uitest=1) to list/click buttons safely.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -23,7 +24,7 @@ Impact
 
 Verification
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
-- Compiled MoonBase.java and debug/RuntimeEval.java with javac --release 8.
+- Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
 - Game launch not run in this environment.
 
 Risks
