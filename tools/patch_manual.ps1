@@ -6,6 +6,7 @@ param(
     "src\\com\\cairn4\\moonbase\\World.java",
     "src\\com\\cairn4\\moonbase\\MoonBase.java"
   ),
+  [string]$SourceList = "",
   [int]$Kill = 1
 )
 
@@ -26,7 +27,11 @@ if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Path $out | Out-Null
 
 $srcArgs = @()
+if ($SourceList -ne "") {
+  $Sources = $SourceList -split ","
+}
 foreach ($s in $Sources) {
+  $s = $s.Trim('"').Trim()
   if (Test-Path $s) { $srcArgs += $s }
 }
 if ($srcArgs.Count -eq 0) { throw "No source files found to compile." }

@@ -43,6 +43,7 @@ public class BuildingPlacementCursor {
         this.hud = hud;
         this.group = new Group();
         hud.gameScreen.worldUIStage.addActor(this.group);
+        this.group.setVisible(false);
         this.adjacentGroup = new Group();
         this.adjacentGroup.setColor(1.0f, 1.0f, 1.0f, 0.15f);
         this.group.addActor(this.adjacentGroup);
@@ -232,4 +233,3 @@ public class BuildingPlacementCursor {
 
     }
 }
-

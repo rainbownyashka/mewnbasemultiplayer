@@ -47,6 +47,8 @@ Changes
 - fulltest.bat: default run has no time limit; pass seconds to auto-stop (e.g., `fulltest.bat 40`).
 - Added basegame/fulltestnonai.bat (manual console run with pause).
 - Added tools/patch_manual.ps1 for manual compile+patch.
+- BuildingPlacementCursor: default hidden when no build item equipped (prevents white square on client).
+- PlayerAnimController: broadcast walk anim/flip when server is active (host movement now visible to clients).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -80,6 +82,7 @@ Verification
 - Compiled Hud.java with javac --release 8 (including all Hud$*.class) and patched jar.
 - Added basegame/fulltestnonai.bat (not executed yet).
 - Added tools/patch_manual.ps1 (not executed yet).
+- Compiled PlayerAnimController.java, Hud.java, BuildingPlacementCursor.java with patch_manual.ps1 (2026-03-27).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

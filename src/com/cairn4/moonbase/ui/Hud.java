@@ -1564,6 +1564,8 @@ implements Observer {
         if (!buildingSprite) {
             this.buildingPlacementCursor.setSprite(null);
             this.buildingEquipped = false;
+            this.buildingPlacementCursor.hide();
+            this.buildingPlacementCursor.clearAdjacentValid();
         }
     }
 

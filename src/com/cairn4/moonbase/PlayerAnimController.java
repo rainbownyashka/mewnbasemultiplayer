@@ -394,15 +394,21 @@ public class PlayerAnimController {
         try { this.applyForcedScale(); } catch (Exception ignored) {}
         // Broadcast walk animation changes to other peers so remote players can mirror walking/idle states.
         try {
-            if (this.player != null && this.player.world != null && this.player.world.gameScreen != null && com.cairn4.moonbase.MoonBase.isMultiplayer) {
+            if (this.player != null && this.player.world != null && this.player.world.gameScreen != null) {
                 try {
+                    com.cairn4.moonbase.ui.GameScreen gs = this.player.world.gameScreen;
+                    boolean hasNet = false;
+                    try { hasNet = (gs.client != null) || (com.cairn4.moonbase.Server.getActiveServer() != null); } catch (Exception ignored) {}
+                    if (!hasNet) {
+                        return;
+                    }
                     int owner = this.player.ownerId;
                     // decide effective scale to send: prefer forcedScale if set
                     float effectiveScale = !Float.isNaN(this.forcedScale) ? this.forcedScale : scaleX;
                     String flipPayload = "FLIP:PLAYER:" + owner + ":" + effectiveScale;
                     String animPayload = "ANIMPLAY:PLAYER:" + owner + ":" + animName + ":true:" + effectiveScale;
-                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.player.world.gameScreen, flipPayload);
-                    com.cairn4.moonbase.NetworkHelper.sendPayload(this.player.world.gameScreen, animPayload);
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(gs, flipPayload);
+                    com.cairn4.moonbase.NetworkHelper.sendPayload(gs, animPayload);
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
@@ -504,4 +510,3 @@ public class PlayerAnimController {
 
     }
 }
-
