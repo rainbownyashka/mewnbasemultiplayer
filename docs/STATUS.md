@@ -26,6 +26,8 @@ Changes
 - MainMenu: auto-open multiplayer now runs after intro animation completes.
 - MultiplayerConfigMenu: patched jar with updated inner classes to avoid NoSuchMethodError.
 - DesktopLauncher: avoid crashlog NPE when currentSaveFolder is null.
+- Autocompile: track all ever-changed Java files and recompile them each cycle; refresh work/ from jar when needed.
+- Autocompile: kill MewnBase/java processes using desktop-1.0.jar before rewriting the jar.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -40,6 +42,7 @@ Verification
 - Compiled MoonBase.java and MainMenu.java with javac --release 8 and patched jar.
 - Compiled MultiplayerConfigMenu.java with javac --release 8 and patched jar (including inner classes).
 - Compiled DesktopLauncher.java with javac --release 8 and patched jar.
+- Updated tools/mewnbase_autoupdate.py (not executed yet).
 - UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
 
 Risks
