@@ -25,14 +25,29 @@ public class DesktopLauncher {
         desktopAdapter = new DesktopAdapter();
         DesktopLauncher.desktopAdapter.achivementManager = achievementAdapter = new SteamAchievementAdapter(desktopAdapter);
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        config.setWindowedMode(1280, 720);
-        config.setHdpiMode(HdpiMode.Logical);
-        config.setForegroundFPS(60);
-        config.useVsync(true);
-        config.setResizable(true);
-        config.setTitle("MewnBase");
-        config.setWindowIcon(com.badlogic.gdx.Files.FileType.Local, "app_icon_16x16.png", "app_icon_32x32.png");
-        config.setAutoIconify(true);
+        boolean serverOnly = "1".equals(System.getProperty("mewnbase.serverOnly"));
+        if (serverOnly) {
+            config.setWindowedMode(1, 1);
+            config.setWindowPosition(-10000, -10000);
+            config.setDecorated(false);
+            config.setResizable(false);
+            config.setAutoIconify(false);
+            config.setInitialVisible(false);
+            config.setForegroundFPS(30);
+            config.setIdleFPS(30);
+            config.useVsync(false);
+            config.disableAudio(true);
+            config.setTitle("MewnBase Server");
+        } else {
+            config.setWindowedMode(1280, 720);
+            config.setHdpiMode(HdpiMode.Logical);
+            config.setForegroundFPS(60);
+            config.useVsync(true);
+            config.setResizable(true);
+            config.setTitle("MewnBase");
+            config.setWindowIcon(com.badlogic.gdx.Files.FileType.Local, "app_icon_16x16.png", "app_icon_32x32.png");
+            config.setAutoIconify(true);
+        }
         String coreFolder = "data/";
         System.out.println("MewnBase v1.0.1 | OS: " + System.getProperty("os.name"));
         System.out.println("MewnBase launch args: ");

@@ -13,3 +13,4 @@
 - Net spam off by default; diagclient on/off behavior.
 - Eval server: run Java eval against live ctx.
 - Player state persistence: verify reconnect restores inventory/stats/pos from multiplayer_players.json.
+- Server-only mode still uses LWJGL; decide if/when to add true headless backend.

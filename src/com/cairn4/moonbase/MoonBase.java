@@ -78,6 +78,8 @@ implements Telegraph {
     public static String coreFolder = "";
     public static boolean encodedSaves = false;
     public static boolean INSTANT_RUN = false;
+    public static boolean SERVER_ONLY = false;
+    public static boolean HEADLESS = false;
     public PlatformAdapter platformAdapter;
     public static AchievementAdapter achievementAdapter;
     public Color clearColor = new Color(0.0f, 0.0f, 0.0f, 1.0f);
@@ -124,6 +126,22 @@ implements Telegraph {
             GdxRuntimeException e = new GdxRuntimeException("Can't find the data folder here:" + coreFolder);
             throw e;
         }
+        try {
+            String headless = System.getProperty("mewnbase.headless");
+            if (headless != null && (headless.equals("1") || headless.equalsIgnoreCase("true"))) {
+                HEADLESS = true;
+            }
+        } catch (Exception ignored) {}
+        try {
+            SERVER_ONLY = "1".equals(System.getProperty("mewnbase.serverOnly"));
+            if (SERVER_ONLY) {
+                DISCORD_ON = false;
+                if (!INSTANT_RUN) {
+                    INSTANT_RUN = true;
+                }
+                Gdx.app.log("MoonBase", "Server-only mode enabled");
+            }
+        } catch (Exception ignored) {}
         // Optional dangerous runtime eval for local debugging only.
         try {
             com.cairn4.moonbase.debug.RuntimeEval.setContext(this);
@@ -143,6 +161,10 @@ implements Telegraph {
             // -Dmewnbase.connect=<host:port>  -> auto-connect client to host:port
             try {
                 String startServer = System.getProperty("mewnbase.startServer");
+                if ((startServer == null || startServer.isEmpty()) && HEADLESS) {
+                    System.setProperty("mewnbase.startServer", "7777");
+                    startServer = "7777";
+                }
                 if (startServer != null && !startServer.isEmpty()) {
                     try {
                         int port = Integer.parseInt(startServer);
@@ -209,6 +231,8 @@ implements Telegraph {
                         INSTANT_RUN = true; // trigger immediate load of the save
                         Gdx.app.log("MoonBase", "Auto-set save folder from JVM property: " + save);
                     }
+                } else if (HEADLESS) {
+                    INSTANT_RUN = true;
                 }
             } catch (Throwable t) {
                 // Avoid breaking startup if system properties are inaccessible
