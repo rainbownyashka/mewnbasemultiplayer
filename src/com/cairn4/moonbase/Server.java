@@ -34,6 +34,7 @@ public class Server {
     // When server is started from inside the game, a GameScreen can be supplied
     // so the server can apply received world updates (host authoritative installs)
     private GameScreen gameScreen = null;
+    private volatile boolean hostPosThreadStarted = false;
 
     public Server(int port) {
         this.port = port;
@@ -55,31 +56,12 @@ public class Server {
             }
         } catch (Exception ignored) {}
 
-        // Start periodic host position broadcaster so clients see host movement
-        try {
-            Thread hostPosThread = new Thread(() -> {
-                while (Server.this.running) {
-                    try {
-                        if (Server.this.gameScreen != null && Server.this.gameScreen.world != null && Server.this.gameScreen.world.player != null) {
-                            float x = 0f, y = 0f, vx = 0f, vy = 0f;
-                            try { x = Server.this.gameScreen.world.player.getXPos(); } catch (Exception ignored2) {}
-                            try { y = Server.this.gameScreen.world.player.getYPos(); } catch (Exception ignored2) {}
-                            try { vx = Server.this.gameScreen.world.player.getVelocity().x; } catch (Exception ignored2) {}
-                            try { vy = Server.this.gameScreen.world.player.getVelocity().y; } catch (Exception ignored2) {}
-                            String payload = "POS:PLAYER:0:" + x + ":" + y + ":" + vx + ":" + vy;
-                            try { Server.this.broadcast("0:" + payload, null); } catch (Exception ignored2) {}
-                        }
-                        try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
-                    } catch (Exception ignored2) {}
-                }
-            }, "MewnBase-Server-HostPos");
-            hostPosThread.setDaemon(true);
-            hostPosThread.start();
-        } catch (Exception ignored) {}
+        startHostPosThreadIfNeeded();
     }
 
     public void start() {
         running = true;
+        startHostPosThreadIfNeeded();
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(port);
@@ -107,6 +89,31 @@ public class Server {
                 stop();
             }
         }).start();
+    }
+
+    private void startHostPosThreadIfNeeded() {
+        if (hostPosThreadStarted) return;
+        hostPosThreadStarted = true;
+        try {
+            Thread hostPosThread = new Thread(() -> {
+                while (true) {
+                    try {
+                        if (Server.this.running && Server.this.gameScreen != null && Server.this.gameScreen.world != null && Server.this.gameScreen.world.player != null) {
+                            float x = 0f, y = 0f, vx = 0f, vy = 0f;
+                            try { x = Server.this.gameScreen.world.player.getXPos(); } catch (Exception ignored2) {}
+                            try { y = Server.this.gameScreen.world.player.getYPos(); } catch (Exception ignored2) {}
+                            try { vx = Server.this.gameScreen.world.player.getVelocity().x; } catch (Exception ignored2) {}
+                            try { vy = Server.this.gameScreen.world.player.getVelocity().y; } catch (Exception ignored2) {}
+                            String payload = "POS:PLAYER:0:" + x + ":" + y + ":" + vx + ":" + vy;
+                            try { Server.this.broadcast("0:" + payload, null); } catch (Exception ignored2) {}
+                        }
+                        try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
+                    } catch (Exception ignored2) {}
+                }
+            }, "MewnBase-Server-HostPos");
+            hostPosThread.setDaemon(true);
+            hostPosThread.start();
+        } catch (Exception ignored) {}
     }
 
     // Query whether the server has bound and is listening for connections
