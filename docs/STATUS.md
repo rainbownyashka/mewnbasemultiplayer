@@ -21,6 +21,7 @@ Changes
 - Added basegame/run_log.bat to persist game logs to basegame/logs/.
 - MainMenu: auto-opens Multiplayer menu when new MP properties are present.
 - MultiplayerConfigMenu: added MP auto-fill/auto-connect via JVM properties (client-only, no server auto-start).
+- Hud: added defensive debug-label update guard when player/world not yet initialized (prevents client NPE on join).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -31,6 +32,7 @@ Verification
 - Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
 - Compiled updated UiTestServer.java with javac --release 8 and patched jar.
 - Compiled MainMenu.java and MultiplayerConfigMenu.java with javac --release 8 and patched jar.
+- Compiled Hud.java with javac --release 8 and patched jar.
 - UI test via UiTestServer: MainMenu -> Multiplayer -> Create Server (7777) -> GameScreen.
 
 Risks

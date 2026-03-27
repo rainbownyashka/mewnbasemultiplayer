@@ -1548,6 +1548,10 @@ implements Observer {
     }
 
     private void updateDebugText() {
+        if (this.world == null || this.world.player == null) {
+            this.debugLabel.setText("");
+            return;
+        }
         StringBuilder sb = new StringBuilder();
         sb.append("Entities: ");
         sb.append(this.world.entityList.size());
@@ -1768,4 +1772,3 @@ implements Observer {
 
     }
 }
-
