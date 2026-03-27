@@ -478,7 +478,7 @@ implements Speaker {
                 ls.font = new com.badlogic.gdx.graphics.g2d.BitmapFont();
                 ls.fontColor = com.badlogic.gdx.graphics.Color.WHITE;
                 this.nameLabel = new com.badlogic.gdx.scenes.scene2d.ui.Label((CharSequence)"", ls);
-                this.nameLabel.setFontScale(0.8f);
+                this.nameLabel.setFontScale(1.1f);
                 this.nameLabel.setPosition(0, -40);
                 this.group.addActor(this.nameLabel);
             }
@@ -1537,4 +1537,3 @@ implements Speaker {
 
     }
 }
-

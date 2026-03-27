@@ -45,6 +45,8 @@ Changes
 - Hud: re-activate once multiplayer player becomes available so HUD groups (health/oxygen/icons) are restored.
 - Hud: only show the interact white-square cursor when controller mode is enabled (prevents stuck cursor for mouse users).
 - fulltest.bat: default run has no time limit; pass seconds to auto-stop (e.g., `fulltest.bat 40`).
+- Added basegame/fulltestnonai.bat (manual console run with pause).
+- Added tools/patch_manual.ps1 for manual compile+patch.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -76,6 +78,8 @@ Verification
 - Ran basegame/fulltest.bat (2026-03-27) and verified no INIT_DONE/read errors in client log.
 - Ran basegame/fulltest.bat (2026-03-27); no client/server errors in logs (HUD visibility to be confirmed visually).
 - Compiled Hud.java with javac --release 8 (including all Hud$*.class) and patched jar.
+- Added basegame/fulltestnonai.bat (not executed yet).
+- Added tools/patch_manual.ps1 (not executed yet).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

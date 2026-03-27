@@ -1446,7 +1446,11 @@ implements Observer {
             this.buildingPlacementCursor.setPosition(this.interactCursorPoint.x, this.interactCursorPoint.y);
             boolean proxyInRange = this.buildingPlacementCursor.proxyPlacementInRange(this.gameScreen.world, this.interactCursorPoint.x, this.interactCursorPoint.y);
             if (this.player.interactWithinRange() || proxyInRange) {
-                if (!SettingsLoader.getInstance().settingsData.USE_CONTROLLER || PlayerInput.lastUsedMouse) {
+                boolean mouseMoved = false;
+                try {
+                    mouseMoved = Gdx.input.getDeltaX() != 0 || Gdx.input.getDeltaY() != 0;
+                } catch (Exception ignored) {}
+                if (!SettingsLoader.getInstance().settingsData.USE_CONTROLLER || PlayerInput.lastUsedMouse || mouseMoved) {
                     this.interactCursor.setVisible(false);
                 } else {
                     this.interactCursor.setVisible(true);
