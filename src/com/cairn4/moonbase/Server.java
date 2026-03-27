@@ -75,7 +75,6 @@ public class Server {
                         int clientId = nextClientId++;
                         Gdx.app.log("Server", "Client connected: " + clientSocket.getInetAddress().getHostAddress() + " with ID " + clientId);
                         ClientHandler clientHandler = new ClientHandler(clientSocket, this, clientId);
-                        clients.put(clientId, clientHandler);
                         new Thread(clientHandler).start(); 
                     } catch (IOException e) {
                         if (running) {
@@ -257,6 +256,7 @@ public class Server {
         private DataInputStream in;
         private String appearanceData;
         private boolean announced = false;
+        private volatile boolean readyForMessages = false;
         private final Object outLock = new Object(); // Add this line
         // rate-limiting state for POS broadcasts from this client
         private volatile float lastBroadcastPosX = Float.NaN;
@@ -280,6 +280,27 @@ public class Server {
                 try {
                     sendMessage("INIT_DONE");
                 } catch (Exception ignored) {}
+
+                // Wait for client READY to avoid sending live messages before it is listening
+                try {
+                    try { this.socket.setSoTimeout(10000); } catch (Exception ignored) {}
+                    try {
+                        String first = in.readUTF();
+                        if (!"READY".equals(first)) {
+                            Gdx.app.error("Server", "Expected READY from client " + this.clientId + " but got: " + first);
+                        }
+                    } catch (java.net.SocketTimeoutException ste) {
+                        Gdx.app.error("Server", "Timed out waiting for READY from client " + this.clientId, ste);
+                    } catch (Exception e) {
+                        Gdx.app.error("Server", "Error waiting for READY from client " + this.clientId, e);
+                    } finally {
+                        try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+
+                // Now mark ready and add to broadcast list
+                this.readyForMessages = true;
+                try { server.clients.put(this.clientId, this); } catch (Exception ignored) {}
 
                 // Announce new player to everyone else
                 server.broadcast("CONNECTED:" + clientId, this);
