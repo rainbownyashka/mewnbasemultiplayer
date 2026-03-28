@@ -11,7 +11,7 @@
 - Vehicle: driver handoff when host exits with passenger inside (client should remain seated and become driver).
 - Vehicle: verify bulldozer/tank trunk lock + inventory sync works for host and client (id drift + host-origin lock).
 - Reconnect: ensure multiplayer_received reload uses fresh sync (no stale world on reconnect).
-- Visibility: verify client sends APPEARANCE/SPAWNREMOTE after READY and both players render.
+- Visibility: verify server sends CONNECTED to new client after READY and both players render.
 - Inventory locks: vehicle trunk, storage crates, mining rigs (lock deny, unlock on close/disconnect).
 - Base inventory sync: item move in storage/rig reflects on other client.
 - Time/weather sync stability + HUD day spam check.

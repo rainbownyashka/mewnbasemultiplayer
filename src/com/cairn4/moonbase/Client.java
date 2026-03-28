@@ -49,7 +49,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
     private Thread senderThread;
     private Thread readerThread;
     private volatile boolean running = false;
-    private volatile boolean selfSpawnSent = false;
      private boolean sendEnabled = true;
     private float lastSentX = Float.NaN;
     private float lastSentY = Float.NaN;
@@ -208,11 +207,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 try { System.out.println("[Client] connect: reader thread started (connector)"); } catch (Exception ignored) {}
                 // Inform server we are ready to receive initial live messages
                 try { System.out.println("[Client] connect: sending READY"); sendFrame(ProtocolV2.encode(this.clientId, "READY", ProtocolV2.VERSION)); } catch (Exception ignored) {}
-                try {
-                    Gdx.app.postRunnable(() -> {
-                        try { sendSelfAppearanceAndSpawn(); } catch (Exception ignored) {}
-                    });
-                } catch (Exception ignored) {}
                 startSender();
             } catch (Exception e) {
                 Gdx.app.error("Client", "Failed to connect to " + this.host + ":" + this.port, e);
@@ -1157,7 +1151,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
 
     public void disconnect() {
         this.running = false;
-        this.selfSpawnSent = false;
         try {
             if (this.socket != null)
                 this.socket.close();
@@ -1177,7 +1170,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
 
     private void sendSelfAppearanceAndSpawn() {
         try {
-            if (selfSpawnSent) return;
             if (this.clientId <= 0) return;
             if (this.screen == null || this.screen.world == null || this.screen.world.player == null) return;
             int face = 0; String color = ""; String nick = "";
@@ -1187,7 +1179,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
             String payloadAppearance = "APPEARANCE:" + face + "|" + java.net.URLEncoder.encode(color == null ? "" : color, "UTF-8") + "|" + java.net.URLEncoder.encode(nick == null ? "" : nick, "UTF-8");
             sendMessage(payloadAppearance);
             sendMessage("SPAWNREMOTE:" + this.clientId);
-            selfSpawnSent = true;
         } catch (Exception ignored) {}
     }
 

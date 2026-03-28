@@ -819,6 +819,8 @@ public class Server {
 
                 // Announce new player to everyone else
                 server.broadcast("CONNECTED:" + clientId, this);
+                // Also send CONNECTED to the new client so it can send APPEARANCE/SPAWNREMOTE
+                try { sendMessage("0:CONNECTED:" + clientId); } catch (Exception ignored) {}
 
                 // If running with an attached GameScreen, add the new client as a remote player on the render thread
                 try {

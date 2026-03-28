@@ -92,7 +92,7 @@ Changes
 - Server: handle VEH_LOCK/VEH_UNLOCK/VEH_INV_SYNC for host-origin payloads (sets lock owner 0 and syncs inventory).
 - Server: resolve vehicle id drift for VEH_LOCK/VEH_UNLOCK/VEH_INV_SYNC using owner/nearby vehicle lookup.
 - Client/World: add multiplayer_received `.sync_done` marker to avoid loading stale saves on reconnect.
-- Client: send self APPEARANCE+SPAWNREMOTE after READY to avoid missing player visibility.
+- Server: send CONNECTED to the new client after READY so it can respond with APPEARANCE/SPAWNREMOTE.
 - Server: host-origin BASE_* payloads now enforce locks and inventory sync locally (with deny handling).
 - UI: StorageUI/MiningRigUI/BuggieTrunkUI close immediately if container is already locked by another player.
 
