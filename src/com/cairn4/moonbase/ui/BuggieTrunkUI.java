@@ -286,7 +286,9 @@ implements Telegraph {
 
                     @Override
                     public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                        BuggieTrunkUI.this.createTooltip(((BuggieTrunkUI)BuggieTrunkUI.this).itemStorage.getItemList().get((int)storageToInvIndex).item.getName());
+                        if (storageToInvIndex < BuggieTrunkUI.this.itemStorage.getItemList().size()) {
+                            BuggieTrunkUI.this.createTooltip(((BuggieTrunkUI)BuggieTrunkUI.this).itemStorage.getItemList().get((int)storageToInvIndex).item.getName());
+                        }
                     }
 
                     @Override
