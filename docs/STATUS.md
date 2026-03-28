@@ -93,6 +93,7 @@ Changes
 - Server: resolve vehicle id drift for VEH_LOCK/VEH_UNLOCK/VEH_INV_SYNC using owner/nearby vehicle lookup.
 - Client/World: add multiplayer_received `.sync_done` marker to avoid loading stale saves on reconnect.
 - Server: send CONNECTED to the new client after READY so it can respond with APPEARANCE/SPAWNREMOTE.
+- MP reliability: added ACK/SEQ retransmit for critical events (APPEARANCE/SPAWNREMOTE, CONNECTED/REQUEST_APPEARANCE, VEH/BASE locks and inventory sync).
 - Server: host-origin BASE_* payloads now enforce locks and inventory sync locally (with deny handling).
 - UI: StorageUI/MiningRigUI/BuggieTrunkUI close immediately if container is already locked by another player.
 
@@ -160,6 +161,7 @@ Verification
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28) for passenger->driver ejection guard.
 - Compiled Server.java, Client.java, World.java with patch_manual.ps1 (2026-03-28).
 - Compiled Server.java, Client.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java with patch_manual.ps1 (2026-03-28).
+- Compiled Server.java and Client.java with patch_manual.ps1 (2026-03-28) for reliable ACK/SEQ delivery.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

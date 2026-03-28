@@ -767,6 +767,11 @@ public class Server {
         private DataOutputStream out;
         private DataInputStream in;
         private String appearanceData;
+        private final java.util.concurrent.ConcurrentHashMap<Integer, PendingReliable> pendingReliable = new java.util.concurrent.ConcurrentHashMap<>();
+        private final java.util.concurrent.atomic.AtomicInteger reliableSeq = new java.util.concurrent.atomic.AtomicInteger(1);
+        private long lastReliableSweep = 0L;
+        private static final int RELIABLE_RESEND_MS = 600;
+        private static final int RELIABLE_MAX_ATTEMPTS = 6;
         private boolean announced = false;
         private volatile boolean readyForMessages = false;
         private volatile boolean sentSavedState = false;
@@ -775,6 +780,101 @@ public class Server {
         private volatile float lastBroadcastPosX = Float.NaN;
         private volatile float lastBroadcastPosY = Float.NaN;
         private volatile long lastBroadcastPosMillis = 0L;
+
+        private static class PendingReliable {
+            final String frame;
+            long lastSent;
+            int attempts;
+            PendingReliable(String frame, long lastSent) {
+                this.frame = frame;
+                this.lastSent = lastSent;
+                this.attempts = 1;
+            }
+        }
+
+        private static class ParsedReliable {
+            final int seq;
+            final String payload;
+            ParsedReliable(int seq, String payload) { this.seq = seq; this.payload = payload; }
+        }
+
+        private boolean isReliableType(String type) {
+            if (type == null) return false;
+            return "APPEARANCE".equals(type)
+                    || "SPAWNREMOTE".equals(type)
+                    || "REQUEST_APPEARANCE".equals(type)
+                    || "CONNECTED".equals(type)
+                    || "VEH_LOCK".equals(type)
+                    || "VEH_UNLOCK".equals(type)
+                    || "VEH_LOCK_DENY".equals(type)
+                    || "VEH_INV_SYNC".equals(type)
+                    || "BASE_LOCK".equals(type)
+                    || "BASE_UNLOCK".equals(type)
+                    || "BASE_LOCK_DENY".equals(type)
+                    || "BASE_INV_SYNC".equals(type);
+        }
+
+        private ParsedReliable parseReliablePayload(String payload) {
+            if (payload == null) return new ParsedReliable(-1, "");
+            if (payload.startsWith("SEQ:")) {
+                int idx = payload.indexOf(':', 4);
+                if (idx > 4) {
+                    int seq = safeParseInt(payload.substring(4, idx), -1);
+                    String rest = payload.substring(idx + 1);
+                    return new ParsedReliable(seq, rest);
+                }
+            }
+            return new ParsedReliable(-1, payload);
+        }
+
+        private void sendAck(int seq) {
+            try {
+                if (seq < 0) return;
+                String frame = ProtocolV2.encode(this.clientId, "ACK", Integer.toString(seq));
+                if (frame != null) {
+                    synchronized (this.outLock) {
+                        if (this.out != null) {
+                            this.out.writeUTF(frame);
+                            this.out.flush();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        private void startReliableResender() {
+            Thread t = new Thread(() -> {
+                while (server != null && server.running && readyForMessages) {
+                    try {
+                        long now = System.currentTimeMillis();
+                        if (now - lastReliableSweep > 200L) {
+                            lastReliableSweep = now;
+                            for (java.util.Map.Entry<Integer, PendingReliable> ent : pendingReliable.entrySet()) {
+                                PendingReliable pr = ent.getValue();
+                                if (pr == null) continue;
+                                if (now - pr.lastSent >= RELIABLE_RESEND_MS) {
+                                    if (pr.attempts >= RELIABLE_MAX_ATTEMPTS) {
+                                        pendingReliable.remove(ent.getKey());
+                                    } else {
+                                        pr.attempts++;
+                                        pr.lastSent = now;
+                                        synchronized (outLock) {
+                                            if (out != null) {
+                                                out.writeUTF(pr.frame);
+                                                out.flush();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Thread.sleep(100L);
+                    } catch (Exception ignored) {}
+                }
+            }, "MewnBase-Client-Resend-" + this.clientId);
+            t.setDaemon(true);
+            t.start();
+        }
 
         public ClientHandler(Socket socket, Server server, int clientId) {
             this.socket = socket;
@@ -816,6 +916,7 @@ public class Server {
                 // Now mark ready and add to broadcast list
                 this.readyForMessages = true;
                 try { server.clients.put(this.clientId, this); } catch (Exception ignored) {}
+                try { startReliableResender(); } catch (Exception ignored) {}
 
                 // Announce new player to everyone else
                 server.broadcast("CONNECTED:" + clientId, this);
@@ -940,7 +1041,23 @@ public class Server {
                     if (d == null) {
                         continue;
                     }
-                    String message = d.type + ":" + (d.payload == null ? "" : d.payload);
+                    String type = d.type != null ? d.type : "";
+                    String msgPayload = d.payload == null ? "" : d.payload;
+                    if ("ACK".equals(type)) {
+                        try {
+                            int seq = safeParseInt(msgPayload.trim(), -1);
+                            if (seq >= 0) pendingReliable.remove(seq);
+                        } catch (Exception ignored) {}
+                        continue;
+                    }
+                    if (isReliableType(type)) {
+                        ParsedReliable pr = parseReliablePayload(msgPayload);
+                        if (pr.seq >= 0) {
+                            sendAck(pr.seq);
+                            msgPayload = pr.payload;
+                        }
+                    }
+                    String message = type + ":" + msgPayload;
                     // If client is broadcasting a player animation play request, rebroadcast and apply locally when possible
                         if (message.startsWith("ANIMPLAY:") && server.gameScreen != null) {
                         try {
@@ -2236,7 +2353,17 @@ public class Server {
                 String frame = message;
                 ProtocolV2.Decoded d = decodeLegacyOrFrame(message, 0);
                 if (d != null) {
-                    frame = encodeFrame(d);
+                    if (isReliableType(d.type) && !"ACK".equals(d.type)) {
+                        int seq = reliableSeq.getAndIncrement();
+                        if (seq <= 0) seq = reliableSeq.getAndIncrement();
+                        String relPayload = "SEQ:" + seq + ":" + (d.payload == null ? "" : d.payload);
+                        frame = ProtocolV2.encode(d.fromId, d.type, relPayload);
+                        if (frame != null) {
+                            pendingReliable.put(seq, new PendingReliable(frame, System.currentTimeMillis()));
+                        }
+                    } else {
+                        frame = encodeFrame(d);
+                    }
                 }
                 if (frame == null) return;
                 try {

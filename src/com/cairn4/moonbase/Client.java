@@ -49,6 +49,11 @@ import com.cairn4.moonbase.net.ProtocolV2;
     private Thread senderThread;
     private Thread readerThread;
     private volatile boolean running = false;
+    private final java.util.concurrent.ConcurrentHashMap<Integer, PendingReliable> pendingReliable = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicInteger reliableSeq = new java.util.concurrent.atomic.AtomicInteger(1);
+    private long lastReliableSweep = 0L;
+    private static final int RELIABLE_RESEND_MS = 600;
+    private static final int RELIABLE_MAX_ATTEMPTS = 6;
      private boolean sendEnabled = true;
     private float lastSentX = Float.NaN;
     private float lastSentY = Float.NaN;
@@ -243,9 +248,23 @@ import com.cairn4.moonbase.net.ProtocolV2;
              if (decoded == null) {
                  return;
              }
-             final int srcId = decoded.fromId;
-             final String type = decoded.type != null ? decoded.type : "";
-             final String payload = decoded.payload != null ? decoded.payload : "";
+            final int srcId = decoded.fromId;
+            final String type = decoded.type != null ? decoded.type : "";
+            String payload = decoded.payload != null ? decoded.payload : "";
+            if ("ACK".equals(type)) {
+                try {
+                    int seq = safeParseInt(payload.trim(), -1);
+                    if (seq >= 0) pendingReliable.remove(seq);
+                } catch (Exception ignored) {}
+                return;
+            }
+            if (isReliableType(type)) {
+                ParsedReliable pr = parseReliablePayload(payload);
+                if (pr.seq >= 0) {
+                    sendAck(pr.seq);
+                    payload = pr.payload;
+                }
+            }
              if ("CONNECTED".equals(type)) {
                  final int id = safeParseInt(payload.trim(), -1);
                  Gdx.app.log("Client", "Noted CONNECTED:" + id + " (will send SPAWNREMOTE)");
@@ -1002,13 +1021,67 @@ import com.cairn4.moonbase.net.ProtocolV2;
         }
     }
 
-     private float safeParseFloat(String s, float def) {
-         try {
-             return Float.parseFloat(s.trim());
-         } catch (Exception e) {
-             return def;
-         }
-     }
+    private float safeParseFloat(String s, float def) {
+        try {
+            return Float.parseFloat(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private boolean isReliableType(String type) {
+        if (type == null) return false;
+        return "APPEARANCE".equals(type)
+                || "SPAWNREMOTE".equals(type)
+                || "REQUEST_APPEARANCE".equals(type)
+                || "CONNECTED".equals(type)
+                || "VEH_LOCK".equals(type)
+                || "VEH_UNLOCK".equals(type)
+                || "VEH_LOCK_DENY".equals(type)
+                || "VEH_INV_SYNC".equals(type)
+                || "BASE_LOCK".equals(type)
+                || "BASE_UNLOCK".equals(type)
+                || "BASE_LOCK_DENY".equals(type)
+                || "BASE_INV_SYNC".equals(type);
+    }
+
+    private static class ParsedReliable {
+        final int seq;
+        final String payload;
+        ParsedReliable(int seq, String payload) { this.seq = seq; this.payload = payload; }
+    }
+
+    private ParsedReliable parseReliablePayload(String payload) {
+        if (payload == null) return new ParsedReliable(-1, "");
+        if (payload.startsWith("SEQ:")) {
+            int idx = payload.indexOf(':', 4);
+            if (idx > 4) {
+                int seq = safeParseInt(payload.substring(4, idx), -1);
+                String rest = payload.substring(idx + 1);
+                return new ParsedReliable(seq, rest);
+            }
+        }
+        return new ParsedReliable(-1, payload);
+    }
+
+    private void sendAck(int seq) {
+        try {
+            if (seq < 0) return;
+            String frame = ProtocolV2.encode(this.clientId, "ACK", Integer.toString(seq));
+            if (frame != null) sendFrame(frame);
+        } catch (Exception ignored) {}
+    }
+
+    private static class PendingReliable {
+        final String frame;
+        long lastSent;
+        int attempts;
+        PendingReliable(String frame, long lastSent) {
+            this.frame = frame;
+            this.lastSent = lastSent;
+            this.attempts = 1;
+        }
+    }
 
      private void appendDebugLog(String line) {
          try {
@@ -1039,6 +1112,23 @@ import com.cairn4.moonbase.net.ProtocolV2;
     }
 
     public void send(String type, String payload) {
+        if (type == null) return;
+        if ("ACK".equals(type)) {
+            String frame = ProtocolV2.encode(this.clientId, type, payload);
+            if (frame != null) sendFrame(frame);
+            return;
+        }
+        if (isReliableType(type)) {
+            int seq = reliableSeq.getAndIncrement();
+            if (seq <= 0) seq = reliableSeq.getAndIncrement();
+            String relPayload = "SEQ:" + seq + ":" + (payload == null ? "" : payload);
+            String frame = ProtocolV2.encode(this.clientId, type, relPayload);
+            if (frame != null) {
+                pendingReliable.put(seq, new PendingReliable(frame, System.currentTimeMillis()));
+                sendFrame(frame);
+            }
+            return;
+        }
         String frame = ProtocolV2.encode(this.clientId, type, payload);
         if (frame != null) {
             sendFrame(frame);
@@ -1061,9 +1151,26 @@ import com.cairn4.moonbase.net.ProtocolV2;
          if (this.senderThread != null && this.senderThread.isAlive()) {
              return;
          }
-         this.senderThread = new Thread(() -> {
-             while (this.running) {
-                 try {
+            this.senderThread = new Thread(() -> {
+                while (this.running) {
+                    try {
+                        long nowSweep = System.currentTimeMillis();
+                        if (nowSweep - this.lastReliableSweep > 200L) {
+                            this.lastReliableSweep = nowSweep;
+                            for (java.util.Map.Entry<Integer, PendingReliable> ent : this.pendingReliable.entrySet()) {
+                                PendingReliable pr = ent.getValue();
+                                if (pr == null) continue;
+                                if (nowSweep - pr.lastSent >= RELIABLE_RESEND_MS) {
+                                    if (pr.attempts >= RELIABLE_MAX_ATTEMPTS) {
+                                        this.pendingReliable.remove(ent.getKey());
+                                    } else {
+                                        pr.attempts++;
+                                        pr.lastSent = nowSweep;
+                                        sendFrame(pr.frame);
+                                    }
+                                }
+                            }
+                        }
                         if (this.sendEnabled && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
                             float x = this.screen.world.player.getXPos();
                             float y = this.screen.world.player.getYPos();
@@ -1151,6 +1258,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
 
     public void disconnect() {
         this.running = false;
+        try { this.pendingReliable.clear(); } catch (Exception ignored) {}
         try {
             if (this.socket != null)
                 this.socket.close();
