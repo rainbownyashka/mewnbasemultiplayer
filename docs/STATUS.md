@@ -119,6 +119,7 @@ Changes
 - Planets: reload loading-screen assets before travel to avoid black-screen crash.
 - Planets: ensure mission seed set on travel to avoid null seed crash.
 - Planets: dispose old world + physics before travel to prevent stale Box2D bodies.
+- Biomes: added ice biome (tinted ground tiles) and mapping in biome table.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.

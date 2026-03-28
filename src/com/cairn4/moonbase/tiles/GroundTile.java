@@ -41,7 +41,7 @@ implements Pool.Poolable {
     protected String walkSoundFx;
     public static float[] altThresholds = new float[]{0.15f, 0.3f, 0.45f, 0.7f, 0.82f, 0.92f};
     public static float[] wetThresholds = new float[]{0.2f, 0.5f, 0.75f, 0.9f};
-    public static Biomes[][] biomeTable = new Biomes[][]{{Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.ground}, {Biomes.rock, Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.volcanic}, {Biomes.ground, Biomes.ground, Biomes.volcanic, Biomes.volcanic, Biomes.volcanic}};
+    public static Biomes[][] biomeTable = new Biomes[][]{{Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.ground}, {Biomes.rock, Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.ice, Biomes.ice, Biomes.ground, Biomes.ground, Biomes.volcanic}, {Biomes.ice, Biomes.ice, Biomes.volcanic, Biomes.volcanic, Biomes.volcanic}};
     private static int[] rockTileAlternates = new int[]{0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2};
     boolean resources = false;
     boolean discovered;
@@ -190,11 +190,27 @@ implements Pool.Poolable {
                 if ((this.x % 2 != 0 || this.y % 2 == 0) && (this.x % 2 == 0 || this.y % 2 != 0) || !((randomV = MathUtils.random()) > 0.7f)) break;
                 int rAlt = MathUtils.random(1, 3);
                 this.spriteName = this.spriteName + "-alt" + rAlt;
+                break;
+            }
+            case ice: {
+                this.spriteName = "test/ground-15";
+                float rI = MathUtils.random();
+                if (rI > 0.4f && rI <= 0.9f) {
+                    int rAlt = MathUtils.random(1, 5);
+                    this.spriteName = this.spriteName + "-alt" + rAlt;
+                    break;
+                }
+                if (!(rI > 0.9f)) break;
+                int rAlt = MathUtils.random(6, 9);
+                this.spriteName = this.spriteName + "-alt" + rAlt;
             }
         }
         this.image = new Image(this.world.gameScreen.skin.getDrawable(this.spriteName));
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
+        if (this.getBiome() == Biomes.ice) {
+            this.image.setColor(0.75f, 0.85f, 1.0f, 1.0f);
+        }
         this.group.addActor(this.image);
         if (this.autoTileGroup != null) {
             this.autoTileGroup.clearChildren();
@@ -276,6 +292,9 @@ implements Pool.Poolable {
             Image testLayer = new Image(this.world.gameScreen.skin.getDrawable(fileName));
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
             testLayer.setPosition(-0.01f, -0.01f);
+            if (biomeLayer == Biomes.ice) {
+                testLayer.setColor(0.75f, 0.85f, 1.0f, 1.0f);
+            }
             this.group.addActor(testLayer);
         }
     }
@@ -322,9 +341,15 @@ implements Pool.Poolable {
         } else {
             this.image.toFront();
         }
+        if (this.getBiome() != Biomes.ice) {
+            this.autoTileLayer(Biomes.ice);
+        } else {
+            this.image.toFront();
+        }
     }
 
     protected String getBiomeSpriteName(Biomes b) {
+        if (b == Biomes.ice) return "ground";
         return b.toString();
     }
 
@@ -344,6 +369,9 @@ implements Pool.Poolable {
             }
             case rock: {
                 return 4;
+            }
+            case ice: {
+                return 1;
             }
         }
         return 1;
@@ -525,8 +553,8 @@ implements Pool.Poolable {
         sand,
         rock,
         volcanic,
+        ice,
         lava;
 
     }
 }
-

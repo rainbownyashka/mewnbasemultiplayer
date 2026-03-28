@@ -40,3 +40,4 @@
 - Planets: verify leaving planet creates worldData_p1.json and gameSave currentPlanetId updates.
 - Planets: verify player inventory/tech transfer on new planet and old planet remains intact.
 - Planets: decide multiplayer behavior for planet travel (broadcast switch or prevent).
+- Biomes: verify ice biome frequency and visuals; tweak biomeTable if distribution is off.
