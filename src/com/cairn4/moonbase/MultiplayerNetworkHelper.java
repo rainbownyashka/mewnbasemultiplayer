@@ -2,10 +2,12 @@ package com.cairn4.moonbase;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.Timer;
 import com.cairn4.moonbase.ui.GameScreen;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import com.cairn4.moonbase.worlddata.InventoryItemData;
 import com.cairn4.moonbase.tiles.BaseModule;
 import com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior;
@@ -16,6 +18,7 @@ import com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior;
  * both on client and server side.
  */
 public class MultiplayerNetworkHelper {
+    private static final HashSet<Integer> pendingSpawnRemote = new HashSet<Integer>();
 
     /**
      * Handles SPAWNREMOTE message, creating a remote player.
@@ -38,14 +41,42 @@ public class MultiplayerNetworkHelper {
             if (id != Integer.MIN_VALUE && gameScreen != null) {
                 Gdx.app.log("NetworkHelper", "Adding remote player with ID: " + id);
                 final int playerId = id;
-                Gdx.app.postRunnable(() -> { 
-                    try { 
-                        gameScreen.addPlayer(playerId, 0, 0); 
-                        Gdx.app.log("NetworkHelper", "Successfully added player with ID: " + playerId);
-                    } catch (Exception e) { 
-                        Gdx.app.error("NetworkHelper", "Failed to add player with ID: " + playerId, e);
-                    } 
-                });
+                if (MoonBase.getCurrentMission() == null || gameScreen.game == null || gameScreen.game.getCurrentMission() == null) {
+                    if (!pendingSpawnRemote.contains(playerId)) {
+                        pendingSpawnRemote.add(playerId);
+                        Timer.schedule(new Timer.Task(){
+                            int tries = 0;
+                            @Override
+                            public void run() {
+                                if (MoonBase.getCurrentMission() != null && gameScreen.game != null && gameScreen.game.getCurrentMission() != null) {
+                                    pendingSpawnRemote.remove(playerId);
+                                    Gdx.app.postRunnable(() -> {
+                                        try {
+                                            gameScreen.addPlayer(playerId, 0, 0);
+                                            Gdx.app.log("NetworkHelper", "Successfully added player with ID: " + playerId);
+                                        } catch (Exception e) {
+                                            Gdx.app.error("NetworkHelper", "Failed to add player with ID: " + playerId, e);
+                                        }
+                                    });
+                                    cancel();
+                                } else if (++tries > 100) {
+                                    pendingSpawnRemote.remove(playerId);
+                                    Gdx.app.error("NetworkHelper", "Timed out waiting for mission init; remote player not added: " + playerId);
+                                    cancel();
+                                }
+                            }
+                        }, 0.2f, 0.2f);
+                    }
+                } else {
+                    Gdx.app.postRunnable(() -> { 
+                        try { 
+                            gameScreen.addPlayer(playerId, 0, 0); 
+                            Gdx.app.log("NetworkHelper", "Successfully added player with ID: " + playerId);
+                        } catch (Exception e) { 
+                            Gdx.app.error("NetworkHelper", "Failed to add player with ID: " + playerId, e);
+                        } 
+                    });
+                }
                 return true;
             }
         } catch (Exception e) {

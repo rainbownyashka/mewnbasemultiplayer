@@ -100,6 +100,7 @@ Changes
 - Server: host-origin BASE_* payloads now enforce locks and inventory sync locally (with deny handling).
 - UI: StorageUI/MiningRigUI/BuggieTrunkUI close immediately if container is already locked by another player.
 - Minimap: clamp chunk bounds to a player-centered window when world bounds are huge, and log bounds generation to avoid long hangs on map open.
+- MP: defer SPAWNREMOTE until mission init is ready to prevent remote player NPE on join.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -170,6 +171,7 @@ Verification
 - Compiled MultiplayerNetworkHelper.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java, StorageCrate.java, StoragePile.java with patch_manual.ps1 (2026-03-28) for UI refresh + remote anim.
 - Compiled MiniMap.java with patch_manual.ps1 (2026-03-28) for minimap bounds clamp + logging.
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
+- Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
