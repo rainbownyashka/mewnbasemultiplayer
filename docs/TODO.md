@@ -29,4 +29,5 @@
 - Vehicle MP: verify host drill/ability state sync to clients.
 - Vehicle MP: verify remote vehicle interpolation smoothness.
 - Creature MP: verify host aggro targets remote players and clients see creature movement/attacks.
+- Multiplayer: verify Create Server opens save list and hosts selected save.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).

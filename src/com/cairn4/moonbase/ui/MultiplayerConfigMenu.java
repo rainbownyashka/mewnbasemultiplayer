@@ -102,45 +102,8 @@ public class MultiplayerConfigMenu extends Menu {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
-                Gdx.app.log("MewnBase", "Preparing to create server on port 7777 and load save...");
-
-                // Do UI/game work on the render thread
-                Gdx.app.postRunnable(() -> {
-                    try {
-                        String saveFolder = com.cairn4.moonbase.MoonBase.currentSaveFolder;
-                        if (saveFolder == null || saveFolder.trim().length() == 0) {
-                            saveFolder = "multiplayer_host";
-                        }
-                        com.badlogic.gdx.files.FileHandle dir = Gdx.files.local("saves/" + saveFolder);
-                        if (!dir.exists()) dir.mkdirs();
-                        com.cairn4.moonbase.MoonBase.currentSaveFolder = saveFolder;
-
-                        // Ensure assets are loaded
-                        baseScreen.game.loadGameAssets();
-                        com.cairn4.moonbase.AssetManagerSingleton.getInstance().finishLoading();
-
-                        // Create GameScreen without auto-connecting client (temporarily disable multiplayer flag)
-                        boolean prevMult = com.cairn4.moonbase.MoonBase.isMultiplayer;
-                        com.cairn4.moonbase.MoonBase.isMultiplayer = false;
-                        com.cairn4.moonbase.ui.GameScreen gs = new com.cairn4.moonbase.ui.GameScreen(baseScreen.game, false);
-                        baseScreen.game.setScreen(gs);
-
-                        // Start server using ConsoleExecutor which will attach the GameScreen to the server when possible
-                        com.cairn4.moonbase.ConsoleExecutor ce = new com.cairn4.moonbase.ConsoleExecutor(gs);
-                        ce.createserver(7777);
-
-                        // Keep multiplayer client disabled locally: user requested server-only behavior.
-                        // Expose host/port so external clients can connect if desired.
-                        try {
-                            com.cairn4.moonbase.MoonBase.multiplayerHost = "127.0.0.1";
-                            com.cairn4.moonbase.MoonBase.multiplayerPort = 7777;
-                        } catch (Exception ignored) {}
-                        Gdx.app.log("MewnBase", "Hosted server started on port 7777. Not starting local client.");
-
-                    } catch (Exception e) {
-                        Gdx.app.error("MewnBase", "Failed to create server or load save", e);
-                    }
-                });
+                Gdx.app.log("MewnBase", "Open save list for hosting...");
+                MultiplayerConfigMenu.this.baseScreen.showMenu(new HostServerSaveMenu(MultiplayerConfigMenu.this.baseScreen, 7777));
             }
         });
         table.row();
