@@ -122,6 +122,7 @@ Changes
 - Biomes: added ice biome (tinted ground tiles) and mapping in biome table.
 - Biomes: made ice biome tint cooler/bluer for clearer visual contrast.
 - Resources: ice resource tiles now spawn directly in ice biome at higher frequency (lower noise threshold).
+- Biomes: increased ice resource spawn density again and shifted ice tint further blue to reduce grassy look.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -207,6 +208,7 @@ Verification
 - Chat notifications duration + connect/disconnect nick display not yet verified in-game.
 - Planet travel flow + per-planet save/load not yet verified in-game.
 - Ice biome spawn density + ice resource placement not yet verified in-game.
+- Ice biome tint + ice resource density tweaks not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

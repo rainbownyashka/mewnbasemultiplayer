@@ -42,3 +42,4 @@
 - Planets: decide multiplayer behavior for planet travel (broadcast switch or prevent).
 - Biomes: verify ice biome frequency and visuals; tweak biomeTable if distribution is off.
 - Biomes: verify ice resource tiles spawn frequently in ice biome and adjust thresholds if needed.
+- Biomes: confirm ice tint no longer looks grassy; adjust tint/sprites if needed.

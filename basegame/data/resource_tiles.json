@@ -1093,7 +1093,7 @@
         },
         {
           "biome": "ice",
-          "threshold": 0.85
+          "threshold": 0.80
         }
       ],
       "sprites": ["ice", "ice2"],
