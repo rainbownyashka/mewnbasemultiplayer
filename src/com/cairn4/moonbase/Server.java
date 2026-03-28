@@ -311,6 +311,22 @@ public class Server {
             Gdx.app.log("Server", "Client " + clientId + " disconnected.");
             try { persistPlayerStatesNow(); } catch (Exception ignored) {}
             try {
+                if (removedClient.appearanceData != null) {
+                    String[] ps = removedClient.appearanceData.split("\\|");
+                    if (ps.length > 2) {
+                        String decNick = java.net.URLDecoder.decode(ps[2], "UTF-8");
+                        if (decNick != null) {
+                            Integer cnt = usedNames.get(decNick);
+                            if (cnt != null) {
+                                int n = cnt.intValue() - 1;
+                                if (n <= 0) usedNames.remove(decNick);
+                                else usedNames.put(decNick, Integer.valueOf(n));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+            try {
                 if (removedClient.announced) {
                     broadcast("DISCONNECTED:" + clientId, null);
                 }

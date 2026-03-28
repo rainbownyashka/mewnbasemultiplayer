@@ -77,6 +77,8 @@ Changes
 - Headless/server-only: `-Dmewnbase.headless=1`/`-Dmewnbase.serverOnly=1` now auto-starts server (default 7777) and forces INSTANT_RUN.
 - DesktopLauncher: server-only mode can be triggered by `mewnbase.headless` as well as `mewnbase.serverOnly`.
 - MoonBase: disable Discord RPC when running headless/server-only.
+- Player: remote exit vehicle now restores spine visibility (fixes invisible player after exit).
+- Server: decrement usedNames on disconnect so nick reuse doesn't disappear.
 - DesktopLauncher: added `-Dmewnbase.serverOnly=1` to run with hidden 1x1 window, disabled audio, and lower FPS.
 - MoonBase: server-only mode forces INSTANT_RUN and disables Discord RPC.
 
@@ -129,6 +131,8 @@ Verification
 - Player state persistence (multiplayer_players.json + restore) not yet verified in-game.
 - Compiled MoonBase.java and DesktopLauncher.java with patch_manual.ps1 (2026-03-27).
 - Headless/server-only boot flow not yet verified in-game.
+- Compiled Player.java and Server.java with patch_manual.ps1 (2026-03-28).
+- Vehicle enter/exit + nick reuse fixes not yet verified in-game.
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
 
 Risks

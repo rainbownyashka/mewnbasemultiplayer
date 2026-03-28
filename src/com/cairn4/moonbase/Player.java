@@ -259,6 +259,8 @@ implements Speaker {
                 this.vehicle = null;
             }
             try { this.body.getFixtureList().get(0).setSensor(false); } catch (Exception ignored) {}
+            try { this.spineActor.setVisible(true); } catch (Exception ignored) {}
+            try { if (this.playerStatus != null && this.playerStatus.getFlashlight()) this.light.setActive(true); } catch (Exception ignored) {}
             this.setChanged();
             this.notifyObservers("exitVehicle");
         } catch (Exception ignored) {}
