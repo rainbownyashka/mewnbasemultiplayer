@@ -67,15 +67,22 @@ import com.cairn4.moonbase.net.ProtocolV2;
          this.screen = screen;
      }
 
-     public void connect() {
-         if (this.running) {
-             return;
-         }
-         this.running = true;
-         new Thread(() -> {
-             try {
-                 this.socket = new Socket();
-                 this.socket.connect(new InetSocketAddress(this.host, this.port), 5000);
+    public void connect() {
+        if (this.running) {
+            return;
+        }
+        try {
+            String saveDir = "saves/multiplayer_received/";
+            com.badlogic.gdx.files.FileHandle dir = com.badlogic.gdx.Gdx.files.local(saveDir);
+            dir.deleteDirectory();
+            dir.mkdirs();
+            try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").delete(); } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+        this.running = true;
+        new Thread(() -> {
+            try {
+                this.socket = new Socket();
+                this.socket.connect(new InetSocketAddress(this.host, this.port), 5000);
                  this.socket.setTcpNoDelay(true);
                  this.in = new DataInputStream(this.socket.getInputStream());
                  this.out = new DataOutputStream(this.socket.getOutputStream());
@@ -105,11 +112,11 @@ import com.cairn4.moonbase.net.ProtocolV2;
                      }
                      try {
                          int gameSaveLen = this.in.readInt();
-                         if (gameSaveLen > 0) {
-                             // Ensure multiplayer_received directory exists
-                             String saveDir = "saves/multiplayer_received/";
-                             com.badlogic.gdx.Gdx.files.local(saveDir).deleteDirectory();
-                             com.badlogic.gdx.Gdx.files.local(saveDir).mkdirs();
+                        if (gameSaveLen > 0) {
+                            // Ensure multiplayer_received directory exists
+                            String saveDir = "saves/multiplayer_received/";
+                            com.badlogic.gdx.Gdx.files.local(saveDir).mkdirs();
+                            try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").delete(); } catch (Exception ignored) {}
                              
                              byte[] gameSaveBytes = new byte[gameSaveLen];
                              this.in.readFully(gameSaveBytes);
@@ -128,20 +135,21 @@ import com.cairn4.moonbase.net.ProtocolV2;
                      }
                      try {
                          int worldDataLen = this.in.readInt();
-                         if (worldDataLen > 0) {
-                             String saveDir = "saves/multiplayer_received/";
-                             byte[] worldDataBytes = new byte[worldDataLen];
-                             this.in.readFully(worldDataBytes);
-                             
-                             com.badlogic.gdx.files.FileHandle receivedWorldData = com.badlogic.gdx.Gdx.files.local(saveDir + "worldData.json");
-                             receivedWorldData.writeBytes(worldDataBytes, false);
-                             Gdx.app.log("Client", "worldData.json received (" + worldDataLen + " bytes).");
-                             try { System.out.println("[Client] connect: wrote worldData.json, len=" + worldDataLen); } catch (Exception ignored) {}
-                             try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
-                         }
-                     } catch (Exception e) {
-                         Gdx.app.error("Client", "Failed reading initial worldData blob (continuing)", e);
-                     }
+                        if (worldDataLen > 0) {
+                            String saveDir = "saves/multiplayer_received/";
+                            byte[] worldDataBytes = new byte[worldDataLen];
+                            this.in.readFully(worldDataBytes);
+
+                            com.badlogic.gdx.files.FileHandle receivedWorldData = com.badlogic.gdx.Gdx.files.local(saveDir + "worldData.json");
+                            receivedWorldData.writeBytes(worldDataBytes, false);
+                            Gdx.app.log("Client", "worldData.json received (" + worldDataLen + " bytes).");
+                            try { System.out.println("[Client] connect: wrote worldData.json, len=" + worldDataLen); } catch (Exception ignored) {}
+                            try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").writeString("ok", false); } catch (Exception ignored) {}
+                            try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
+                        }
+                    } catch (Exception e) {
+                        Gdx.app.error("Client", "Failed reading initial worldData blob (continuing)", e);
+                    }
                  } catch (Exception ex) {
                      Gdx.app.error("Client", "Error consuming initial server blobs", ex);
                  }

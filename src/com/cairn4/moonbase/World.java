@@ -174,11 +174,12 @@ public class World {
                             int attempts = 0;
                             while (attempts < 600) { // ~60s max (600 * 100ms)
                                 try {
-                                    com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
-                                    com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
-                                    com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
-                                    if (w.exists() && (g.exists() || d.exists())) {
-                                        Gdx.app.log("MewnBase", "World: detected multiplayer_received save files, scheduling load...");
+                                com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
+                                com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
+                                com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
+                                com.badlogic.gdx.files.FileHandle done = Gdx.files.local("saves/multiplayer_received/.sync_done");
+                                if (w.exists() && (g.exists() || d.exists()) && done.exists()) {
+                                    Gdx.app.log("MewnBase", "World: detected multiplayer_received save files, scheduling load...");
                                         com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                             try {
                                                 gameScreen.gameLoader.loadGame(this);

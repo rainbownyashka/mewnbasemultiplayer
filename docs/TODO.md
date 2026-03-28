@@ -9,6 +9,8 @@
 - Vehicle: driver control, passenger seat, VEH_META (drill/charge/wheels), trailer attach, generator fuel.
 - Vehicle: enter/exit cycles (invisible player regression), nick reuse on reconnect.
 - Vehicle: driver handoff when host exits with passenger inside (client should remain seated and become driver).
+- Vehicle: verify bulldozer/tank trunk lock + inventory sync works for host and client (id drift + host-origin lock).
+- Reconnect: ensure multiplayer_received reload uses fresh sync (no stale world on reconnect).
 - Inventory locks: vehicle trunk, storage crates, mining rigs (lock deny, unlock on close/disconnect).
 - Base inventory sync: item move in storage/rig reflects on other client.
 - Time/weather sync stability + HUD day spam check.

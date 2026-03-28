@@ -280,6 +280,13 @@ public class Server {
     // Broadcast a payload as if sent from the server (prefix with 0: so clients parse it as "<id>:payload")
     public void broadcastFromServer(String payload) {
         try {
+            try {
+                if (payload != null && (payload.startsWith("VEH_INV_SYNC:") || payload.startsWith("VEH_LOCK:") || payload.startsWith("VEH_UNLOCK:"))) {
+                    if (handleLocalVehiclePayload(payload)) {
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {}
             // prefix with 0 to indicate server origin
             try { Gdx.app.log("Server", "Server-origin broadcast"); } catch (Exception ignored) {}
             // If payload is a chat message and we have a host GameScreen, also post it locally
@@ -306,6 +313,66 @@ public class Server {
         } catch (Exception e) {
             Gdx.app.error("Server", "Failed server-origin broadcast", e);
         }
+    }
+
+    private boolean handleLocalVehiclePayload(String payload) {
+        try {
+            if (this.gameScreen == null || this.gameScreen.world == null) return false;
+            final int senderId = 0;
+            if (payload.startsWith("VEH_INV_SYNC:")) {
+                try {
+                    int idx1 = payload.indexOf(':');
+                    int idx2 = payload.indexOf(':', idx1 + 1);
+                    if (idx2 > 0) {
+                        int vehId = safeParseInt(payload.substring(idx1 + 1, idx2), -1);
+                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(this.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                        if (v == null) return true;
+                        if (v.inventoryLockOwnerId != senderId) return true;
+                        String rest = payload.substring(idx2 + 1);
+                        String relayPayload = "VEH_INV_SYNC:" + v.id + ":" + rest;
+                        this.broadcast("0:" + relayPayload, null);
+                        try { MultiplayerNetworkHelper.handleVehicleInvSync(this.gameScreen, relayPayload, senderId); } catch (Exception ignored) {}
+                        return true;
+                    }
+                } catch (Exception ignored) {}
+                return true;
+            }
+            if (payload.startsWith("VEH_LOCK:")) {
+                try {
+                    String[] parts = payload.split(":", 3);
+                    if (parts.length >= 2) {
+                        int vehId = safeParseInt(parts[1], -1);
+                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(this.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                        if (v == null) return true;
+                        if (v.inventoryLockOwnerId < 0 || v.inventoryLockOwnerId == senderId) {
+                            v.inventoryLockOwnerId = senderId;
+                            String ok = "VEH_LOCK:" + v.id + ":" + senderId;
+                            this.broadcast("0:" + ok, null);
+                            try { MultiplayerNetworkHelper.handleVehicleLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return true;
+            }
+            if (payload.startsWith("VEH_UNLOCK:")) {
+                try {
+                    String[] parts = payload.split(":", 3);
+                    if (parts.length >= 2) {
+                        int vehId = safeParseInt(parts[1], -1);
+                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(this.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                        if (v == null) return true;
+                        if (v.inventoryLockOwnerId == senderId) {
+                            v.inventoryLockOwnerId = -1;
+                            String ok = "VEH_UNLOCK:" + v.id + ":" + senderId;
+                            this.broadcast("0:" + ok, null);
+                            try { MultiplayerNetworkHelper.handleVehicleLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     // small helper to safely parse integers with a fallback value
@@ -587,6 +654,13 @@ public class Server {
                 if (rp != null) {
                     px = rp.getXPos();
                     py = rp.getYPos();
+                } else {
+                    try {
+                        if (gs.world != null && gs.world.player != null && gs.world.player.ownerId == ownerId) {
+                            px = gs.world.player.getXPos();
+                            py = gs.world.player.getYPos();
+                        }
+                    } catch (Exception ignored) {}
                 }
             } catch (Exception ignored) {}
             return findVehicleNear(gs.world, px, py, 600.0f);
@@ -1512,16 +1586,20 @@ public class Server {
                                 final String payload = message;
                                 final int senderId = this.clientId;
                                 boolean allow = false;
+                                String relayPayload = payload;
                                 try {
                                     if (server.gameScreen != null && server.gameScreen.world != null) {
                                         int idx1 = payload.indexOf(':');
                                         int idx2 = payload.indexOf(':', idx1 + 1);
                                         if (idx2 > 0) {
                                             int vehId = safeParseInt(payload.substring(idx1 + 1, idx2), -1);
-                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
-                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                            com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                                            if (v != null) {
                                                 allow = (v.inventoryLockOwnerId == senderId);
+                                                if (v.id != vehId) {
+                                                    String rest = payload.substring(idx2 + 1);
+                                                    relayPayload = "VEH_INV_SYNC:" + v.id + ":" + rest;
+                                                }
                                             }
                                         }
                                     }
@@ -1529,11 +1607,12 @@ public class Server {
                                 if (!allow) {
                                     continue;
                                 }
-                                server.broadcast("0:" + payload, null);
+                                final String relayPayloadFinal = relayPayload;
+                                server.broadcast("0:" + relayPayloadFinal, null);
                                 if (server.gameScreen != null) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
-                                            MultiplayerNetworkHelper.handleVehicleInvSync(server.gameScreen, payload, senderId);
+                                            MultiplayerNetworkHelper.handleVehicleInvSync(server.gameScreen, relayPayloadFinal, senderId);
                                         } catch (Exception e2) {
                                             Gdx.app.error("Server", "Failed to apply VEH_INV_SYNC locally", e2);
                                         }
@@ -1553,9 +1632,8 @@ public class Server {
                                     String[] parts = payload.split(":", 3);
                                     if (parts.length >= 2 && server.gameScreen != null && server.gameScreen.world != null) {
                                         int vehId = safeParseInt(parts[1], -1);
-                                        com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
-                                        if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                                        if (v != null) {
                                             if (v.inventoryLockOwnerId < 0 || v.inventoryLockOwnerId == senderId) {
                                                 v.inventoryLockOwnerId = senderId;
                                                 granted = true;
@@ -1570,6 +1648,8 @@ public class Server {
                                     try {
                                         String[] parts = payload.split(":", 3);
                                         int vehId = parts.length >= 2 ? safeParseInt(parts[1], -1) : -1;
+                                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                                        if (v != null) vehId = (int)v.id;
                                         String deny = "VEH_LOCK_DENY:" + vehId + ":" + senderId;
                                         sendMessage("0:" + deny);
                                     } catch (Exception ignored) {}
@@ -1587,9 +1667,8 @@ public class Server {
                                     String[] parts = payload.split(":", 3);
                                     if (parts.length >= 2 && server.gameScreen != null && server.gameScreen.world != null) {
                                         int vehId = safeParseInt(parts[1], -1);
-                                        com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
-                                        if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                        com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                                        if (v != null) {
                                             if (v.inventoryLockOwnerId == senderId) {
                                                 v.inventoryLockOwnerId = -1;
                                                 String ok = "VEH_UNLOCK:" + v.id + ":" + senderId;
