@@ -131,6 +131,7 @@ Changes
 - Assets: updated Tiles/tiles.png with user-edited ice textures (jar re-packed).
 - Assets: re-packed Tiles/tiles.atlas alongside tiles.png to ensure test/ice-* regions are present.
 - Assets: fixed Tiles/tiles.atlas header size to match expanded tiles.png (2048x2305) and re-packed.
+- Assets: re-packed Tiles/tiles.atlas and Tiles/tiles.png under the correct jar path (Tiles/...) so regions resolve.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
