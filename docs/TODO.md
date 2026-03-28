@@ -31,4 +31,5 @@
 - Creature MP: verify host aggro targets remote players and clients see creature movement/attacks.
 - Multiplayer: verify Create Server opens save list and hosts selected save.
 - Shutdown: verify server stops when client/game exits.
+- Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).

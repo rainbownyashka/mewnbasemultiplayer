@@ -9,6 +9,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.utils.reflect.ClassReflection;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.Server;
 import com.cairn4.moonbase.desktop.DesktopAdapter;
 import com.cairn4.moonbase.desktop.achievements.SteamAchievementAdapter;
 import java.io.IOException;
@@ -63,6 +64,12 @@ public class DesktopLauncher {
             coreFolder = split[1];
         }
         try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    Server s = Server.getActiveServer();
+                    if (s != null) s.stop();
+                } catch (Exception ignored) {}
+            }, "MewnBase-ServerShutdown"));
             new Lwjgl3Application(new MoonBase(desktopAdapter, achievementAdapter, coreFolder), config);
         }
         catch (Throwable e) {

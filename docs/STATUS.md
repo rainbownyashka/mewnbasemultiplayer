@@ -108,6 +108,7 @@ Changes
 - Creature MP: server broadcasts CREATURE_STATE so clients see host creature movement/attacks.
 - Multiplayer menu: Create Server now opens save selection before hosting.
 - Shutdown: stop active server on game dispose so host doesn't keep running after exit.
+- Shutdown: add JVM shutdown hook to stop server on hard exits.
 - Vehicle MP: preserve remote velocity during interpolation so wheel animations match host.
 
 Impact
@@ -187,6 +188,7 @@ Verification
 - Creature sync not yet verified in-game (clients should see host creature movement/attacks).
 - Create Server save picker not yet verified in-game.
 - Server shutdown on exit not yet verified in-game.
+- JVM shutdown hook not yet verified in-game.
 - Remote wheel animation sync not yet verified in-game.
 
 Risks
