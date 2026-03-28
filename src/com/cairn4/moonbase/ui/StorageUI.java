@@ -324,6 +324,16 @@ implements Telegraph {
         }
     }
 
+    public static void refreshIfActive(int wx, int wy) {
+        try {
+            if (active != null && active.itemStorageBehavior != null && active.itemStorageBehavior.baseModule != null) {
+                if (active.itemStorageBehavior.baseModule.worldX == wx && active.itemStorageBehavior.baseModule.worldY == wy) {
+                    active.updateGrid();
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void addColorButtons() {
         final Table colorButtonTable = new Table();
         colorButtonTable.setFillParent(true);

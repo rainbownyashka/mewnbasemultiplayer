@@ -23,6 +23,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.TimeUtils;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.Pools;
 import com.cairn4.moonbase.AdditiveImage;
@@ -208,6 +209,8 @@ implements Observer {
     private String prevDayTimeString;
     private String dayTimeString;
     private String dayString;
+    private int lastShownDay = -1;
+    private long lastShowDayAtMs = 0L;
     private String prevHourString;
     private String clockString;
     private float dateTimeUpdate;
@@ -989,6 +992,14 @@ implements Observer {
     }
 
     public void showDay(int day) {
+        try {
+            long now = TimeUtils.millis();
+            if (day == this.lastShownDay && (now - this.lastShowDayAtMs) < 3000L) {
+                return;
+            }
+            this.lastShownDay = day;
+            this.lastShowDayAtMs = now;
+        } catch (Exception ignored) {}
         // Guard against being called before the game's current mission is initialized
         if (this.gameScreen == null || this.gameScreen.game == null || this.gameScreen.game.getCurrentMission() == null) {
             Gdx.app.log("Hud", "showDay: current mission not initialized yet, deferring showDay(" + day + ")");

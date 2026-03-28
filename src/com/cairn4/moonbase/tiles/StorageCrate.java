@@ -167,6 +167,14 @@ extends BaseModule {
         })));
     }
 
+    public void openLidAnimRemote() {
+        this.group.addAction(Actions.sequence((Action)Actions.scaleTo(0.9f, 0.9f), (Action)Actions.scaleTo(1.0f, 1.0f, 0.1f)));
+        Audio.getInstance().playSound("sounds/storage-open.ogg", 1.2f, 0.8f);
+        this.image.setDrawable(this.world.gameScreen.skin.getDrawable(this.openSprite));
+        this.lid.clearActions();
+        this.lid.addAction(Actions.sequence((Action)Actions.visible(true), (Action)Actions.scaleTo(1.0f, -1.5f), (Action)Actions.scaleTo(1.0f, 1.0f, 0.12f, Interpolation.sineOut)));
+    }
+
     public void closeLidAnim() {
         Audio.getInstance().playSound("sounds/storage-close.ogg", 1.25f, 0.8f);
         this.lid.clearActions();
@@ -180,4 +188,3 @@ extends BaseModule {
         })));
     }
 }
-

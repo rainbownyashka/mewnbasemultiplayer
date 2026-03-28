@@ -548,6 +548,7 @@ public class MultiplayerNetworkHelper {
                     ArrayList<InventoryItemData> list = json.fromJson(ArrayList.class, InventoryItemData.class, jsonStr);
                     v.applyTrunkItemDataList(list);
                     try { com.badlogic.gdx.ai.msg.MessageManager.getInstance().dispatchMessage(31); } catch (Exception ignored) {}
+                    try { com.cairn4.moonbase.ui.BuggieTrunkUI.refreshIfActive(vehId); } catch (Exception ignored) {}
                 } catch (Exception e2) {
                     Gdx.app.error("NetworkHelper", "Failed to apply VEH_INV_SYNC", e2);
                 }
@@ -635,6 +636,10 @@ public class MultiplayerNetworkHelper {
                     @SuppressWarnings("unchecked")
                     ArrayList<InventoryItemData> list = json.fromJson(ArrayList.class, InventoryItemData.class, jsonStr);
                     isb.applyItemDataList(list);
+                    try {
+                        com.cairn4.moonbase.ui.StorageUI.refreshIfActive(wx, wy);
+                        com.cairn4.moonbase.ui.MiningRigUI.refreshIfActive(wx, wy);
+                    } catch (Exception ignored) {}
                 } catch (Exception e2) {
                     Gdx.app.error("NetworkHelper", "Failed to apply BASE_INV_SYNC", e2);
                 }
@@ -668,8 +673,28 @@ public class MultiplayerNetworkHelper {
                     if (isb == null) return;
                     if ("BASE_LOCK".equals(kind)) {
                         isb.inventoryLockOwnerId = ownerId;
+                        try {
+                            int localId = (gameScreen.world != null && gameScreen.world.player != null) ? gameScreen.world.player.ownerId : -1;
+                            if (ownerId != localId) {
+                                if (t instanceof com.cairn4.moonbase.tiles.StorageCrate) {
+                                    ((com.cairn4.moonbase.tiles.StorageCrate)t).openLidAnimRemote();
+                                } else if (t instanceof com.cairn4.moonbase.tiles.StoragePile) {
+                                    ((com.cairn4.moonbase.tiles.StoragePile)t).openLidAnimRemote();
+                                }
+                            }
+                        } catch (Exception ignored) {}
                     } else if ("BASE_UNLOCK".equals(kind)) {
                         if (isb.inventoryLockOwnerId == ownerId) isb.inventoryLockOwnerId = -1;
+                        try {
+                            int localId = (gameScreen.world != null && gameScreen.world.player != null) ? gameScreen.world.player.ownerId : -1;
+                            if (ownerId != localId) {
+                                if (t instanceof com.cairn4.moonbase.tiles.StorageCrate) {
+                                    ((com.cairn4.moonbase.tiles.StorageCrate)t).closeLidAnim();
+                                } else if (t instanceof com.cairn4.moonbase.tiles.StoragePile) {
+                                    ((com.cairn4.moonbase.tiles.StoragePile)t).closeLidAnim();
+                                }
+                            }
+                        } catch (Exception ignored) {}
                     } else if ("BASE_LOCK_DENY".equals(kind)) {
                         try { com.cairn4.moonbase.ui.StorageUI.handleLockDenied(wx, wy, ownerId, gameScreen); } catch (Exception ignored) {}
                         try { com.cairn4.moonbase.ui.MiningRigUI.handleLockDenied(wx, wy, ownerId, gameScreen); } catch (Exception ignored) {}

@@ -168,6 +168,7 @@ implements Telegraph {
     }
 
     private void generateMap() {
+        Gdx.app.log("MewnBase", "Minimap: generating map for mega chunks [" + this.minMegaChunkX + "," + this.minMegaChunkY + "]..[" + this.maxMegaChunkX + "," + this.maxMegaChunkY + "]");
         long startTime = System.currentTimeMillis();
         int renderedMapChunks = 0;
         int cachedMapChunks = 0;
@@ -733,10 +734,48 @@ implements Telegraph {
     @Override
     protected void finishedShowAnim() {
         int[] lim = this.gameScreen.world.chunkLoader.getMinMaxChunkCoords();
-        this.minChunkX = lim[0];
-        this.minChunkY = lim[1];
-        this.maxChunkX = lim[2];
-        this.maxChunkY = lim[3];
+        int rawMinX = lim[0];
+        int rawMinY = lim[1];
+        int rawMaxX = lim[2];
+        int rawMaxY = lim[3];
+        this.minChunkX = rawMinX;
+        this.minChunkY = rawMinY;
+        this.maxChunkX = rawMaxX;
+        this.maxChunkY = rawMaxY;
+        int spanX = this.maxChunkX - this.minChunkX;
+        int spanY = this.maxChunkY - this.minChunkY;
+        int maxSpan = CHUNKS_RADIUS_FROM_CURRENT * 2 + 1;
+        boolean clamped = false;
+        if (spanX > maxSpan || spanY > maxSpan) {
+            int centerChunkX = Chunk.getChunkX(this.gameScreen.world.player.getX());
+            int centerChunkY = Chunk.getChunkY(this.gameScreen.world.player.getY());
+            int targetMinX = centerChunkX - CHUNKS_RADIUS_FROM_CURRENT;
+            int targetMaxX = centerChunkX + CHUNKS_RADIUS_FROM_CURRENT;
+            int targetMinY = centerChunkY - CHUNKS_RADIUS_FROM_CURRENT;
+            int targetMaxY = centerChunkY + CHUNKS_RADIUS_FROM_CURRENT;
+            if (targetMinX < rawMinX) {
+                targetMaxX += rawMinX - targetMinX;
+                targetMinX = rawMinX;
+            }
+            if (targetMaxX > rawMaxX) {
+                targetMinX -= targetMaxX - rawMaxX;
+                targetMaxX = rawMaxX;
+            }
+            if (targetMinY < rawMinY) {
+                targetMaxY += rawMinY - targetMinY;
+                targetMinY = rawMinY;
+            }
+            if (targetMaxY > rawMaxY) {
+                targetMinY -= targetMaxY - rawMaxY;
+                targetMaxY = rawMaxY;
+            }
+            this.minChunkX = targetMinX;
+            this.maxChunkX = targetMaxX;
+            this.minChunkY = targetMinY;
+            this.maxChunkY = targetMaxY;
+            clamped = true;
+        }
+        Gdx.app.log("MewnBase", "Minimap: bounds chunks [" + this.minChunkX + "," + this.minChunkY + "]..[" + this.maxChunkX + "," + this.maxChunkY + "] (spanX=" + (this.maxChunkX - this.minChunkX) + ", spanY=" + (this.maxChunkY - this.minChunkY) + ", clamped=" + clamped + ")");
         this.minMegaChunkX = MathUtils.floor((float)this.minChunkX / 10.0f);
         this.maxMegaChunkX = MathUtils.floor((float)this.maxChunkX / 10.0f);
         this.minMegaChunkY = MathUtils.floor((float)this.minChunkY / 10.0f);
@@ -881,16 +920,10 @@ implements Telegraph {
 
     public void addMarkedLocation(final GridPoint2 gp) {
         Image i = this.addIcon("marked-map-location", gp.x, gp.y, 0.0f, 34, 34, new ClickListener(1){
-            int worldX1;
-            int worldY1;
-            {
-                super(arg0);
-                this.worldX1 = gp.x;
-                this.worldY1 = gp.y;
-            }
+            int worldX1 = gp.x;
+            int worldY1 = gp.y;
         });
         i.setColor(Vars.markedLocationColor);
         this.playerMarks.add(i);
     }
 }
-

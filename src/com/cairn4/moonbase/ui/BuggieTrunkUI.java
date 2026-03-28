@@ -323,6 +323,14 @@ implements Telegraph {
         }
     }
 
+    public static void refreshIfActive(int vehId) {
+        try {
+            if (active != null && active.vehicle != null && active.vehicle.id == vehId) {
+                active.updateGrid();
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void moveToInventory(int storageIndex, boolean moveStack) {
         if (isLockedByOther()) {
             notifyLocked();

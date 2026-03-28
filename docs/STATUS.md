@@ -95,8 +95,11 @@ Changes
 - Server: send CONNECTED to the new client after READY so it can respond with APPEARANCE/SPAWNREMOTE.
 - MP reliability: added ACK/SEQ retransmit for critical events (APPEARANCE/SPAWNREMOTE, CONNECTED/REQUEST_APPEARANCE, VEH/BASE locks and inventory sync).
 - BuggieTrunkUI: guard tooltip hover against empty storage list to prevent IndexOutOfBounds crash.
+- MP UI: refresh open storage UIs on inventory sync so other clients see updates immediately.
+- MP FX: remote BASE_LOCK/UNLOCK now trigger storage crate/pile open/close lid animations.
 - Server: host-origin BASE_* payloads now enforce locks and inventory sync locally (with deny handling).
 - UI: StorageUI/MiningRigUI/BuggieTrunkUI close immediately if container is already locked by another player.
+- Minimap: clamp chunk bounds to a player-centered window when world bounds are huge, and log bounds generation to avoid long hangs on map open.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -164,6 +167,9 @@ Verification
 - Compiled Server.java, Client.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java with patch_manual.ps1 (2026-03-28).
 - Compiled Server.java and Client.java with patch_manual.ps1 (2026-03-28) for reliable ACK/SEQ delivery.
 - Compiled BuggieTrunkUI.java with patch_manual.ps1 (2026-03-28) for hover bounds guard.
+- Compiled MultiplayerNetworkHelper.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java, StorageCrate.java, StoragePile.java with patch_manual.ps1 (2026-03-28) for UI refresh + remote anim.
+- Compiled MiniMap.java with patch_manual.ps1 (2026-03-28) for minimap bounds clamp + logging.
+- Minimap clamp/logging not yet verified in-game (needs manual map open check).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

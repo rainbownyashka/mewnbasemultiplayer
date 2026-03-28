@@ -13,6 +13,7 @@
 - Reconnect: ensure multiplayer_received reload uses fresh sync (no stale world on reconnect).
 - Visibility: verify server sends CONNECTED to new client after READY and both players render.
 - Reliability: verify ACK/SEQ resends for APPEARANCE/SPAWNREMOTE and lock/inv sync (no missed state after packet loss).
+- UI: verify remote storage open/close animations and live inventory refresh for open UIs.
 - Inventory locks: vehicle trunk, storage crates, mining rigs (lock deny, unlock on close/disconnect).
 - Base inventory sync: item move in storage/rig reflects on other client.
 - Time/weather sync stability + HUD day spam check.
@@ -22,3 +23,4 @@
 - Headless/server-only: verify `-Dmewnbase.serverOnly=1` boots into save + server, no UI, no RPC.
 - Protocol v2: run fulltest and verify READY handshake + MB2 framing (no legacy frames in logs).
 - Server-only mode still uses LWJGL; decide if/when to add true headless backend.
+- Minimap: verify map opens without hanging and clamp bounds behave (log should show clamped=true when world bounds are huge).
