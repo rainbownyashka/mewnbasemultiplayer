@@ -92,6 +92,9 @@ Changes
 - Server: handle VEH_LOCK/VEH_UNLOCK/VEH_INV_SYNC for host-origin payloads (sets lock owner 0 and syncs inventory).
 - Server: resolve vehicle id drift for VEH_LOCK/VEH_UNLOCK/VEH_INV_SYNC using owner/nearby vehicle lookup.
 - Client/World: add multiplayer_received `.sync_done` marker to avoid loading stale saves on reconnect.
+- Client: send self APPEARANCE+SPAWNREMOTE after READY to avoid missing player visibility.
+- Server: host-origin BASE_* payloads now enforce locks and inventory sync locally (with deny handling).
+- UI: StorageUI/MiningRigUI/BuggieTrunkUI close immediately if container is already locked by another player.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -156,6 +159,7 @@ Verification
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28) for passenger->driver ejection guard.
 - Compiled Server.java, Client.java, World.java with patch_manual.ps1 (2026-03-28).
+- Compiled Server.java, Client.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java with patch_manual.ps1 (2026-03-28).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

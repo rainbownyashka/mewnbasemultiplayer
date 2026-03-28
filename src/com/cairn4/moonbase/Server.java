@@ -281,9 +281,16 @@ public class Server {
     public void broadcastFromServer(String payload) {
         try {
             try {
-                if (payload != null && (payload.startsWith("VEH_INV_SYNC:") || payload.startsWith("VEH_LOCK:") || payload.startsWith("VEH_UNLOCK:"))) {
-                    if (handleLocalVehiclePayload(payload)) {
-                        return;
+                if (payload != null) {
+                    if (payload.startsWith("VEH_INV_SYNC:") || payload.startsWith("VEH_LOCK:") || payload.startsWith("VEH_UNLOCK:")) {
+                        if (handleLocalVehiclePayload(payload)) {
+                            return;
+                        }
+                    }
+                    if (payload.startsWith("BASE_INV_SYNC:") || payload.startsWith("BASE_LOCK:") || payload.startsWith("BASE_UNLOCK:")) {
+                        if (handleLocalBasePayload(payload)) {
+                            return;
+                        }
                     }
                 }
             } catch (Exception ignored) {}
@@ -349,6 +356,9 @@ public class Server {
                             String ok = "VEH_LOCK:" + v.id + ":" + senderId;
                             this.broadcast("0:" + ok, null);
                             try { MultiplayerNetworkHelper.handleVehicleLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                        } else {
+                            String deny = "VEH_LOCK_DENY:" + v.id + ":" + senderId;
+                            try { MultiplayerNetworkHelper.handleVehicleLock(this.gameScreen, deny, senderId); } catch (Exception ignored) {}
                         }
                     }
                 } catch (Exception ignored) {}
@@ -366,6 +376,74 @@ public class Server {
                             String ok = "VEH_UNLOCK:" + v.id + ":" + senderId;
                             this.broadcast("0:" + ok, null);
                             try { MultiplayerNetworkHelper.handleVehicleLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private boolean handleLocalBasePayload(String payload) {
+        try {
+            if (this.gameScreen == null || this.gameScreen.world == null) return false;
+            final int senderId = 0;
+            if (payload.startsWith("BASE_INV_SYNC:")) {
+                try {
+                    this.broadcast("0:" + payload, null);
+                    try { MultiplayerNetworkHelper.handleBaseInvSync(this.gameScreen, payload, senderId); } catch (Exception ignored) {}
+                } catch (Exception ignored) {}
+                return true;
+            }
+            if (payload.startsWith("BASE_LOCK:")) {
+                try {
+                    String[] parts = payload.split(":", 4);
+                    if (parts.length >= 3) {
+                        int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                        int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                        if (wx != Integer.MIN_VALUE && wy != Integer.MIN_VALUE) {
+                            com.cairn4.moonbase.tiles.Tile t = this.gameScreen.world.getTile(wx, wy);
+                            if (t instanceof com.cairn4.moonbase.tiles.BaseModule) {
+                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                if (isb != null) {
+                                    if (isb.inventoryLockOwnerId < 0 || isb.inventoryLockOwnerId == senderId) {
+                                        isb.inventoryLockOwnerId = senderId;
+                                        String ok = "BASE_LOCK:" + wx + ":" + wy + ":" + senderId;
+                                        this.broadcast("0:" + ok, null);
+                                        try { MultiplayerNetworkHelper.handleBaseLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                    } else {
+                                        String deny = "BASE_LOCK_DENY:" + wx + ":" + wy + ":" + senderId;
+                                        try { MultiplayerNetworkHelper.handleBaseLock(this.gameScreen, deny, senderId); } catch (Exception ignored) {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return true;
+            }
+            if (payload.startsWith("BASE_UNLOCK:")) {
+                try {
+                    String[] parts = payload.split(":", 4);
+                    if (parts.length >= 3) {
+                        int wx = safeParseInt(parts[1], Integer.MIN_VALUE);
+                        int wy = safeParseInt(parts[2], Integer.MIN_VALUE);
+                        if (wx != Integer.MIN_VALUE && wy != Integer.MIN_VALUE) {
+                            com.cairn4.moonbase.tiles.Tile t = this.gameScreen.world.getTile(wx, wy);
+                            if (t instanceof com.cairn4.moonbase.tiles.BaseModule) {
+                                com.cairn4.moonbase.tiles.BaseModule bm = (com.cairn4.moonbase.tiles.BaseModule)t;
+                                com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior isb =
+                                        (com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior) bm.getBehavior(com.cairn4.moonbase.tiles.behaviors.ItemStorageBehavior.class);
+                                if (isb != null && isb.inventoryLockOwnerId == senderId) {
+                                    isb.inventoryLockOwnerId = -1;
+                                    String ok = "BASE_UNLOCK:" + wx + ":" + wy + ":" + senderId;
+                                    this.broadcast("0:" + ok, null);
+                                    try { MultiplayerNetworkHelper.handleBaseLock(this.gameScreen, ok, senderId); } catch (Exception ignored) {}
+                                }
+                            }
                         }
                     }
                 } catch (Exception ignored) {}

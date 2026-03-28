@@ -46,9 +46,10 @@ import com.cairn4.moonbase.net.ProtocolV2;
      private DataInputStream in;
      private DataOutputStream out;
      private final Object outLock = new Object();
-     private Thread senderThread;
-     private Thread readerThread;
-     private volatile boolean running = false;
+    private Thread senderThread;
+    private Thread readerThread;
+    private volatile boolean running = false;
+    private volatile boolean selfSpawnSent = false;
      private boolean sendEnabled = true;
     private float lastSentX = Float.NaN;
     private float lastSentY = Float.NaN;
@@ -202,16 +203,21 @@ import com.cairn4.moonbase.net.ProtocolV2;
                          }
                      }
                  }, "MewnBase-Client-Reader");
-                 this.readerThread.setDaemon(true);
-                 this.readerThread.start();
-                 try { System.out.println("[Client] connect: reader thread started (connector)"); } catch (Exception ignored) {}
-                 // Inform server we are ready to receive initial live messages
-                 try { System.out.println("[Client] connect: sending READY"); sendFrame(ProtocolV2.encode(this.clientId, "READY", ProtocolV2.VERSION)); } catch (Exception ignored) {}
-                 startSender();
-             } catch (Exception e) {
-                 Gdx.app.error("Client", "Failed to connect to " + this.host + ":" + this.port, e);
-                 this.running = false;
-             }
+                this.readerThread.setDaemon(true);
+                this.readerThread.start();
+                try { System.out.println("[Client] connect: reader thread started (connector)"); } catch (Exception ignored) {}
+                // Inform server we are ready to receive initial live messages
+                try { System.out.println("[Client] connect: sending READY"); sendFrame(ProtocolV2.encode(this.clientId, "READY", ProtocolV2.VERSION)); } catch (Exception ignored) {}
+                try {
+                    Gdx.app.postRunnable(() -> {
+                        try { sendSelfAppearanceAndSpawn(); } catch (Exception ignored) {}
+                    });
+                } catch (Exception ignored) {}
+                startSender();
+            } catch (Exception e) {
+                Gdx.app.error("Client", "Failed to connect to " + this.host + ":" + this.port, e);
+                this.running = false;
+            }
          }, "MewnBase-Client-Connector").start();
      }
 
@@ -1149,11 +1155,12 @@ import com.cairn4.moonbase.net.ProtocolV2;
          this.senderThread.start();
      }
 
-     public void disconnect() {
-         this.running = false;
-         try {
-             if (this.socket != null)
-                 this.socket.close();
+    public void disconnect() {
+        this.running = false;
+        this.selfSpawnSent = false;
+        try {
+            if (this.socket != null)
+                this.socket.close();
          } catch (Exception exception) {
          }
          try {
@@ -1164,9 +1171,25 @@ import com.cairn4.moonbase.net.ProtocolV2;
          try {
              if (this.out != null)
                  this.out.close();
-         } catch (Exception exception) {
-         }
-     }
+        } catch (Exception exception) {
+        }
+    }
+
+    private void sendSelfAppearanceAndSpawn() {
+        try {
+            if (selfSpawnSent) return;
+            if (this.clientId <= 0) return;
+            if (this.screen == null || this.screen.world == null || this.screen.world.player == null) return;
+            int face = 0; String color = ""; String nick = "";
+            try { face = this.screen.world.player.characterFaceOption; } catch (Exception ignored) {}
+            try { color = this.screen.world.player.characterSuitColor != null ? this.screen.world.player.characterSuitColor : ""; } catch (Exception ignored) {}
+            try { nick = com.cairn4.moonbase.MoonBase.multiplayerNick != null ? com.cairn4.moonbase.MoonBase.multiplayerNick : ""; } catch (Exception ignored) {}
+            String payloadAppearance = "APPEARANCE:" + face + "|" + java.net.URLEncoder.encode(color == null ? "" : color, "UTF-8") + "|" + java.net.URLEncoder.encode(nick == null ? "" : nick, "UTF-8");
+            sendMessage(payloadAppearance);
+            sendMessage("SPAWNREMOTE:" + this.clientId);
+            selfSpawnSent = true;
+        } catch (Exception ignored) {}
+    }
 
      public void pauseSend() {
          this.sendEnabled = false;

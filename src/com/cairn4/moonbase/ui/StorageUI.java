@@ -69,6 +69,13 @@ implements Telegraph {
                 NetworkHelper.sendPayload(this.gameScreen, "BASE_LOCK:" + this.itemStorageBehavior.baseModule.worldX + ":" + this.itemStorageBehavior.baseModule.worldY);
             }
         } catch (Exception ignored) {}
+        try {
+            if (isLockedByOther()) {
+                notifyLocked();
+                this.back();
+                return;
+            }
+        } catch (Exception ignored) {}
         gameScreen.hud.hudNotifications.reparentGroup(this.stage.getRoot());
     }
 

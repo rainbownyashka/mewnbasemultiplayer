@@ -60,6 +60,13 @@ implements Telegraph {
                 NetworkHelper.sendPayload(this.gameScreen, "VEH_LOCK:" + this.vehicle.id);
             }
         } catch (Exception ignored) {}
+        try {
+            if (isLockedByOther()) {
+                notifyLocked();
+                this.back();
+                return;
+            }
+        } catch (Exception ignored) {}
         gameScreen.hud.hudNotifications.reparentGroup(this.stage.getRoot());
     }
 
