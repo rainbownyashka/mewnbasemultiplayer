@@ -83,6 +83,7 @@ Changes
 - Server: accept VEH_* messages with optional "<id>:" prefix (fixes client-sent prefixed VEH_STATE).
 - MultiplayerNetworkHelper: always call exitVehicleRemote on occupancy drop (fixes invisible player after exit).
 - MultiplayerNetworkHelper: force-exit any players still attached when VEH_OCCUPY becomes empty.
+- Client: stop sending bogus `0:REQUEST_APPEARANCE` before READY (fixes READY handshake on reconnect).
 - DesktopLauncher: added `-Dmewnbase.serverOnly=1` to run with hidden 1x1 window, disabled audio, and lower FPS.
 - MoonBase: server-only mode forces INSTANT_RUN and disables Discord RPC.
 
@@ -142,6 +143,7 @@ Verification
 - Compiled Server.java with patch_manual.ps1 (2026-03-28) for VEH_* prefix handling.
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28).
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28) for forced exit cleanup.
+- Compiled Client.java with patch_manual.ps1 (2026-03-28).
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
 
 Risks

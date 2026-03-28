@@ -83,8 +83,7 @@ package com.cairn4.moonbase;
                          this.clientId = this.in.readInt();
                          Gdx.app.log("Client", "Assigned clientId from server: " + this.clientId);
                          try { System.out.println("[Client] connect: received clientId=" + this.clientId); } catch (Exception ignored) {}
-                         // Request initial appearance from server for all known players including host
-                         NetworkHelper.sendPayload(this.screen, "0:REQUEST_APPEARANCE");
+                         // Server will send existing appearances during connect; no need to request here
                          // Align local player's ownerId with assigned clientId and set local display name
                          try {
                              if (this.screen != null && this.screen.world != null && this.screen.world.player != null) {
