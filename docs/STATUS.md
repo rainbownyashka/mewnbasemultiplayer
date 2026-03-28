@@ -132,6 +132,8 @@ Changes
 - Assets: re-packed Tiles/tiles.atlas alongside tiles.png to ensure test/ice-* regions are present.
 - Assets: fixed Tiles/tiles.atlas header size to match expanded tiles.png (2048x2305) and re-packed.
 - Assets: re-packed Tiles/tiles.atlas and Tiles/tiles.png under the correct jar path (Tiles/...) so regions resolve.
+- Assets: moved ice textures into a dedicated atlas (Tiles/ice.atlas + Tiles/ice.png) and restored original Tiles/tiles.*.
+- GameScreen: now loads Tiles/ice.atlas and registers regions into skin.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.

@@ -319,6 +319,11 @@ implements Telegraph {
             t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
         this.skin.addRegions(this.tileAtlas);
+        TextureAtlas iceAtlas = AssetManagerSingleton.getInstance().get("Tiles/ice.atlas", TextureAtlas.class);
+        for (Texture t : iceAtlas.getTextures()) {
+            t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        }
+        this.skin.addRegions(iceAtlas);
         this.headAtlas = AssetManagerSingleton.getInstance().get("playerheads.atlas", TextureAtlas.class);
         this.skin.addRegions(this.headAtlas);
         this.techTreeAtlas = AssetManagerSingleton.getInstance().get("techtree.atlas", TextureAtlas.class);

@@ -46,3 +46,4 @@
 - Biomes: verify plants/trees/shrooms no longer spawn on ice tiles in new worlds.
 - Console: verify `seticebiome r g b` retints loaded ice tiles and confirm expected range (0..1).
 - Assets: verify ice biome uses new test/ice-* atlas regions and no longer shows green ground bleed.
+- Assets: verify Tiles/ice.atlas loads and ice regions resolve without missing drawable errors.
