@@ -53,6 +53,8 @@ public class Server {
     private String lastTwWeatherId = "";
     private float lastTwWeatherTime = -9999.0f;
     private float lastTwWeatherDur = -9999.0f;
+    private volatile long lastHostVehMetaSentMs = 0L;
+    private final java.util.HashMap<Long, String> lastHostVehMeta = new java.util.HashMap<Long, String>();
 
     public Server(int port) {
         this.port = port;
@@ -183,6 +185,27 @@ public class Server {
                                         } catch (Exception ignored) {}
                                         String vs = "VEH_STATE:" + v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + vrot + ":" + vvx + ":" + vvy;
                                         Server.this.broadcast("0:" + vs, null);
+                                    }
+                                } catch (Exception ignored) {}
+
+                                // Vehicle meta sync from host-driven vehicles (drill, charge, wheels, etc.)
+                                try {
+                                    long nowMeta = System.currentTimeMillis();
+                                    if (nowMeta - Server.this.lastHostVehMetaSentMs >= 200L) {
+                                        for (com.cairn4.moonbase.entities.Entity e : Server.this.gameScreen.world.entityList) {
+                                            if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                                            com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                            if (v.driverOwnerId != 0) continue;
+                                            String meta = MultiplayerNetworkHelper.buildVehicleMeta(v);
+                                            if (meta == null) continue;
+                                            if (meta.startsWith("VEH_META:")) meta = meta.substring("VEH_META:".length());
+                                            String prev = Server.this.lastHostVehMeta.get(Long.valueOf(v.id));
+                                            if (prev == null || !prev.equals(meta) || (nowMeta - Server.this.lastHostVehMetaSentMs) >= 1000L) {
+                                                Server.this.lastHostVehMeta.put(Long.valueOf(v.id), meta);
+                                                Server.this.broadcast("0:VEH_META:" + meta, null);
+                                            }
+                                        }
+                                        Server.this.lastHostVehMetaSentMs = nowMeta;
                                     }
                                 } catch (Exception ignored) {}
                             } catch (Exception ignored2) {}

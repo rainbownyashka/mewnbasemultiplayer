@@ -26,3 +26,5 @@
 - Minimap: verify map opens without hanging and clamp bounds behave (log should show clamped=true when world bounds are huge).
 - MP: verify remote player spawn after connect when mission not yet initialized (no SPAWNREMOTE NPE).
 - Minimap: verify multiple player markers + name labels render correctly.
+- Vehicle MP: verify host drill/ability state sync to clients.
+- Vehicle MP: verify remote vehicle interpolation smoothness.

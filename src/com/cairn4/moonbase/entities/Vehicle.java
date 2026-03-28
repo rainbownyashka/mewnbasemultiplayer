@@ -105,6 +105,12 @@ DamageTaker {
     // Multiplayer seat ownership (ownerId values). -1 means empty.
     public int driverOwnerId = -1;
     public int passengerOwnerId = -1;
+    // Multiplayer interpolation (remote-controlled vehicles)
+    public boolean netControlled = false;
+    private boolean netHasTarget = false;
+    private float netTargetX = 0.0f;
+    private float netTargetY = 0.0f;
+    private float netTargetRot = 0.0f;
     protected ArrayList<Wheel> wheels = new ArrayList();
     public BuggieTrunkUI trunkUI;
     public BuggieTrunk trunk;
@@ -148,6 +154,13 @@ DamageTaker {
     public boolean hasFreeSeat() { return !hasDriver() || !hasPassenger(); }
     public boolean isDriver(int ownerId) { return ownerId >= 0 && this.driverOwnerId == ownerId; }
     public boolean isPassenger(int ownerId) { return ownerId >= 0 && this.passengerOwnerId == ownerId; }
+
+    public void setNetTarget(float x, float y, float rot) {
+        this.netTargetX = x;
+        this.netTargetY = y;
+        this.netTargetRot = rot;
+        this.netHasTarget = true;
+    }
 
     public void setDriver(int ownerId) {
         this.driverOwnerId = ownerId;
@@ -685,7 +698,24 @@ DamageTaker {
 
     @Override
     public void update(float delta) {
-        this.updatePhysics(delta);
+        if (this.netControlled && this.netHasTarget) {
+            try {
+                float curX = this.getXPos();
+                float curY = this.getYPos();
+                float curRot = this.group.getRotation();
+                float alpha = Math.min(1.0f, delta * 10.0f);
+                float rotAlpha = Math.min(1.0f, delta * 8.0f);
+                float nx = MathUtils.lerp(curX, this.netTargetX, alpha);
+                float ny = MathUtils.lerp(curY, this.netTargetY, alpha);
+                float nrot = MathUtils.lerpAngleDeg(curRot, this.netTargetRot, rotAlpha);
+                if (this.body != null) {
+                    this.body.setTransform(nx / 256.0f, ny / 256.0f, nrot * MathUtils.degreesToRadians);
+                    this.body.setLinearVelocity(0.0f, 0.0f);
+                }
+            } catch (Exception ignored) {}
+        } else {
+            this.updatePhysics(delta);
+        }
         super.update(delta);
         this.group.setPosition(this.getXPos(), this.getYPos());
         this.group.setRotation(57.295776f * this.body.getAngle());

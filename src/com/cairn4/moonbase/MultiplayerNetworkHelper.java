@@ -400,6 +400,8 @@ public class MultiplayerNetworkHelper {
                     if (driverId >= 0 && driverId != gameScreen.world.player.ownerId) {
                         com.cairn4.moonbase.Player rp = gameScreen.getRemotePlayer(driverId);
                         if (rp != null && rp.getVehicle() != v) rp.enterVehicleRemote(v, true);
+                    } else if (driverId == gameScreen.world.player.ownerId) {
+                        v.netControlled = false;
                     }
                     if (passengerId >= 0 && passengerId != gameScreen.world.player.ownerId) {
                         com.cairn4.moonbase.Player rp = gameScreen.getRemotePlayer(passengerId);
@@ -469,10 +471,9 @@ public class MultiplayerNetworkHelper {
                             return; // local driver ignores remote state
                         }
                     } catch (Exception ignored) {}
-                    if (v.body != null) {
-                        try { v.body.setTransform(x / 256.0f, y / 256.0f, rot * com.badlogic.gdx.math.MathUtils.degreesToRadians); } catch (Exception ignored) {}
-                        try { v.body.setLinearVelocity(vx / 256.0f, vy / 256.0f); } catch (Exception ignored) {}
-                    } else {
+                    v.netControlled = true;
+                    v.setNetTarget(x, y, rot);
+                    if (v.body == null) {
                         try { v.setWorldPos(x, y); } catch (Exception ignored) {}
                     }
                 } catch (Exception e) {

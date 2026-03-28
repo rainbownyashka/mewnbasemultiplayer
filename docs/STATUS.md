@@ -102,6 +102,8 @@ Changes
 - Minimap: clamp chunk bounds to a player-centered window when world bounds are huge, and log bounds generation to avoid long hangs on map open.
 - MP: defer SPAWNREMOTE until mission init is ready to prevent remote player NPE on join.
 - Minimap: render all players as star markers with names (same color for now).
+- Vehicle MP: host now broadcasts VEH_META for host-driven vehicles (drill/abilities visible on clients).
+- Vehicle MP: interpolate remote vehicle transforms to reduce jitter.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -174,6 +176,8 @@ Verification
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).
+- Host-driven VEH_META (drill) not yet verified in-game.
+- Vehicle interpolation not yet verified in-game (check rotation smoothness).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.
