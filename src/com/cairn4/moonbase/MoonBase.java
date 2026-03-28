@@ -645,6 +645,12 @@ implements Telegraph {
 
     @Override
     public void dispose() {
+        try {
+            com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+            if (s != null) {
+                s.stop();
+            }
+        } catch (Exception ignored) {}
         AssetManagerSingleton.getInstance().clear();
         AssetManagerSingleton.getInstance().dispose();
         this.platformAdapter.dispose();
