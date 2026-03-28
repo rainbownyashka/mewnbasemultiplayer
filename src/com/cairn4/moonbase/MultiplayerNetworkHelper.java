@@ -355,12 +355,12 @@ public class MultiplayerNetworkHelper {
                     if (driverId >= 0) v.setDriver(driverId);
                     if (passengerId >= 0) v.setPassenger(passengerId);
 
-                    // Handle old occupants leaving
-                    if (oldDriver >= 0 && oldDriver != driverId) {
+                    // Handle old occupants leaving (only if they are not in new occupant set)
+                    if (oldDriver >= 0 && oldDriver != driverId && oldDriver != passengerId) {
                         com.cairn4.moonbase.Player p = (oldDriver == gameScreen.world.player.ownerId) ? gameScreen.world.player : gameScreen.getRemotePlayer(oldDriver);
                         if (p != null) p.exitVehicleRemote();
                     }
-                    if (oldPassenger >= 0 && oldPassenger != passengerId) {
+                    if (oldPassenger >= 0 && oldPassenger != passengerId && oldPassenger != driverId) {
                         com.cairn4.moonbase.Player p = (oldPassenger == gameScreen.world.player.ownerId) ? gameScreen.world.player : gameScreen.getRemotePlayer(oldPassenger);
                         if (p != null) p.exitVehicleRemote();
                     }

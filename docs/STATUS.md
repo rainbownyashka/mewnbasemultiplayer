@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-03-27
+Last update: 2026-03-28
 
 Changes
 - Restructured workspace to a simpler layout (basegame/, src/, work/, out/, tools/, backups/, old/).
@@ -88,6 +88,7 @@ Changes
 - MultiplayerNetworkHelper: force-exit any player attached to a vehicle but not in occupants (fixes invis on passenger exit).
 - DesktopLauncher: added `-Dmewnbase.serverOnly=1` to run with hidden 1x1 window, disabled audio, and lower FPS.
 - MoonBase: server-only mode forces INSTANT_RUN and disables Discord RPC.
+- MultiplayerNetworkHelper: avoid ejecting a player when they are promoted from passenger to driver (prevents host-exit kicking remaining passenger).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -150,6 +151,7 @@ Verification
 - Protocol v2 framing not yet verified in-game.
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28) for occupancy cleanup.
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
+- Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-28) for passenger->driver ejection guard.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

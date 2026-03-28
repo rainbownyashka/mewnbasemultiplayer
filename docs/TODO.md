@@ -8,6 +8,7 @@
 - Multiplayer test checklist:
 - Vehicle: driver control, passenger seat, VEH_META (drill/charge/wheels), trailer attach, generator fuel.
 - Vehicle: enter/exit cycles (invisible player regression), nick reuse on reconnect.
+- Vehicle: driver handoff when host exits with passenger inside (client should remain seated and become driver).
 - Inventory locks: vehicle trunk, storage crates, mining rigs (lock deny, unlock on close/disconnect).
 - Base inventory sync: item move in storage/rig reflects on other client.
 - Time/weather sync stability + HUD day spam check.
