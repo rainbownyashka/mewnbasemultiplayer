@@ -120,6 +120,8 @@ Changes
 - Planets: ensure mission seed set on travel to avoid null seed crash.
 - Planets: dispose old world + physics before travel to prevent stale Box2D bodies.
 - Biomes: added ice biome (tinted ground tiles) and mapping in biome table.
+- Biomes: made ice biome tint cooler/bluer for clearer visual contrast.
+- Resources: ice resource tiles now spawn directly in ice biome at higher frequency (lower noise threshold).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -189,6 +191,7 @@ Verification
 - Compiled BuggieTrunkUI.java with patch_manual.ps1 (2026-03-28) for hover bounds guard.
 - Compiled MultiplayerNetworkHelper.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java, StorageCrate.java, StoragePile.java with patch_manual.ps1 (2026-03-28) for UI refresh + remote anim.
 - Compiled MiniMap.java with patch_manual.ps1 (2026-03-28) for minimap bounds clamp + logging.
+- Compiled GroundTile.java with patch_manual.ps1 (2026-03-28) for ice biome tint update.
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).
@@ -203,6 +206,7 @@ Verification
 - Tech sync + server.properties not yet verified in-game.
 - Chat notifications duration + connect/disconnect nick display not yet verified in-game.
 - Planet travel flow + per-planet save/load not yet verified in-game.
+- Ice biome spawn density + ice resource placement not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

@@ -1,0 +1,1840 @@
+{
+  "itemDropperList": [
+
+    {
+      "id": "plant-sprout",
+      "locid": "item_plant",
+      "naturallyOccurring": false,
+      "spawnBiomes": [],
+      "sprites": ["plant-sprout"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "plant-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "seed",
+                  "dropChance": 0.3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "minimapHexColor": "689157FF",
+      "daysToRespawn": 8,
+      "transformTime": 200,
+      "transformNewId": "plant"
+    },
+
+    {
+      "id": "plant",
+      "locid": "item_plant",
+      "naturallyOccurring": true,
+      "maxPerChunk": 3,
+      "noiseFeature": 0.17,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.92
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.9
+        }
+      ],
+      "sprites": ["plant1", "plant2"],
+      "zSort": true,
+      "spinePath": "plant",
+      "spineBaseScale": 0.5,
+      "spineAnimations": ["idle1", "idle2", "idle3"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "plant-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "plant",
+                  "dropChance": 0.45
+                },
+                {
+                  "itemId": "seed",
+                  "dropChance": 0.3
+                },
+                {
+                  "itemId": "resin",
+                  "dropChance": 0.2
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "plant",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+
+//      "minimapColor": {
+//        "r": 0.41,
+//        "g": 0.57,
+//        "b": 0.34,
+//        "a": 1
+//      },
+      "minimapHexColor": "689157FF",
+      "respawnId": "plant-sprout"
+    },
+
+
+// ====================================
+
+    {
+      "id": "blueshroom-sprout",
+      "locid": "item_blueshroom",
+      "naturallyOccurring": false,
+      "noiseFeature": 0.17,
+      "noiseSmooth": 1,
+      "maxPerChunk": 1,
+      "spawnBiomes": [
+        {
+        "biome": "ground",
+        "threshold": 0.99
+        }
+      ],
+      "sprites": ["plant-sprout"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "blueshroom-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "blueshroom-seed",
+                  "dropChance": 0.5
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+      "minimapHexColor": "00ccffff",
+      "daysToRespawn": 8,
+      "transformTime": 200,
+      "transformNewId": "blueshroom"
+    },
+
+    {
+      "id": "blueshroom",
+      "locid": "item_blueshroom",
+      "naturallyOccurring": true,
+      "maxPerChunk": 2,
+      "noiseFeature": 0.165,
+      "noiseSmooth": 0.9,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.95
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.94
+        }
+      ],
+      "sprites": ["blueshroom-dropper1", "blueshroom-dropper2"],
+      "zSort": true,
+//      "spinePath": "plant",
+//      "spineBaseScale": 0.5,
+//      "spineAnimations": ["idle1", "idle2", "idle3"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "blueshroom-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "blueshroom",
+                  "dropChance": 0.5
+                },
+                {
+                  "itemId": "blueshroom-seed",
+                  "dropChance": 0.3
+                },
+                {
+                  "itemId": "resin",
+                  "dropChance": 0.2
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "blueshroom",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+      "minimapHexColor": "46b2ffff",
+      "respawnId": "blueshroom-sprout",
+      "lightColor": "49d2ffff",
+      "lightRadius": 150
+    },
+
+
+
+// ====================================
+
+    {
+      "id": "root-sprout",
+      "locid": "item_root",
+      "naturallyOccurring": false,
+      "maxPerChunk": 2,
+      "spawnBiomes": [],
+      "sprites": ["plant-sprout"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "plant-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "root-seed",
+                  "dropChance": 0.3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+//      "minimapColor": {
+//        "r": 0.41,
+//        "g": 0.57,
+//        "b": 0.34,
+//        "a": 1
+//      },
+      "minimapHexColor": "689157FF",
+      "daysToRespawn": 8,
+      "transformTime": 200,
+      "transformNewId": "rootplant"
+    },
+
+    {
+      "id": "rootplant",
+      "locid": "item_root",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.12,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "water",
+          "threshold": 0.95
+        },
+        {
+          "biome": "mud",
+          "threshold": 0.95
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.95
+        }
+      ],
+      "sprites": ["rootplant2"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 2,
+          "dropParticleSprite": "plant-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "root",
+                  "dropChance": 0.6
+                },
+                {
+                  "itemId": "root-seed",
+                  "dropChance": 0.3
+                },
+                {
+                  "itemId": "resin",
+                  "dropChance": 0.1
+                }
+              ],
+              "guaranteedDrops" : [
+                  {
+                    "itemId": "root",
+                    "amount": 1
+                  }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+
+//      "minimapColor": {
+//        "r": 0.41,
+//        "g": 0.57,
+//        "b": 0.34,
+//        "a": 1
+//      },
+      "minimapHexColor": "689157FF",
+      "respawnId": "root-sprout"
+    },
+
+// ====================================
+
+    {
+      "id": "tree-sprout",
+      "locid": "resource_tree",
+      "naturallyOccurring": false,
+      "spawnBiomes": [],
+      "sprites": ["tree-sprout"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["axe"],
+          "interactionDuration": 1,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/planthit1.ogg",
+        "sounds/planthit2.ogg",
+        "sounds/planthit3.ogg"
+      ],
+//      "minimapColor": {
+//        "r": 0.41,
+//        "g": 0.57,
+//        "b": 0.34,
+//        "a": 1
+//      },
+      "minimapHexColor": "945425FF",
+      "daysToRespawn": 10,
+      "transformTime": 2160, // 6 days
+      "transformNewId": "tree"
+    },
+
+
+    {
+      "id": "tree",
+      "locid": "resource_tree",
+      "naturallyOccurring": true,
+      "maxPerChunk": 1,
+      "noiseFeature": 0.122,
+      "noiseSmooth": 1,
+      "physicsBody": "tree",
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.91
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.90
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.95
+        }
+      ],
+     //  "sprites": ["tree-orange"],
+      "zSort": true,
+      "regrowSprites": ["tree-orange-regrowing"],
+      "spinePath": "tree",
+      "spineBaseScale": 0.45,
+      "spineRegrowAnim": "regrowing",
+      "spineAnimations": ["idle1", "idle2"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "disabledWhenGrowing": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "plant-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "fruit",
+                  "dropChance": 0.66
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "fruit",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["axe"],
+          "interactionDuration": 3,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "onlyIfNotRegrowing": true,
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "fruit",
+                  "dropChance": 0.66
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "fruit",
+                  "amount": 1
+                },
+              ]
+            },
+            {
+              "type": "lootDrop",
+              "onlyIfNotRegrowing": false,
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 0.75
+                },
+                {
+                  "itemId": "tree-seed",
+                  "dropChance": 0.25
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "wood",
+                  "amount": 3
+                },
+              ]
+            },
+            {
+              "type": "destroyTile"
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 0.75
+                },
+                {
+                  "itemId": "tree-seed",
+                  "dropChance": 0.25
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "wood",
+                  "amount": 3
+                }
+                ]
+            }
+          ]
+        }
+
+      ],
+
+      "interactSounds": [
+        "sounds/woodchop1.ogg",
+        "sounds/woodchop2.ogg"
+      ],
+
+      "regrowTime": 720,
+//      "minimapColor": {
+//        "r": 0.54,
+//        "g": 0.27,
+//        "b": 0.074,
+//        "a": 1
+//      },
+      "minimapHexColor": "945425FF",
+      "respawnId": "tree-sprout"
+    },
+
+
+
+    // =======================================
+
+
+    {
+      "id": "wood",
+      "locid": "item_wood",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.19,
+      "maxPerChunk": 2,
+      "noiseSmooth": 0.9,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.9
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.8
+        }
+      ],
+      "sprites": ["wood-dropper"],
+      "zSort": false,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["axe"],
+          "interactionDuration": 0.5,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/woodchop1.ogg",
+        "sounds/woodchop2.ogg"
+      ],
+      "daysToRespawn": 5,
+//      "minimapColor": {
+//        "r": 0.6,
+//        "g": 0.27,
+//        "b": 0.074,
+//        "a": 1
+//      }
+      "minimapHexColor": "945425FF",
+    },
+
+
+    // ============================================
+
+    {
+      "id": "dead-tree",
+      "locid": "resource_deadtree",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.2,
+      "noiseSmooth": 0.9,
+      "maxPerChunk": 2,
+      "physicsBody": "tree",
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.95
+        },
+        {
+          "biome": "water",
+          "threshold": 0.90
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.85
+        },
+        {
+          "biome": "swamp",
+          "threshold": 0.85
+        }
+      ],
+//      "sprites": ["tree-dead"],
+      "spinePath": "deadtree",
+      "spineBaseScale": 0.45,
+      "spineAnimations": ["idle1", "idle2"],
+      "zSort": true,
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["axe"],
+          "interactionDuration": 3,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "wood",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "tree-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "wood",
+                  "dropChance": 1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "wood",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/woodchop1.ogg",
+        "sounds/woodchop2.ogg"
+      ],
+
+      "daysToRespawn": 8,
+//      "minimapColor": {
+//        "r": 0.6,
+//        "g": 0.27,
+//        "b": 0.074,
+//        "a": 1
+//      }
+      "minimapHexColor": "7c5e47FF",
+    },
+
+
+    // =======================================
+
+
+    {
+      "id": "ore",
+      "locid": "item_ore",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.2,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.92
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.92
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.7
+        }
+      ],
+      "sprites": ["ore","ore2"],
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["shovel", "shovel2", "pickaxe"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "ore",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "ore",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "9b7233ff",
+    },
+
+
+    {
+      "id": "crystal",
+      "locid": "item_crystal",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.2,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "volcanic",
+          "threshold": 0.9
+        },
+
+      ],
+      "sprites": ["crystal-dropper"],
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["shovel2","jackhammer","pickaxe"],
+          "interactionDuration": 4,
+          "dropParticleSprite": "crystal-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "crystal",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "crystal-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "crystal",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/icehit1.ogg"
+        "sounds/icehit2.ogg"
+      ],
+      "minimapHexColor": "86adc3ff",
+    },
+
+
+    {
+      "id": "special-ore",
+      "locid": "item_special-ore",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.2,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "volcanic",
+          "threshold": 0.85
+        },
+
+      ],
+      "sprites": ["special-ore"],
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["pickaxe"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "special-ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "special-ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "7c4aabff",
+    },
+
+
+    {
+      "id": "ore-big",
+      "locid": "item_ore",
+      "naturallyOccurring": false,
+      "maxPerChunk": 2,
+      "noiseFeature": 0.21,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "rock",
+          "threshold": 0.80
+        }
+      ],
+      "sprites": ["ore-big"],
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["shovel2", "jackhammer"],
+          "interactionDuration": 3,
+          "dropParticleSprite": "ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "ore",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg",
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "9b7233ff",
+    },
+
+    {
+      "id": "rubble",
+      "locid": "item_rock",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.5,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.97
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.97
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.96
+        }
+      ],
+      "sprites": ["rubble-dropper1", "rubble-dropper2"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 1,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.9
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "rock",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.9
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "rock",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "727272ff",
+    },
+
+    {
+      "id": "ice",
+      "locid": "item_ice",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.12,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.96
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.96
+        },
+        {
+          "biome": "ice",
+          "threshold": 0.85
+        }
+      ],
+      "sprites": ["ice", "ice2"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "dropParticleSprite": "ice-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "ice",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1,
+          "dropParticleSprite": "ice-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "ice",
+                  "dropChance": 1.0
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/icehit1.ogg",
+        "sounds/icehit2.ogg"
+      ],
+      "minimapHexColor": "86adc3ff",
+      "daysToRespawn": 4
+    },
+
+
+    // ====================================
+
+
+
+    {
+      "id": "scrap",
+      "locid": "item_scrap",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.22,
+      "noiseSmooth": 1,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.96
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.96
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.9
+        }
+      ],
+      "sprites": ["scrap", "scrap2", "scrap-small"],
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 2,
+          "dropParticleSprite": "scrap-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "scrap",
+                  "dropChance": 0.4
+                },
+                {
+                  "itemId": "component",
+                  "dropChance": 0.1
+                },
+                {
+                  "itemId": "electronics",
+                  "dropChance": 0.1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "scrap",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 1.5,
+          "dropParticleSprite": "ore-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "scrap",
+                  "dropChance": 0.4
+                },
+                {
+                  "itemId": "component",
+                  "dropChance": 0.1
+                },
+                {
+                  "itemId": "electronics",
+                  "dropChance": 0.1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "scrap",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+//      "minimapColor": {
+//        "r": 0.45,
+//        "g": 0.4,
+//        "b": 0.4,
+//        "a": 1
+//      }
+      "minimapHexColor": "59595aff",
+    },
+
+    {
+      "id": "rock",
+      "locid": "item_rock",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.21,
+      "noiseSmooth": 2,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.983
+        },
+        {
+          "biome": "sand",
+          "threshold": 0.985
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.95
+        }
+      ],
+      "sprites": ["rocks-big", "rocks-big2", "rocks-big3"],
+      "zSort": true,
+      "physicsBody": "rock",
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["jackhammer","pickaxe"],
+          "interactionDuration": 4,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.86
+                },
+                {
+                  "itemId": "radioactive-ore",
+                  "dropChance": 0.14
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.82
+                },
+                {
+                  "itemId": "radioactive-ore",
+                  "dropChance": 0.18
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+//      "minimapColor": {
+//        "r": 0.45,
+//        "g": 0.45,
+//        "b": 0.45,
+//        "a": 1
+//      }
+      "minimapHexColor": "727272ff",
+      "dropperVariations": [
+        {
+          "id": "rock-rad",
+          "chance": 0.07
+        },
+        {
+          "id": "rock-sp",
+          "chance": 0.02
+        }
+      ]
+    },
+
+
+    {
+      "id": "rock-rad",
+      "locid": "item_rock",
+      "naturallyOccurring": false,
+      "sprites": ["rocks-big-rad", "rocks-big2-rad"],
+      "zSort": true,
+      "physicsBody": "rock",
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["jackhammer","pickaxe"],
+          "interactionDuration": 4,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.7
+                },
+                {
+                  "itemId": "radioactive-ore",
+                  "dropChance": 0.3
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "radioactive-ore",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.7
+                },
+                {
+                  "itemId": "radioactive-ore",
+                  "dropChance": 0.3
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "radioactive-ore",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "667361ff",
+      "lightColor": "227d00dd",
+      "lightRadius": 200
+    },
+
+
+    {
+      "id": "rock-sp",
+      "locid": "item_rock",
+      "naturallyOccurring": false,
+      "sprites": ["rocks-big-sp", "rocks-big2-sp", "rocks-big3-sp"],
+      "zSort": true,
+      "physicsBody": "rock",
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["pickaxe"],
+          "interactionDuration": 4,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.9
+                },
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 0.1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "special-ore",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.9
+                },
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 0.1
+                }
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "special-ore",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "7c4aabff",
+    },
+
+
+
+    {
+      "id": "rock_volcanic",
+      "locid": "item_rock",
+      "naturallyOccurring": true,
+      "noiseFeature": 0.21,
+      "noiseSmooth": 2,
+      "spawnBiomes": [
+        {
+          "biome": "volcanic",
+          "threshold": 0.9 // 0.95
+        }
+      ],
+      "sprites": ["rocks-big-volcanic1", "rocks-big-volcanic2"],
+      "zSort": true,
+      "physicsBody": "rock",
+      "interactWith": [
+        {
+          "withAnyItem": false,
+          "equippedIds": ["jackhammer","pickaxe"],
+          "interactionDuration": 6,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.79
+                },
+                {
+                  "itemId": "ore",
+                  "dropChance": 0.14
+                },
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 0.07
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "withAnyItem": false,
+          "equippedIds": ["harvester"],
+          "interactionDuration": 2,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 2,
+              "maxDrop": 3,
+              "itemList": [
+                {
+                  "itemId": "rock",
+                  "dropChance": 0.79
+                },
+                {
+                  "itemId": "ore",
+                  "dropChance": 0.14
+                },
+                {
+                  "itemId": "special-ore",
+                  "dropChance": 0.07
+                }
+              ],
+              "guaranteedDrops" : []
+            }
+          ]
+        }
+      ],
+      //      "minimapColor": {
+      //        "r": 0.45,
+      //        "g": 0.45,
+      //        "b": 0.45,
+      //        "a": 1
+      //      }
+      "minimapHexColor": "424242ff",
+    },
+
+    {
+      "id": "sand",
+      "locid": "item_rock",
+      "naturallyOccurring": false,
+      "noiseFeature": 0.21,
+      "noiseSmooth": 1.9,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.95
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.96
+        }
+      ],
+      "sprites": ["sand"],
+      "zSort": false,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 3,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 1,
+              "maxDrop": 2,
+              "itemList": [
+                {
+                  "itemId": "sand",
+                  "dropChance": 1
+                },
+              ]
+            }
+          ]
+        }
+      ],
+      "minimapHexColor": "727272ff",
+    },
+
+    {
+      "id": "supplycrate1",
+      "locid": "resource_supplycrate",
+      "naturallyOccurring": false,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.96
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.9
+        }
+      ],
+      "sprites": ["supplycrate"],
+      "zSort": true,
+      "zSortOffset": 20,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 0,
+              "itemList": [
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "crafting-station-builder",
+                  "amount": 1
+                },
+                {
+                  "itemId": "airlock-builder",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "minimapHexColor": "00FF00FF",
+    },
+
+    {
+      "id": "supplycrate2",
+      "locid": "resource_supplycrate",
+      "naturallyOccurring": false,
+      "spawnBiomes": [
+        {
+          "biome": "ground",
+          "threshold": 0.96
+        },
+        {
+          "biome": "rock",
+          "threshold": 0.9
+        }
+      ],
+      "sprites": ["supplycrate"],
+      "zSort": true,
+      "zSortOffset": 20,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 1,
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 0,
+              "itemList": [
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "aircleaner-builder",
+                  "amount": 1
+                },
+                {
+                  "itemId": "generator-builder",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "minimapHexColor": "00FF00FF",
+    },
+    {
+      "id": "researchObject",
+      "locid": "item_researchObject_unknown",
+      "naturallyOccurring": false,
+      "spawnBiomes": [
+      ],
+      "sprites": ["artifact-buried"],
+      "zSort": true,
+      "zSortOffset": 20,
+      "interactWith": [
+        {
+          "withAnyItem": true,
+          "equippedIds": [],
+          "interactionDuration": 3,
+          "dropParticleSprite": "rock-dropper-particle",
+          "actions": [
+            {
+              "type": "lootDrop",
+              "minDrop": 0,
+              "maxDrop": 0,
+              "itemList": [
+              ],
+              "guaranteedDrops" : [
+                {
+                  "itemId": "researchObject",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "interactSounds": [
+        "sounds/rockhit1.ogg"
+        "sounds/rockhit2.ogg"
+      ],
+      "minimapHexColor": "00FF00FF",
+    }
+  ],
+
+  "miningResourceData": [
+    {
+      "biome": "water",
+      "collectTimeMultiplier": 2,
+      "items": [
+        {
+          "itemId": "rock",
+          "dropChance": 0.5
+        },
+        {
+          "itemId": "ore",
+          "dropChance": 0.5
+        }
+      ]
+    },
+    {
+      "biome": "mud",
+      "collectTimeMultiplier": 2,
+      "items": [
+        {
+          "itemId": "rock",
+          "dropChance": 0.5
+        },
+        {
+          "itemId": "ore",
+          "dropChance": 0.5
+        }
+      ]
+    },
+    {
+      "biome": "ground",
+      "collectTimeMultiplier": 1,
+      "items": [
+        {
+          "itemId": "ore",
+          "dropChance": 1
+        },
+        {
+          "itemId": "rock",
+          "dropChance": 0.5
+        },
+        {
+          "itemId": "radioactive-ore",
+          "dropChance": 0.2
+        }
+      ]
+    },
+    {
+      "biome": "rock",
+      "collectTimeMultiplier": 0.7,
+      "items": [
+        {
+          "itemId": "ore",
+          "dropChance": 1
+        },
+        {
+          "itemId": "rock",
+          "dropChance": 0.5
+        },
+        {
+          "itemId": "radioactive-ore",
+          "dropChance": 0.2
+        }
+      ]
+    },
+    {
+      "biome": "volcanic",
+      "collectTimeMultiplier": 0.7,
+      "items": [
+        {
+          "itemId": "crystal",
+          "dropChance": 0.5
+        },
+        {
+          "itemId": "special-ore",
+          "dropChance": 0.5
+        }
+      ]
+    }
+  ]
+}

@@ -41,3 +41,4 @@
 - Planets: verify player inventory/tech transfer on new planet and old planet remains intact.
 - Planets: decide multiplayer behavior for planet travel (broadcast switch or prevent).
 - Biomes: verify ice biome frequency and visuals; tweak biomeTable if distribution is off.
+- Biomes: verify ice resource tiles spawn frequently in ice biome and adjust thresholds if needed.
