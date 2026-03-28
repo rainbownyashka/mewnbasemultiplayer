@@ -375,29 +375,33 @@ public class MultiplayerNetworkHelper {
                         if (rp != null && rp.getVehicle() != v) rp.enterVehicleRemote(v, false);
                     }
 
-                    // If no occupants remain, force-exit any player still attached to this vehicle
-                    if (driverId < 0 && passengerId < 0) {
-                        try {
-                            if (gameScreen.world != null && gameScreen.world.player != null) {
-                                com.cairn4.moonbase.Player lp = gameScreen.world.player;
-                                if (lp.getVehicle() == v) lp.exitVehicleRemote();
+                    // Force-exit any player still attached to this vehicle but not listed in occupants
+                    int dId = driverId;
+                    int pId = passengerId;
+                    try {
+                        if (gameScreen.world != null && gameScreen.world.player != null) {
+                            com.cairn4.moonbase.Player lp = gameScreen.world.player;
+                            if (lp.getVehicle() == v && lp.ownerId != dId && lp.ownerId != pId) {
+                                lp.exitVehicleRemote();
                             }
-                        } catch (Exception ignored) {}
-                        try {
-                            java.lang.reflect.Field f = gameScreen.getClass().getDeclaredField("remotePlayers");
-                            f.setAccessible(true);
-                            Object mapObj = f.get(gameScreen);
-                            if (mapObj instanceof java.util.Map) {
-                                java.util.Map<?, ?> map = (java.util.Map<?, ?>)mapObj;
-                                for (Object val : map.values()) {
-                                    if (val instanceof com.cairn4.moonbase.Player) {
-                                        com.cairn4.moonbase.Player rp = (com.cairn4.moonbase.Player)val;
-                                        if (rp.getVehicle() == v) rp.exitVehicleRemote();
+                        }
+                    } catch (Exception ignored) {}
+                    try {
+                        java.lang.reflect.Field f = gameScreen.getClass().getDeclaredField("remotePlayers");
+                        f.setAccessible(true);
+                        Object mapObj = f.get(gameScreen);
+                        if (mapObj instanceof java.util.Map) {
+                            java.util.Map<?, ?> map = (java.util.Map<?, ?>)mapObj;
+                            for (Object val : map.values()) {
+                                if (val instanceof com.cairn4.moonbase.Player) {
+                                    com.cairn4.moonbase.Player rp = (com.cairn4.moonbase.Player)val;
+                                    if (rp.getVehicle() == v && rp.ownerId != dId && rp.ownerId != pId) {
+                                        rp.exitVehicleRemote();
                                     }
                                 }
                             }
-                        } catch (Exception ignored) {}
-                    }
+                        }
+                    } catch (Exception ignored) {}
                 } catch (Exception e) {
                     Gdx.app.error("NetworkHelper", "Failed to apply VEH_OCCUPY", e);
                 }
