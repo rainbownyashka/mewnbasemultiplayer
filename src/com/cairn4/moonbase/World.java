@@ -728,6 +728,8 @@ public class World {
         }
         this.weatherManager.dispose();
         this.ambientWorldSound.stop();
+        try { if (this.rayHandler != null) this.rayHandler.dispose(); } catch (Exception ignored) {}
+        try { if (this.b2dWorld != null) this.b2dWorld.dispose(); } catch (Exception ignored) {}
     }
 
     public void changeWeather(WeatherData weatherData) {

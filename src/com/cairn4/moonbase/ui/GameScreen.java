@@ -175,8 +175,25 @@ implements Telegraph {
                     }
                 }
             } catch (Exception ignored) {}
-
-            this.game.setScreen(new LoadingScreen(this.game, true));
+            // Switch screens on the render thread and dispose the old world to avoid stale physics
+            final GameScreen self = this;
+            com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                try {
+                    try {
+                        if (self.world != null) {
+                            self.world.dispose();
+                        }
+                    } catch (Exception ignored) {}
+                    self.game.setScreen(new LoadingScreen(self.game, true));
+                } catch (Exception e) {
+                    Gdx.app.error("GameScreen", "Failed to switch to LoadingScreen for planet travel", e);
+                } finally {
+                    try {
+                        // Dispose old GameScreen resources to avoid stale bodies/fixtures
+                        self.dispose();
+                    } catch (Exception ignored) {}
+                }
+            });
         } catch (Exception e) {
             Gdx.app.error("GameScreen", "Failed to start planet travel", e);
         }
