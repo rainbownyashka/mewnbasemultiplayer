@@ -80,6 +80,21 @@ implements Telegraph {
     public static boolean INSTANT_RUN = false;
     public static boolean SERVER_ONLY = false;
     public static boolean HEADLESS = false;
+    // Pending planet switch data (single-player only)
+    public static class PendingPlanetSwitch {
+        public int planetId;
+        public String planetName;
+        public String planetType;
+        public PendingPlanetSwitch(int planetId, String planetName, String planetType) {
+            this.planetId = planetId;
+            this.planetName = planetName;
+            this.planetType = planetType;
+        }
+    }
+    public static PendingPlanetSwitch pendingPlanetSwitch = null;
+    public static com.cairn4.moonbase.worlddata.PlayerData pendingPlayerTransfer = null;
+    public static java.util.ArrayList<String> pendingUnlockedTech = null;
+    public static int pendingTechSamples = 0;
     public PlatformAdapter platformAdapter;
     public static AchievementAdapter achievementAdapter;
     public Color clearColor = new Color(0.0f, 0.0f, 0.0f, 1.0f);

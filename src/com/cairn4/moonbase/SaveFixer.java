@@ -82,7 +82,10 @@ extends Observable {
                 }
                 this.convertToSingleWorldData(gsd);
             }
-            FileHandle worldDataFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+            FileHandle worldDataFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + GameLoader.getWorldDataFilename(GameLoader.getCurrentPlanetIdSafe()));
+            if (!worldDataFile.exists() && GameLoader.getCurrentPlanetIdSafe() == 0) {
+                worldDataFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+            }
             String worldDataString = worldDataFile.readString("ISO-8859-1");
             Json worldDataJson = new Json();
             worldDataJson.setIgnoreDeprecated(true);
@@ -285,7 +288,10 @@ extends Observable {
             }
         }
         Json wdJson = new Json();
-        FileHandle wdFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+        FileHandle wdFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + GameLoader.getWorldDataFilename(GameLoader.getCurrentPlanetIdSafe()));
+        if (!wdFile.exists() && GameLoader.getCurrentPlanetIdSafe() == 0) {
+            wdFile = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+        }
         wdFile.writeString(wdJson.toJson(wd), false);
         Gdx.app.log("MoonBase", "SaveFixer: Writing single world data file to disk.");
         for (FileHandle file : files = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/").list()) {
@@ -482,4 +488,3 @@ extends Observable {
         }
     }
 }
-

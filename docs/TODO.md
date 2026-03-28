@@ -37,3 +37,6 @@
 - Tech sync: verify research + samples from client are applied by server and propagated to all clients.
 - Chat UX: verify `chat 1 2` works in console and chat notifications stay longer.
 - MP UX: verify connect/disconnect notifications show nick for host and clients.
+- Planets: verify leaving planet creates worldData_p1.json and gameSave currentPlanetId updates.
+- Planets: verify player inventory/tech transfer on new planet and old planet remains intact.
+- Planets: decide multiplayer behavior for planet travel (broadcast switch or prevent).

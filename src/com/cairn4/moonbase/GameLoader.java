@@ -27,6 +27,7 @@ import com.cairn4.moonbase.worlddata.ChunkData;
 import com.cairn4.moonbase.worlddata.EntityData;
 import com.cairn4.moonbase.worlddata.GameSaveData;
 import com.cairn4.moonbase.worlddata.InventoryItemData;
+import com.cairn4.moonbase.worlddata.PlanetData;
 import com.cairn4.moonbase.worlddata.PlayerData;
 import com.cairn4.moonbase.worlddata.StatusEffectData;
 import com.cairn4.moonbase.worlddata.WorldData;
@@ -146,6 +147,7 @@ public class GameLoader {
             gsd.playerName = "" + mission.playerName;
             gsd.missionType = "" + (Object)((Object)mission.missionType);
             gsd.missionPlanetName = mission.planetName;
+            gsd.currentPlanetId = mission.planetId;
             gsd.missionDayGoal = mission.getMissionDayLength();
             gsd.missionCompleteReady = mission.missionCompleteReady;
             gsd.missionComplete = mission.missionComplete;
@@ -166,6 +168,16 @@ public class GameLoader {
             gsd.unlockedTech = world.techManager.getSaveData();
             gsd.techSamples = world.techManager.samples;
             gsd.npcBonuses = NpcBonuses.getInstance().getAllBonuses();
+            // Update per-planet metadata
+            try {
+                PlanetData pd = GameLoader.getOrCreatePlanetData(gsd, mission.planetId);
+                pd.planetName = mission.planetName;
+                pd.planetType = mission.planetType;
+                pd.terrainGenSeed = world.terrainGen.getSeed();
+                pd.lastVisited = new Date().getTime();
+                pd.playerData = gsd.playerData;
+                gsd.terrainGenSeed = pd.terrainGenSeed;
+            } catch (Exception ignored) {}
             GameLoader.writeGameSaveData(gsd, "");
             gsd = null;
         } else {
@@ -190,25 +202,44 @@ public class GameLoader {
 
     private void writeWorldDataFile(String subfolder) {
         Json json = new Json();
-        this.file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + subfolder + "worldData.json");
+        int planetId = GameLoader.getCurrentPlanetIdSafe();
+        String name = GameLoader.getWorldDataFilename(planetId);
+        this.file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + subfolder + name);
         this.file.writeString(json.toJson(this.worldData), false);
         Gdx.app.debug("MoonBase", "WorldData: Writing file to disk.");
     }
 
     public static void writeWorldDataFile(WorldData worldData) {
         Json json = new Json();
-        FileHandle file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+        int planetId = GameLoader.getCurrentPlanetIdSafe();
+        FileHandle file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + getWorldDataFilename(planetId));
         file.writeString(json.toJson(worldData), false);
         MoonBase.log("GameLoader: Writing world data to disk.");
     }
 
-    private static WorldData loadWorldDataFile() {
-        FileHandle file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+    private static WorldData loadWorldDataFile(int planetId) {
+        FileHandle file = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + getWorldDataFilename(planetId));
+        if (!file.exists() && planetId == 0) {
+            FileHandle legacy = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/worldData.json");
+            if (legacy.exists()) {
+                file = legacy;
+            }
+        }
         Json json = jsonPool.obtain();
         json.setIgnoreDeprecated(true);
         String fileText = file.readString();
         WorldData wd = json.fromJson(WorldData.class, fileText);
         jsonPool.free(json);
+        // If legacy worldData.json was loaded for planet 0, also write the new filename for future use.
+        try {
+            if (planetId == 0) {
+                FileHandle target = Gdx.files.local("saves/" + MoonBase.currentSaveFolder + "/" + getWorldDataFilename(planetId));
+                if (!target.exists()) {
+                    Json j2 = new Json();
+                    target.writeString(j2.toJson(wd), false);
+                }
+            }
+        } catch (Exception ignored) {}
         return wd;
     }
 
@@ -262,6 +293,17 @@ public class GameLoader {
             m.tutorialFinished = gsd.tutorialFinished;
             m.missionDayLength = gsd.missionDayGoal;
             m.planetName = gsd.missionPlanetName;
+            m.planetId = gsd.currentPlanetId;
+            PlanetData currentPd = null;
+            try { currentPd = GameLoader.findPlanetData(gsd, gsd.currentPlanetId); } catch (Exception ignored) {}
+            if (currentPd != null) {
+                if (currentPd.planetName != null && currentPd.planetName.length() > 0) {
+                    m.planetName = currentPd.planetName;
+                }
+                if (currentPd.planetType != null && currentPd.planetType.length() > 0) {
+                    m.planetType = currentPd.planetType;
+                }
+            }
             m.missionCompleteReady = gsd.missionCompleteReady;
             m.missionComplete = gsd.missionComplete;
             world.gameScreen.game.setMission(m);
@@ -301,12 +343,21 @@ public class GameLoader {
             } else {
                 MoonBase.GOD_MODE = false;
             }
-            int chunkX = gsd.playerData.chunkX;
-            int chunkY = gsd.playerData.chunkY;
-            this.worldData = GameLoader.loadWorldDataFile();
+            PlayerData loadPlayerData = gsd.playerData;
+            if (currentPd != null && currentPd.playerData != null) {
+                loadPlayerData = currentPd.playerData;
+            }
+            int chunkX = loadPlayerData.chunkX;
+            int chunkY = loadPlayerData.chunkY;
+            try { if (world.terrainGen != null) world.terrainGen.setPlanetType(m.planetType); } catch (Exception ignored) {}
+            this.worldData = GameLoader.loadWorldDataFile(m.planetId);
             world.worldChunks = world.chunkLoader.loadAllChunks(this.worldData);
-            if (gsd.terrainGenSeed != 0) {
-                world.terrainGen.setSeed(gsd.terrainGenSeed);
+            int seed = gsd.terrainGenSeed;
+            if (currentPd != null && currentPd.terrainGenSeed != 0) {
+                seed = currentPd.terrainGenSeed;
+            }
+            if (seed != 0) {
+                world.terrainGen.setSeed(seed);
             } else {
                 world.terrainGen.newSeed();
             }
@@ -322,8 +373,8 @@ public class GameLoader {
             world.weatherManager.setWeather(gsd.currentWeatherId);
             world.weatherManager.setTimer(gsd.currentWeatherTime);
             world.weatherManager.setDuration(gsd.currentWeatherDuration);
-            world.spawnPlayer(world.getChunk(chunkX, chunkY), gsd.playerData.localX, gsd.playerData.localY, false);
-            for (InventoryItemData invItemData : gsd.playerData.inventoryItemDataList) {
+            world.spawnPlayer(world.getChunk(chunkX, chunkY), loadPlayerData.localX, loadPlayerData.localY, false);
+            for (InventoryItemData invItemData : loadPlayerData.inventoryItemDataList) {
                 try {
                     ItemStack stack = new ItemStack(invItemData.itemId, invItemData.amount);
                     int durabilityForThisType = ItemFactory.getDurability(invItemData.itemId);
@@ -337,20 +388,20 @@ public class GameLoader {
                     Gdx.app.error("MewnBase", "Error loading player inventory item " + invItemData.itemId + ", skipping.");
                 }
             }
-            world.player.setCustomizationOptions(gsd.playerData.characterFaceOption, gsd.playerData.characterSuitColor);
-            this.loadPlayerStatusEffects(world.player, gsd.playerData);
-            world.player.markedMapLocations = gsd.playerData.markedMapLocations;
-            MoonBase.log("Game Loader: Upgrading suit level to " + gsd.playerData.suitLevel);
-            world.player.setSuitLevel(gsd.playerData.suitLevel, false);
-            world.player.playerStatus.setHunger(gsd.playerData.hunger);
-            world.player.playerStatus.setSuitPower(gsd.playerData.suitPower);
-            world.player.playerStatus.setAir(gsd.playerData.air);
-            world.player.playerStatus.setFlashlight(gsd.playerData.flashlight);
-            if (gsd.playerData.health == 0.0f) {
-                gsd.playerData.health = 100.0f;
+            world.player.setCustomizationOptions(loadPlayerData.characterFaceOption, loadPlayerData.characterSuitColor);
+            this.loadPlayerStatusEffects(world.player, loadPlayerData);
+            world.player.markedMapLocations = loadPlayerData.markedMapLocations;
+            MoonBase.log("Game Loader: Upgrading suit level to " + loadPlayerData.suitLevel);
+            world.player.setSuitLevel(loadPlayerData.suitLevel, false);
+            world.player.playerStatus.setHunger(loadPlayerData.hunger);
+            world.player.playerStatus.setSuitPower(loadPlayerData.suitPower);
+            world.player.playerStatus.setAir(loadPlayerData.air);
+            world.player.playerStatus.setFlashlight(loadPlayerData.flashlight);
+            if (loadPlayerData.health == 0.0f) {
+                loadPlayerData.health = 100.0f;
                 Gdx.app.log("MewnBase", "GameLoader: health was zero due to not being saved, so restoring to 100%");
             }
-            world.player.playerStatus.setHealth(gsd.playerData.health);
+            world.player.playerStatus.setHealth(loadPlayerData.health);
             world.chunkLoader.changeChunks(world.player.chunkX, world.player.chunkY);
             world.baseManager.updateBases(world);
             for (String s : gsd.unlockedTech) {
@@ -372,7 +423,7 @@ public class GameLoader {
             for (NpcBonuses.bonusTypes b : gsd.npcBonuses) {
                 NpcBonuses.getInstance().loadBonus(b);
             }
-            for (Integer i : gsd.playerData.researchItemsDiscovered) {
+            for (Integer i : loadPlayerData.researchItemsDiscovered) {
                 world.player.researchObjectsDiscovered.add(i);
             }
             world.regrowthManager.loadData(gsd.regrowthManagerList);
@@ -449,7 +500,7 @@ public class GameLoader {
                 constructor = aClass.getConstructor(classArgs);
                 object = constructor.newInstance(arguments);
                 ((PlayerStatusEffect)object).loadProperties(sed.properties);
-                player.playerStatus.newStatusEffect(object);
+                player.playerStatus.newStatusEffect((PlayerStatusEffect)object);
             }
             catch (InstantiationException e) {
                 System.out.println(e);
@@ -468,6 +519,39 @@ public class GameLoader {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static int getCurrentPlanetIdSafe() {
+        try {
+            Mission m = MoonBase.getCurrentMission();
+            if (m != null) {
+                return m.planetId;
+            }
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    public static String getWorldDataFilename(int planetId) {
+        return "worldData_p" + planetId + ".json";
+    }
+
+    public static PlanetData findPlanetData(GameSaveData gsd, int planetId) {
+        if (gsd == null || gsd.planets == null) return null;
+        for (PlanetData pd : gsd.planets) {
+            if (pd != null && pd.planetId == planetId) return pd;
+        }
+        return null;
+    }
+
+    public static PlanetData getOrCreatePlanetData(GameSaveData gsd, int planetId) {
+        if (gsd.planets == null) gsd.planets = new ArrayList();
+        PlanetData pd = findPlanetData(gsd, planetId);
+        if (pd == null) {
+            pd = new PlanetData();
+            pd.planetId = planetId;
+            gsd.planets.add(pd);
+        }
+        return pd;
     }
 
     public static void eraseSave(String saveFolder) {
@@ -634,4 +718,3 @@ public class GameLoader {
         }
     }
 }
-

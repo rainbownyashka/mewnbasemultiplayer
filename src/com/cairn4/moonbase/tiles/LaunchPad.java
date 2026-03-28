@@ -328,7 +328,12 @@ extends BaseModule {
             this.targetDestination.setTowerOpen();
         }
         if (this.leavePlanet) {
-            MoonBase.getCurrentMission().setMissionComplete();
+            if (MoonBase.isMultiplayer) {
+                try { this.world.gameScreen.hud.hudNotifications.newMessage("Planet travel is disabled in multiplayer (for now)."); } catch (Exception ignored) {}
+                this.launching = false;
+                try { this.world.getPlayer().setFlyingRocket(false); } catch (Exception ignored) {}
+                return;
+            }
             this.world.gameScreen.gameLoader.saveGame(this.world, false);
         }
     }
@@ -403,7 +408,14 @@ extends BaseModule {
 
     public void finishTakeOff() {
         if (this.leavePlanet) {
-            this.world.gameWin();
+            try {
+                this.setHasRocket(false);
+                this.rocket = null;
+                this.launching = false;
+            } catch (Exception ignored) {}
+            if (this.world != null && this.world.gameScreen != null) {
+                this.world.gameScreen.requestPlanetTravel();
+            }
         } else {
             this.setHasRocket(false);
             this.rocket = null;
@@ -608,4 +620,3 @@ extends BaseModule {
         this.leavePlanet = true;
     }
 }
-

@@ -2523,7 +2523,11 @@ public class Server {
                     out.writeInt(0);
                 }
 
-                com.badlogic.gdx.files.FileHandle worldDataFile = com.badlogic.gdx.Gdx.files.local("saves/" + com.cairn4.moonbase.MoonBase.currentSaveFolder + "/worldData.json");
+                int pid = com.cairn4.moonbase.GameLoader.getCurrentPlanetIdSafe();
+                com.badlogic.gdx.files.FileHandle worldDataFile = com.badlogic.gdx.Gdx.files.local("saves/" + com.cairn4.moonbase.MoonBase.currentSaveFolder + "/" + com.cairn4.moonbase.GameLoader.getWorldDataFilename(pid));
+                if (!worldDataFile.exists() && pid == 0) {
+                    worldDataFile = com.badlogic.gdx.Gdx.files.local("saves/" + com.cairn4.moonbase.MoonBase.currentSaveFolder + "/worldData.json");
+                }
                 if (worldDataFile.exists()) {
                     byte[] worldDataBytes = worldDataFile.readBytes();
                     out.writeInt(worldDataBytes.length);

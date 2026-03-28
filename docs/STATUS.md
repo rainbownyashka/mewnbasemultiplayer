@@ -113,6 +113,9 @@ Changes
 - Multiplayer tech: added server.properties (syncTech) and TECH_SYNC/TECH_RESEARCH/TECH_SAMPLES_ADD for server-authoritative tech tree + samples.
 - Console: allow single-string commands to accept multiple args (chat with spaces) and extend chat notification lifetime.
 - Multiplayer: connect/disconnect notifications now use nick; host HUD shows join message on APPEARANCE.
+- Planets: added multi-planet save metadata (PlanetData) and per-planet worldData files (`worldData_p<id>.json`).
+- Planets: leaving planet now triggers new-planet generation (single-player only) with player+tech transfer.
+- Planets: TerrainGen now supports planetType profiles (default/crimson/ash) for different noise/biome feel.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -195,6 +198,7 @@ Verification
 - Remote wheel animation sync not yet verified in-game.
 - Tech sync + server.properties not yet verified in-game.
 - Chat notifications duration + connect/disconnect nick display not yet verified in-game.
+- Planet travel flow + per-planet save/load not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

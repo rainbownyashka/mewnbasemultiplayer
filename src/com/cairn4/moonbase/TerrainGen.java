@@ -36,10 +36,16 @@ public class TerrainGen {
     private SimplexNoise simplexNoiseWet;
     private int seed;
     private int seedWet;
-    private final float altitudeNoise = 0.015f;
-    private final float altitudeSmoothing = 1.2f;
-    private final float wetnessNoise = 0.02f;
-    private final float wetnessSmoothing = 1.2f;
+    private float altitudeNoise = 0.015f;
+    private float altitudeSmoothing = 1.2f;
+    private float wetnessNoise = 0.02f;
+    private float wetnessSmoothing = 1.2f;
+    private float altitudeBias = 0.0f;
+    private float wetnessBias = 0.0f;
+    private boolean enableVolcanos = true;
+    private boolean enableSamples = true;
+    private boolean enableNpcs = true;
+    private String planetType = "default";
     World world;
     float[][] noise;
     float[][] altitude;
@@ -66,6 +72,12 @@ public class TerrainGen {
 
     public TerrainGen(World world) {
         this.world = world;
+        try {
+            if (MoonBase.getCurrentMission() != null && MoonBase.getCurrentMission().planetType != null) {
+                this.planetType = MoonBase.getCurrentMission().planetType;
+            }
+        } catch (Exception ignored) {}
+        this.applyPlanetProfile(this.planetType);
         this.seed = MathUtils.random(10000);
         this.simplexNoiseAlt = new SimplexNoise(this.seed);
         this.seedWet = this.seed + 1;
@@ -80,6 +92,46 @@ public class TerrainGen {
         this.setupUniformPoissonPositions(800, this.volcanoGridPoints, 18);
         this.setupUniformPoissonPositions(800, this.artifactGridPoints, 18);
         this.setupUniformPoissonPositions(800, this.npcGridPoints, 18);
+    }
+
+    private void applyPlanetProfile(String type) {
+        String t = type == null ? "default" : type.trim();
+        this.planetType = t;
+        // Defaults (original)
+        altitudeNoise = 0.015f;
+        altitudeSmoothing = 1.2f;
+        wetnessNoise = 0.02f;
+        wetnessSmoothing = 1.2f;
+        altitudeBias = 0.0f;
+        wetnessBias = 0.0f;
+        enableVolcanos = true;
+        enableSamples = true;
+        enableNpcs = true;
+        if ("crimson".equalsIgnoreCase(t) || "red".equalsIgnoreCase(t)) {
+            altitudeNoise = 0.01f;
+            altitudeSmoothing = 1.6f;
+            wetnessNoise = 0.012f;
+            wetnessSmoothing = 0.6f;
+            altitudeBias = 0.15f;
+            wetnessBias = -0.35f;
+            enableVolcanos = true;
+            enableSamples = true;
+            enableNpcs = false;
+        } else if ("ash".equalsIgnoreCase(t)) {
+            altitudeNoise = 0.02f;
+            altitudeSmoothing = 1.0f;
+            wetnessNoise = 0.01f;
+            wetnessSmoothing = 0.4f;
+            altitudeBias = 0.25f;
+            wetnessBias = -0.5f;
+            enableVolcanos = true;
+            enableSamples = true;
+            enableNpcs = false;
+        }
+    }
+
+    public void setPlanetType(String type) {
+        this.applyPlanetProfile(type);
     }
 
     public int getSeed() {
@@ -111,7 +163,8 @@ public class TerrainGen {
         UniformPoissonDiskSampler sampler = new UniformPoissonDiskSampler(500 - radius, 500 - radius, 500 + radius, 500 + radius, distanceBetweenObjects);
         List pointList = sampler.sample();
         featureGridPointList.clear();
-        for (Vector2DDouble v : pointList) {
+        for (Object obj : pointList) {
+            Vector2DDouble v = (Vector2DDouble)obj;
             featureGridPointList.add(new GridPoint2((int)v.x, (int)v.y));
         }
     }
@@ -125,8 +178,8 @@ public class TerrainGen {
             if (!idd.naturallyOccurring) continue;
             this.placeItemDropper(chunk, idd);
         }
-        this.placeSamples(chunk);
-        this.placeVolcanos(chunk);
+        if (enableSamples) this.placeSamples(chunk);
+        if (enableVolcanos) this.placeVolcanos(chunk);
     }
 
     private void placeSamples(Chunk chunk) {
@@ -279,14 +332,14 @@ public class TerrainGen {
     }
 
     public void paintGround(final Chunk chunk) {
-        this.altitude = this.generateNoiseAlt(0.015f, 1.2f, chunk.chunkX * 10, chunk.chunkY * 10, new DistanceModifier(){
+        this.altitude = this.generateNoiseAlt(this.altitudeNoise, this.altitudeSmoothing, chunk.chunkX * 10, chunk.chunkY * 10, new DistanceModifier(){
 
             @Override
             public float distanceMod(float x, float y, float value) {
                 return TerrainGen.this.safeSpawnAltitude(x += (float)(chunk.chunkX * 10), y += (float)(chunk.chunkY * 10), value);
             }
         });
-        this.wetness = this.generateNoiseWet(0.02f, 1.2f, chunk.chunkX * 10, chunk.chunkY * 10, new DistanceModifier(){
+        this.wetness = this.generateNoiseWet(this.wetnessNoise, this.wetnessSmoothing, chunk.chunkX * 10, chunk.chunkY * 10, new DistanceModifier(){
 
             @Override
             public float distanceMod(float x, float y, float value) {
@@ -417,7 +470,7 @@ public class TerrainGen {
                     if (distanceMod != null) {
                         noise[x][y] = distanceMod.distanceMod(x, y, noise[x][y]);
                     }
-                    noise[x][y] = MathUtils.clamp(noise[x][y], -1.0f, 1.0f);
+                    noise[x][y] = MathUtils.clamp(noise[x][y] + altitudeBias, -1.0f, 1.0f);
                     if (noise[x][y] < this.mingen) {
                         this.mingen = noise[x][y];
                     }
@@ -447,7 +500,7 @@ public class TerrainGen {
                     if (distanceMod != null) {
                         noise[x][y] = distanceMod.distanceMod(x, y, noise[x][y]);
                     }
-                    noise[x][y] = MathUtils.clamp(noise[x][y], -1.0f, 1.0f);
+                    noise[x][y] = MathUtils.clamp(noise[x][y] + wetnessBias, -1.0f, 1.0f);
                     if (noise[x][y] < this.mingen) {
                         this.mingen = noise[x][y];
                     }
@@ -476,4 +529,3 @@ public class TerrainGen {
         this.world.updateAllWalls();
     }
 }
-

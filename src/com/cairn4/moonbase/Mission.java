@@ -29,6 +29,8 @@ extends Observable {
     public creatureModes creatureMode;
     int missionDayLength;
     String planetName;
+    public int planetId = 0;
+    public String planetType = "default";
 
     public void finishedTutorial() {
         this.tutorialFinished = true;
@@ -40,6 +42,10 @@ extends Observable {
 
     public String getPlanetName() {
         return this.planetName;
+    }
+
+    public void setPlanetName(String name) {
+        this.planetName = name;
     }
 
     public Mission(String planetName, int missionDayLength) {
@@ -57,6 +63,8 @@ extends Observable {
         this.tutorialStage = "start";
         this.missionDayLength = MathUtils.random(25, 35);
         this.planetName = this.generatePlanetName();
+        this.planetId = 0;
+        this.planetType = "default";
     }
 
     public Mission(MissionTypes type) {
@@ -64,6 +72,8 @@ extends Observable {
         this.tutorialStage = "start";
         this.missionDayLength = MathUtils.random(30, 35);
         this.planetName = this.generatePlanetName();
+        this.planetId = 0;
+        this.planetType = "default";
     }
 
     public void setName(String playerName) {
@@ -164,4 +174,3 @@ extends Observable {
 
     }
 }
-

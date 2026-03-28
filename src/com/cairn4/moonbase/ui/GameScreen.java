@@ -38,6 +38,9 @@ import com.cairn4.moonbase.SettingsData;
 import com.cairn4.moonbase.SettingsLoader;
 import com.cairn4.moonbase.Tutorial;
 import com.cairn4.moonbase.World;
+import com.cairn4.moonbase.ItemFactory;
+import com.cairn4.moonbase.ItemStack;
+import com.cairn4.moonbase.Mission;
 import com.cairn4.moonbase.ZSortComparator;
 import com.cairn4.moonbase.dialog.DialogController;
 import com.cairn4.moonbase.entities.Creature;
@@ -59,6 +62,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import com.cairn4.moonbase.worlddata.PlayerData;
+import com.cairn4.moonbase.worlddata.InventoryItemData;
+import com.cairn4.moonbase.worlddata.GameSaveData;
+import com.cairn4.moonbase.worlddata.PlanetData;
 
 public class GameScreen
 extends BaseScreen
@@ -114,6 +121,128 @@ implements Telegraph {
 
     public void setAnimTestMode(int mode) { this.animTestMode = mode; }
     public int getAnimTestMode() { return this.animTestMode; }
+
+    public void requestPlanetTravel() {
+        try {
+            if (MoonBase.isMultiplayer) {
+                if (this.hud != null && this.hud.hudNotifications != null) {
+                    this.hud.hudNotifications.newMessage("Planet travel is disabled in multiplayer (for now).");
+                }
+                return;
+            }
+            if (MoonBase.pendingPlanetSwitch != null) {
+                return;
+            }
+            // Save current planet state
+            try { this.gameLoader.saveGame(this.world, false); } catch (Exception ignored) {}
+
+            // Stash player + tech transfer
+            try { MoonBase.pendingPlayerTransfer = new PlayerData(this.world.player); } catch (Exception ignored) {}
+            try { MoonBase.pendingUnlockedTech = this.world.techManager.getSaveData(); } catch (Exception ignored) {}
+            try { MoonBase.pendingTechSamples = this.world.techManager.samples; } catch (Exception ignored) {}
+
+            int nextPlanetId = computeNextPlanetId();
+            String nextPlanetType = pickPlanetType(nextPlanetId);
+            String nextPlanetName = null;
+            try {
+                Mission m = MoonBase.getCurrentMission();
+                if (m != null) {
+                    nextPlanetName = m.generatePlanetName();
+                }
+            } catch (Exception ignored) {}
+            if (nextPlanetName == null || nextPlanetName.length() == 0) {
+                nextPlanetName = "Planet-" + (nextPlanetId + 1);
+            }
+
+            MoonBase.pendingPlanetSwitch = new MoonBase.PendingPlanetSwitch(nextPlanetId, nextPlanetName, nextPlanetType);
+            // Update mission in memory before new world generation
+            try {
+                Mission m = MoonBase.getCurrentMission();
+                if (m != null) {
+                    m.planetId = nextPlanetId;
+                    m.planetType = nextPlanetType;
+                    m.setPlanetName(nextPlanetName);
+                }
+            } catch (Exception ignored) {}
+
+            this.game.setScreen(new LoadingScreen(this.game, true));
+        } catch (Exception e) {
+            Gdx.app.error("GameScreen", "Failed to start planet travel", e);
+        }
+    }
+
+    private int computeNextPlanetId() {
+        int nextId = 1;
+        try {
+            GameSaveData gsd = GameLoader.getGameSaveData(MoonBase.currentSaveFolder);
+            if (gsd != null && gsd.planets != null) {
+                int max = 0;
+                for (PlanetData pd : gsd.planets) {
+                    if (pd != null && pd.planetId > max) max = pd.planetId;
+                }
+                nextId = max + 1;
+            }
+        } catch (Exception ignored) {}
+        return nextId;
+    }
+
+    private String pickPlanetType(int planetId) {
+        // Alternate between two distinct profiles for now
+        if (planetId % 2 == 1) return "crimson";
+        return "ash";
+    }
+
+    private void applyPendingPlanetSwitch() {
+        try {
+            if (MoonBase.pendingPlanetSwitch == null) return;
+            // Apply player transfer (inventory + stats) to the fresh world
+            PlayerData pd = MoonBase.pendingPlayerTransfer;
+            if (pd != null && this.world != null && this.world.player != null) {
+                try {
+                    this.world.player.getPlayerInventory().itemList.clear();
+                    for (InventoryItemData invItemData : pd.inventoryItemDataList) {
+                        try {
+                            ItemStack stack = new ItemStack(invItemData.itemId, invItemData.amount);
+                            int durabilityForThisType = ItemFactory.getDurability(invItemData.itemId);
+                            if (durabilityForThisType > 0 && invItemData.durability == 0) {
+                                invItemData.durability = durabilityForThisType;
+                            }
+                            stack.item.durability = invItemData.durability;
+                            this.world.player.playerInventory.addItemNoOrg(stack);
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+                try { this.world.player.setCustomizationOptions(pd.characterFaceOption, pd.characterSuitColor); } catch (Exception ignored) {}
+                try { this.world.player.setSuitLevel(pd.suitLevel, false); } catch (Exception ignored) {}
+                try { this.world.player.playerStatus.setHunger(pd.hunger); } catch (Exception ignored) {}
+                try { this.world.player.playerStatus.setSuitPower(pd.suitPower); } catch (Exception ignored) {}
+                try { this.world.player.playerStatus.setAir(pd.air); } catch (Exception ignored) {}
+                try { this.world.player.playerStatus.setFlashlight(pd.flashlight); } catch (Exception ignored) {}
+                try { this.world.player.playerStatus.setHealth(pd.health <= 0.0f ? 100.0f : pd.health); } catch (Exception ignored) {}
+                try { this.world.player.markedMapLocations = pd.markedMapLocations; } catch (Exception ignored) {}
+                try { this.world.player.inventoryUpdate(); } catch (Exception ignored) {}
+            }
+            // Apply tech transfer
+            try {
+                if (MoonBase.pendingUnlockedTech != null && this.world != null && this.world.techManager != null) {
+                    for (String s : MoonBase.pendingUnlockedTech) {
+                        try {
+                            com.cairn4.moonbase.techtree.TechUpgrade t = this.world.techManager.getTech(s);
+                            if (t != null) t.unlocked = true;
+                        } catch (Exception ignored) {}
+                    }
+                    this.world.techManager.setSamples(MoonBase.pendingTechSamples);
+                }
+            } catch (Exception ignored) {}
+            // Persist new planet state immediately so worldData_pX is created
+            try { this.gameLoader.saveGame(this.world, false); } catch (Exception ignored) {}
+        } finally {
+            MoonBase.pendingPlanetSwitch = null;
+            MoonBase.pendingPlayerTransfer = null;
+            MoonBase.pendingUnlockedTech = null;
+            MoonBase.pendingTechSamples = 0;
+        }
+    }
 
     // Accessor for remote players map entries (safe public getter)
     public com.cairn4.moonbase.Player getRemotePlayer(int clientId) {
@@ -204,6 +333,7 @@ implements Telegraph {
         }
         this.world = new World(this, newGame);
         this.hud = new Hud(this, this.world);
+        this.applyPendingPlanetSwitch();
         DialogController.getInstance().setGameScreen(this);
         if (!newGame.booleanValue()) {
             this.hud.activate(this.world);

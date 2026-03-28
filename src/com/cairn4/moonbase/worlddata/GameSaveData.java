@@ -8,6 +8,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.cairn4.moonbase.MoonBase;
 import com.cairn4.moonbase.entities.NpcBonuses;
 import com.cairn4.moonbase.worlddata.EntityData;
+import com.cairn4.moonbase.worlddata.PlanetData;
 import com.cairn4.moonbase.worlddata.PlayerData;
 import com.cairn4.moonbase.worlddata.RespawningItemDropperData;
 import java.text.SimpleDateFormat;
@@ -45,6 +46,8 @@ implements Comparable<GameSaveData> {
     public String creatureMode;
     public boolean creativeMode;
     public PlayerData playerData;
+    public int currentPlanetId = 0;
+    public ArrayList<PlanetData> planets = new ArrayList();
     public boolean tutorialFinished;
     public String tutorialStage;
     public ArrayList<String> unlockedTech = new ArrayList();
@@ -83,4 +86,3 @@ implements Comparable<GameSaveData> {
         return 0;
     }
 }
-
