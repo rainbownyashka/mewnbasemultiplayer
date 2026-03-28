@@ -520,20 +520,11 @@ implements DamageTaker {
             this.searchTimer += delta;
             if (this.searchTimer > this.searchTimerDelay) {
                 this.searchTimer = 0.0f;
-                if (this.world.player != null) {
-                    if (this.world.player.isOnHabitat()) {
-                        return false;
-                    }
-                    if (this.world.player.isFlyingRocket()) {
-                        return false;
-                    }
-                    this.targetPos.set(this.world.player.getXPos(), this.world.player.getYPos());
-                    Vector2 currentPos = new Vector2(this.getXPos(), this.getYPos());
-                    Vector2 diff = this.targetPos.cpy().sub(currentPos);
-                    if (diff.len() < this.creatureData.aggroDistance) {
-                        this.targetPlayer = this.world.player;
-                        return true;
-                    }
+                Player candidate = this.findNearestPlayer(this.creatureData.aggroDistance);
+                if (candidate != null) {
+                    this.targetPlayer = candidate;
+                    this.targetPos.set(candidate.getXPos(), candidate.getYPos());
+                    return true;
                 }
             }
         }
@@ -544,8 +535,8 @@ implements DamageTaker {
         if (this.targetPlayer == null) {
             return true;
         }
-        this.targetPos.set(this.world.player.getXPos(), this.world.player.getYPos());
-        if (this.world.player.isOnHabitat()) {
+        this.targetPos.set(this.targetPlayer.getXPos(), this.targetPlayer.getYPos());
+        if (this.targetPlayer.isOnHabitat()) {
             return true;
         }
         if (this.targetBase != null) {
@@ -562,7 +553,7 @@ implements DamageTaker {
 
     public boolean closeEnoughToAttack() {
         if (this.targetPlayer != null) {
-            this.targetPos.set(this.world.player.getXPos(), this.world.player.getYPos());
+            this.targetPos.set(this.targetPlayer.getXPos(), this.targetPlayer.getYPos());
         }
         if (this.targetPlayer.isFlyingRocket()) {
             return false;
@@ -605,6 +596,37 @@ implements DamageTaker {
 
     public Vector2 getTargetPlayerBodyPosition() {
         return new Vector2(this.targetPlayer.getXPos() / 256.0f, this.targetPlayer.getYPos() / 256.0f);
+    }
+
+    private Player findNearestPlayer(float maxDist) {
+        Player best = null;
+        float bestDist = maxDist;
+        try {
+            if (this.world != null && this.world.player != null) {
+                Player p = this.world.player;
+                if (!p.isOnHabitat() && !p.isFlyingRocket()) {
+                    float d = Vector2.dst(this.getXPos(), this.getYPos(), p.getXPos(), p.getYPos());
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = p;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (this.world != null && this.world.gameScreen != null) {
+                for (Player rp : this.world.gameScreen.getRemotePlayers()) {
+                    if (rp == null) continue;
+                    if (rp.isOnHabitat() || rp.isFlyingRocket()) continue;
+                    float d = Vector2.dst(this.getXPos(), this.getYPos(), rp.getXPos(), rp.getYPos());
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = rp;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return best;
     }
 
     public void resetAtackCheckTimer() {
@@ -1111,4 +1133,3 @@ implements DamageTaker {
         }
     }
 }
-

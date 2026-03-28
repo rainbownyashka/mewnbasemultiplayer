@@ -104,6 +104,8 @@ Changes
 - Minimap: render all players as star markers with names (same color for now).
 - Vehicle MP: host now broadcasts VEH_META for host-driven vehicles (drill/abilities visible on clients).
 - Vehicle MP: interpolate remote vehicle transforms to reduce jitter.
+- Creature MP: host now targets nearest player (including remote) for aggro/attacks.
+- Creature MP: server broadcasts CREATURE_STATE so clients see host creature movement/attacks.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -178,6 +180,8 @@ Verification
 - Minimap player markers not yet verified in-game (check remote names on map).
 - Host-driven VEH_META (drill) not yet verified in-game.
 - Vehicle interpolation not yet verified in-game (check rotation smoothness).
+- Creature targeting of remote players not yet verified in-game.
+- Creature sync not yet verified in-game (clients should see host creature movement/attacks).
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

@@ -465,6 +465,14 @@ import com.cairn4.moonbase.net.ProtocolV2;
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_META", e);
                             }
+                        } else if ("CREATURE_STATE".equals(type)) {
+                            try {
+                                if (!MultiplayerNetworkHelper.handleCreatureState(this.screen, "CREATURE_STATE:" + payload, srcId)) {
+                                    Gdx.app.error("Client", "Failed to handle CREATURE_STATE", null);
+                                }
+                            } catch (Exception e) {
+                                Gdx.app.error("Client", "Exception handling CREATURE_STATE", e);
+                            }
                         } else if ("VEH_INV_SYNC".equals(type)) {
                             try {
                                 if (!MultiplayerNetworkHelper.handleVehicleInvSync(this.screen, "VEH_INV_SYNC:" + payload, srcId)) {

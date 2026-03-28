@@ -55,6 +55,7 @@ public class Server {
     private float lastTwWeatherDur = -9999.0f;
     private volatile long lastHostVehMetaSentMs = 0L;
     private final java.util.HashMap<Long, String> lastHostVehMeta = new java.util.HashMap<Long, String>();
+    private volatile long lastCreatureStateSentMs = 0L;
 
     public Server(int port) {
         this.port = port;
@@ -206,6 +207,27 @@ public class Server {
                                             }
                                         }
                                         Server.this.lastHostVehMetaSentMs = nowMeta;
+                                    }
+                                } catch (Exception ignored) {}
+
+                                // Creature state sync from host (position + state)
+                                try {
+                                    long nowCreature = System.currentTimeMillis();
+                                    if (nowCreature - Server.this.lastCreatureStateSentMs >= 100L) {
+                                        for (com.cairn4.moonbase.entities.Entity e : Server.this.gameScreen.world.entityList) {
+                                            if (!(e instanceof com.cairn4.moonbase.entities.Creature)) continue;
+                                            com.cairn4.moonbase.entities.Creature c = (com.cairn4.moonbase.entities.Creature)e;
+                                            String type = "";
+                                            try { if (c.creatureData != null && c.creatureData.id != null) type = c.creatureData.id; } catch (Exception ignored2) {}
+                                            if (type == null || type.length() == 0) continue;
+                                            String state = "";
+                                            try { if (c.stateMachine != null && c.stateMachine.getCurrentState() != null) state = c.stateMachine.getCurrentState().name(); } catch (Exception ignored2) {}
+                                            float rot = 0f;
+                                            try { rot = c.group.getRotation(); } catch (Exception ignored2) {}
+                                            String cs = "CREATURE_STATE:" + type + ":" + c.id + ":" + c.getXPos() + ":" + c.getYPos() + ":" + rot + ":" + state;
+                                            Server.this.broadcast("0:" + cs, null);
+                                        }
+                                        Server.this.lastCreatureStateSentMs = nowCreature;
                                     }
                                 } catch (Exception ignored) {}
                             } catch (Exception ignored2) {}

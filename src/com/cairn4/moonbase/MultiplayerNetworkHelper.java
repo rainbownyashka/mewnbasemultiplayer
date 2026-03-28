@@ -818,6 +818,13 @@ public class MultiplayerNetworkHelper {
                     } else if ("trailer".equals(type)) {
                         ent = new com.cairn4.moonbase.entities.VehicleTrailer(gameScreen.world, x, y, rot);
                     }
+                    if (ent == null) {
+                        try {
+                            if (com.cairn4.moonbase.entities.CreatureLoader.getInstance().getData(type) != null) {
+                                ent = new com.cairn4.moonbase.entities.Creature(gameScreen.world, x, y, rot, type);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                     if (ent != null) {
                         gameScreen.world.registerNetworkEntity(ent, entId);
                         try {
@@ -869,6 +876,57 @@ public class MultiplayerNetworkHelper {
         }
         return false;
     }
+
+    /**
+     * Handles creature state sync (CREATURE_STATE:type:id:x:y:rot:state)
+     */
+    public static boolean handleCreatureState(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("CREATURE_STATE:")) return false;
+            String[] parts = message.split(":", 7);
+            if (parts.length < 7 || gameScreen == null || gameScreen.world == null) return false;
+            final String type = parts[1];
+            final long entId = safeParseLong(parts[2], -1L);
+            final float x = safeParseFloat(parts[3], Float.NaN);
+            final float y = safeParseFloat(parts[4], Float.NaN);
+            final float rot = safeParseFloat(parts[5], 0.0f);
+            final String state = parts[6];
+            if (entId <= 0) return false;
+            Gdx.app.postRunnable(() -> {
+                try {
+                    com.cairn4.moonbase.entities.Entity ent = gameScreen.world.getEntityById(entId);
+                    com.cairn4.moonbase.entities.Creature c = null;
+                    if (ent instanceof com.cairn4.moonbase.entities.Creature) {
+                        c = (com.cairn4.moonbase.entities.Creature)ent;
+                    } else if (ent == null) {
+                        try {
+                            if (com.cairn4.moonbase.entities.CreatureLoader.getInstance().getData(type) != null) {
+                                c = new com.cairn4.moonbase.entities.Creature(gameScreen.world, x, y, rot, type);
+                                gameScreen.world.registerNetworkEntity(c, entId);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (c == null) return;
+                    try { c.setWorldPos(x, y); } catch (Exception ignored) {}
+                    try { if (c.group != null) c.group.setRotation(rot); } catch (Exception ignored) {}
+                    try {
+                        if (state != null && state.length() > 0 && c.stateMachine != null) {
+                            com.cairn4.moonbase.entities.CreatureState st = com.cairn4.moonbase.entities.CreatureState.valueOf(state);
+                            if (c.stateMachine.getCurrentState() != st) {
+                                c.stateMachine.changeState(st);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    Gdx.app.error("NetworkHelper", "Failed to apply CREATURE_STATE", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Error handling CREATURE_STATE", e);
+        }
+        return false;
+    }
     
     /**
      * Utility for safe parsing of int with default value
@@ -887,6 +945,14 @@ public class MultiplayerNetworkHelper {
     private static float safeParseFloat(String s, float def) {
         try {
             return Float.parseFloat(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static long safeParseLong(String s, long def) {
+        try {
+            return Long.parseLong(s.trim());
         } catch (Exception e) {
             return def;
         }
