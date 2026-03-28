@@ -45,3 +45,4 @@
 - Biomes: confirm ice tint no longer looks grassy; adjust tint/sprites if needed.
 - Biomes: verify plants/trees/shrooms no longer spawn on ice tiles in new worlds.
 - Console: verify `seticebiome r g b` retints loaded ice tiles and confirm expected range (0..1).
+- Assets: verify ice biome uses new test/ice-* atlas regions and no longer shows green ground bleed.

@@ -42,8 +42,8 @@ implements Pool.Poolable {
     public static float[] altThresholds = new float[]{0.15f, 0.3f, 0.45f, 0.7f, 0.82f, 0.92f};
     public static float[] wetThresholds = new float[]{0.2f, 0.5f, 0.75f, 0.9f};
     public static Biomes[][] biomeTable = new Biomes[][]{{Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.ground}, {Biomes.rock, Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.ice, Biomes.ice, Biomes.ground, Biomes.ground, Biomes.volcanic}, {Biomes.ice, Biomes.ice, Biomes.volcanic, Biomes.volcanic, Biomes.volcanic}};
-    public static float ICE_TINT_R = 0.5f;
-    public static float ICE_TINT_G = 0.72f;
+    public static float ICE_TINT_R = 1.0f;
+    public static float ICE_TINT_G = 1.0f;
     public static float ICE_TINT_B = 1.0f;
     private static int[] rockTileAlternates = new int[]{0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2};
     boolean resources = false;
@@ -196,7 +196,7 @@ implements Pool.Poolable {
                 break;
             }
             case ice: {
-                this.spriteName = "test/ground-15";
+                this.spriteName = "test/ice-15";
                 float rI = MathUtils.random();
                 if (rI > 0.4f && rI <= 0.9f) {
                     int rAlt = MathUtils.random(1, 5);
@@ -354,7 +354,7 @@ implements Pool.Poolable {
     }
 
     protected String getBiomeSpriteName(Biomes b) {
-        if (b == Biomes.ice) return "ground";
+        if (b == Biomes.ice) return "ice";
         return b.toString();
     }
 
