@@ -116,6 +116,7 @@ Changes
 - Planets: added multi-planet save metadata (PlanetData) and per-planet worldData files (`worldData_p<id>.json`).
 - Planets: leaving planet now triggers new-planet generation (single-player only) with player+tech transfer.
 - Planets: TerrainGen now supports planetType profiles (default/crimson/ash) for different noise/biome feel.
+- Planets: reload loading-screen assets before travel to avoid black-screen crash.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.

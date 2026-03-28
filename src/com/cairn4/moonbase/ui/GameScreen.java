@@ -133,6 +133,12 @@ implements Telegraph {
             if (MoonBase.pendingPlanetSwitch != null) {
                 return;
             }
+            // Ensure loading screen assets are present (they may have been unloaded after previous load).
+            try {
+                com.cairn4.moonbase.AssetManagerSingleton.getInstance().load("loading.atlas", com.badlogic.gdx.graphics.g2d.TextureAtlas.class);
+                com.cairn4.moonbase.AssetManagerSingleton.getInstance().load("loading-bg.png", com.badlogic.gdx.graphics.Texture.class);
+                com.cairn4.moonbase.AssetManagerSingleton.getInstance().finishLoading();
+            } catch (Exception ignored) {}
             // Save current planet state
             try { this.gameLoader.saveGame(this.world, false); } catch (Exception ignored) {}
 
