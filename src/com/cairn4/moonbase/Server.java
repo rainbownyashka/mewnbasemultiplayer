@@ -893,6 +893,7 @@ public class Server {
         private DataOutputStream out;
         private DataInputStream in;
         private String appearanceData;
+        private boolean joinNotified = false;
         private final java.util.concurrent.ConcurrentHashMap<Integer, PendingReliable> pendingReliable = new java.util.concurrent.ConcurrentHashMap<>();
         private final java.util.concurrent.atomic.AtomicInteger reliableSeq = new java.util.concurrent.atomic.AtomicInteger(1);
         private long lastReliableSweep = 0L;
@@ -1603,6 +1604,25 @@ public class Server {
                             }
                         } catch (Exception ignored) {}
                         server.broadcast("APPEARANCE:" + this.clientId + ":" + this.appearanceData, this);
+                        // Announce to host HUD using the decoded nickname (once)
+                        try {
+                            if (!this.joinNotified && server.gameScreen != null && this.appearanceData != null) {
+                                String[] parts = this.appearanceData.split("\\|");
+                                String decNick = "";
+                                try { if (parts.length > 2) decNick = java.net.URLDecoder.decode(parts[2], "UTF-8"); } catch (Exception ignored) {}
+                                if (decNick != null && decNick.length() > 0) {
+                                    this.joinNotified = true;
+                                    final String nn = decNick;
+                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                        try {
+                                            if (server.gameScreen != null && server.gameScreen.hud != null && server.gameScreen.hud.hudNotifications != null) {
+                                                server.gameScreen.hud.hudNotifications.newMessage((String) null, nn + " connected", com.badlogic.gdx.graphics.Color.valueOf("25addb"));
+                                            }
+                                        } catch (Exception ignored) {}
+                                    });
+                                }
+                            }
+                        } catch (Exception ignored) {}
                         // Migrate any fallback-saved state to nick key, then send saved state to client
                         try {
                             String nickKey = getPlayerStateKey();

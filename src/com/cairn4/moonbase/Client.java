@@ -37,10 +37,12 @@ import com.cairn4.moonbase.net.ProtocolV2;
 
  public class Client {
      public GameScreen screen;
-     private Map<String, Long> recentMessages = new ConcurrentHashMap<>();
-     private static final long DUPLICATE_WINDOW_MS = 500L;
+    private Map<String, Long> recentMessages = new ConcurrentHashMap<>();
+    private static final long DUPLICATE_WINDOW_MS = 500L;
     private Map<Integer, Float> flipOverrides = new ConcurrentHashMap<>();
     private Set<Integer> pendingSpawns = new ConcurrentSkipListSet<>();
+    private Set<Integer> pendingConnectNotify = new ConcurrentSkipListSet<>();
+    private Map<Integer, String> knownNicks = new ConcurrentHashMap<>();
     private volatile String pendingTechSyncPayload = null;
      private int clientId = -1;
      private Socket socket;
@@ -267,9 +269,9 @@ import com.cairn4.moonbase.net.ProtocolV2;
                     payload = pr.payload;
                 }
             }
-             if ("CONNECTED".equals(type)) {
-                 final int id = safeParseInt(payload.trim(), -1);
-                 Gdx.app.log("Client", "Noted CONNECTED:" + id + " (will send SPAWNREMOTE)");
+            if ("CONNECTED".equals(type)) {
+                final int id = safeParseInt(payload.trim(), -1);
+                Gdx.app.log("Client", "Noted CONNECTED:" + id + " (will send SPAWNREMOTE)");
                  try {
                      // First send our APPEARANCE so others don't spawn an empty puppet
                      if (this.screen != null && this.screen.world != null && this.screen.world.player != null) {
@@ -287,46 +289,67 @@ import com.cairn4.moonbase.net.ProtocolV2;
                      }
                  } catch (Exception e) {
                      Gdx.app.error("Client", "Failed to announce SPAWNREMOTE after CONNECTED", e);
-                 }
-                 if (this.screen != null && this.screen.game != null && this.screen.game.console != null) {
-                     final String text = "Player " + id + " connected";
-                     Gdx.app.postRunnable(() -> {
-                         try {
-                             this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("25addb"));
-                         } catch (Exception exception) {}
-                     });
-                 }
-                 return;
-             }
-             if ("DISCONNECTED".equals(type)) {
-                 final int id = safeParseInt(payload.trim(), -1);
-                 if (this.screen != null)
-                     Gdx.app.postRunnable(() -> {
+                }
+                if (id >= 0) {
+                    pendingConnectNotify.add(id);
+                }
+                return;
+            }
+            if ("DISCONNECTED".equals(type)) {
+                final int id = safeParseInt(payload.trim(), -1);
+                if (this.screen != null)
+                    Gdx.app.postRunnable(() -> {
                          try {
                              this.screen.removePlayer(id);
                          } catch (Exception e) {
                              Gdx.app.error("Client", "Failed to remove player on render thread", e);
-                         }
-                     });
-                 final String text = "Player " + id + " disconnected";
-                 if (this.screen != null)
-                     Gdx.app.postRunnable(() -> {
-                         try {
-                             this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("e33e46"));
-                         } catch (Exception exception) {}
-                     });
-                 return;
-             }
+                        }
+                    });
+                String nick = null;
+                try { nick = knownNicks.get(id); } catch (Exception ignored) {}
+                final String text = (nick != null && nick.length() > 0) ? (nick + " disconnected") : ("Player " + id + " disconnected");
+                if (this.screen != null)
+                    Gdx.app.postRunnable(() -> {
+                        try {
+                            this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("e33e46"));
+                        } catch (Exception exception) {}
+                    });
+                try { knownNicks.remove(id); } catch (Exception ignored) {}
+                try { pendingConnectNotify.remove(id); } catch (Exception ignored) {}
+                return;
+            }
              //
-             if ("APPEARANCE".equals(type)) {
-                 try {
-                     if (MultiplayerNetworkHelper.handleAppearance(this.screen, "APPEARANCE:" + payload, -1)) {
-                         return;
-                     }
-                 } catch (Exception e) {
-                     Gdx.app.error("Client", "Exception handling APPEARANCE message", e);
-                 }
-             }
+            if ("APPEARANCE".equals(type)) {
+                try {
+                    if (MultiplayerNetworkHelper.handleAppearance(this.screen, "APPEARANCE:" + payload, -1)) {
+                        try {
+                            String[] parts = payload.split(":", 2);
+                            if (parts.length >= 2) {
+                                int pid = safeParseInt(parts[0], -1);
+                                String data = parts[1];
+                                String[] ap = data.split("\\|");
+                                String nick = (ap.length > 2) ? java.net.URLDecoder.decode(ap[2], "UTF-8") : "";
+                                if (pid >= 0) {
+                                    try { knownNicks.put(pid, nick); } catch (Exception ignored) {}
+                                    if (pendingConnectNotify.remove(pid) && pid != this.clientId) {
+                                        final String text = (nick != null && nick.length() > 0) ? (nick + " connected") : ("Player " + pid + " connected");
+                                        if (this.screen != null) {
+                                            Gdx.app.postRunnable(() -> {
+                                                try {
+                                                    this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("25addb"));
+                                                } catch (Exception ignored) {}
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                        return;
+                    }
+                } catch (Exception e) {
+                    Gdx.app.error("Client", "Exception handling APPEARANCE message", e);
+                }
+            }
              if ("PING".equals(type)) {
                  try {
                      System.out.println("[Client] PING: " + payload.toUpperCase());

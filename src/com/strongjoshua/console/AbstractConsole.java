@@ -196,6 +196,36 @@ Disposable {
                 return;
             }
         }
+        // Fallback: if no exact arg match, but a single-String method exists, join all args into one
+        if (numArgs > 1) {
+            for (int i = 0; i < size; ++i) {
+                Method m = methods[(Integer)possible.get(i)];
+                Class[] params = m.getParameterTypes();
+                if (params.length != 1 || !params[0].equals(String.class)) continue;
+                try {
+                    StringBuilder sb = new StringBuilder();
+                    for (int j = 0; j < numArgs; ++j) {
+                        if (j > 0) sb.append(' ');
+                        sb.append(sArgs[j]);
+                    }
+                    Object[] args = new Object[]{sb.toString()};
+                    m.setAccessible(true);
+                    m.invoke(this.exec, args);
+                    return;
+                } catch (ReflectionException e) {
+                    String msg = e.getMessage();
+                    if (msg == null || msg.length() <= 0) {
+                        msg = "Unknown Error";
+                        e.printStackTrace();
+                    }
+                    this.log(msg, LogLevel.ERROR);
+                    if (this.consoleTrace) {
+                        this.log(e, LogLevel.ERROR);
+                    }
+                    return;
+                }
+            }
+        }
         this.log("Bad parameters. Check your code.", LogLevel.ERROR);
     }
 
@@ -399,4 +429,3 @@ Disposable {
         return null;
     }
 }
-

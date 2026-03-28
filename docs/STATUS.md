@@ -111,6 +111,8 @@ Changes
 - Shutdown: add JVM shutdown hook to stop server on hard exits.
 - Vehicle MP: preserve remote velocity during interpolation so wheel animations match host.
 - Multiplayer tech: added server.properties (syncTech) and TECH_SYNC/TECH_RESEARCH/TECH_SAMPLES_ADD for server-authoritative tech tree + samples.
+- Console: allow single-string commands to accept multiple args (chat with spaces) and extend chat notification lifetime.
+- Multiplayer: connect/disconnect notifications now use nick; host HUD shows join message on APPEARANCE.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -192,6 +194,7 @@ Verification
 - JVM shutdown hook not yet verified in-game.
 - Remote wheel animation sync not yet verified in-game.
 - Tech sync + server.properties not yet verified in-game.
+- Chat notifications duration + connect/disconnect nick display not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

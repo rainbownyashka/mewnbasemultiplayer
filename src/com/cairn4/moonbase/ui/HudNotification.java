@@ -32,11 +32,12 @@ public class HudNotification {
         parentGroup.addActor(this.group);
         this.innerGroup = new Group();
         this.group.addActor(this.innerGroup);
-        this.fadeOut();
+        this.applyFade(1.8f);
     }
 
-    private void fadeOut() {
-        this.innerGroup.addAction(Actions.sequence(Actions.alpha(0.0f), Actions.fadeIn(0.25f), Actions.delay(1.8f), Actions.fadeOut(1.2f), Actions.run(new Runnable(){
+    private void applyFade(float delaySeconds) {
+        this.innerGroup.clearActions();
+        this.innerGroup.addAction(Actions.sequence(Actions.alpha(0.0f), Actions.fadeIn(0.25f), Actions.delay(delaySeconds), Actions.fadeOut(1.2f), Actions.run(new Runnable(){
 
             @Override
             public void run() {
@@ -97,6 +98,7 @@ public class HudNotification {
         this.bg.setPosition(0.0f, 0.0f, 8);
         this.bg.setColor(0.7f, 0.7f, 0.7f, 0.5f);
         this.innerGroup.addActor(this.bg);
+        this.applyFade(4.0f);
         // Nick label
         AutoTypeLabel nickLabel = new AutoTypeLabel(nick + ": ", this.hud.labelStyle);
         nickLabel.setFontScale(0.4f);
@@ -144,4 +146,3 @@ public class HudNotification {
         this.group.setPosition(0.0f, 0.0f);
     }
 }
-
