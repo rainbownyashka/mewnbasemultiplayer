@@ -80,6 +80,7 @@ Changes
 - Player: remote exit vehicle now restores spine visibility (fixes invisible player after exit).
 - Server: decrement usedNames on disconnect so nick reuse doesn't disappear.
 - Server: map VEH_STATE/VEH_META to nearest/owned vehicle if IDs drift, and relay corrected id.
+- Server: accept VEH_* messages with optional "<id>:" prefix (fixes client-sent prefixed VEH_STATE).
 - DesktopLauncher: added `-Dmewnbase.serverOnly=1` to run with hidden 1x1 window, disabled audio, and lower FPS.
 - MoonBase: server-only mode forces INSTANT_RUN and disables Discord RPC.
 
@@ -136,6 +137,7 @@ Verification
 - Vehicle enter/exit + nick reuse fixes not yet verified in-game.
 - Compiled Server.java with patch_manual.ps1 (2026-03-28).
 - Vehicle state relay mapping (id drift fallback) not yet verified in-game.
+- Compiled Server.java with patch_manual.ps1 (2026-03-28) for VEH_* prefix handling.
 - Compiled DesktopLauncher.java and MoonBase.java with patch_manual.ps1 (2026-03-27).
 
 Risks

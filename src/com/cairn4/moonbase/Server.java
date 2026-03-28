@@ -553,6 +553,19 @@ public class Server {
         return null;
     }
 
+    private static String stripSenderPrefix(String message, String expectedPrefix) {
+        try {
+            if (message == null) return null;
+            if (message.startsWith(expectedPrefix)) return message;
+            int idx = message.indexOf(':');
+            if (idx > 0) {
+                String after = message.substring(idx + 1);
+                if (after.startsWith(expectedPrefix)) return after;
+            }
+        } catch (Exception ignored) {}
+        return message;
+    }
+
 
     private static class ClientHandler implements Runnable {
         private Socket socket;
@@ -1241,9 +1254,10 @@ public class Server {
                             }
                         }
                         // Vehicle enter/exit and state sync
-                        if (message.startsWith("VEH_ENTER:") && server.gameScreen != null) {
+                        if ((message.startsWith("VEH_ENTER:") || (message.indexOf(':') > 0 && message.substring(message.indexOf(':') + 1).startsWith("VEH_ENTER:"))) && server.gameScreen != null) {
                             try {
-                                final int vehId = safeParseInt(message.substring("VEH_ENTER:".length()), -1);
+                                final String parseMsg = stripSenderPrefix(message, "VEH_ENTER:");
+                                final int vehId = safeParseInt(parseMsg.substring("VEH_ENTER:".length()), -1);
                                 if (vehId >= 0) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
@@ -1273,9 +1287,10 @@ public class Server {
                             }
                             continue;
                         }
-                        if (message.startsWith("VEH_EXIT:") && server.gameScreen != null) {
+                        if ((message.startsWith("VEH_EXIT:") || (message.indexOf(':') > 0 && message.substring(message.indexOf(':') + 1).startsWith("VEH_EXIT:"))) && server.gameScreen != null) {
                             try {
-                                final int vehId = safeParseInt(message.substring("VEH_EXIT:".length()), -1);
+                                final String parseMsg = stripSenderPrefix(message, "VEH_EXIT:");
+                                final int vehId = safeParseInt(parseMsg.substring("VEH_EXIT:".length()), -1);
                                 if (vehId >= 0) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
@@ -1311,9 +1326,9 @@ public class Server {
                             }
                             continue;
                         }
-                        if (message.startsWith("VEH_STATE:")) {
+                        if (message.startsWith("VEH_STATE:") || (message.indexOf(':') > 0 && message.substring(message.indexOf(':') + 1).startsWith("VEH_STATE:"))) {
                             try {
-                                final String payload = message;
+                                final String payload = stripSenderPrefix(message, "VEH_STATE:");
                                 final int senderId = this.clientId;
                                 // validate driver before relay/apply
                                 boolean allow = false;
@@ -1381,9 +1396,9 @@ public class Server {
                             }
                             continue;
                         }
-                        if (message.startsWith("VEH_META:")) {
+                        if (message.startsWith("VEH_META:") || (message.indexOf(':') > 0 && message.substring(message.indexOf(':') + 1).startsWith("VEH_META:"))) {
                             try {
-                                final String payload = message;
+                                final String payload = stripSenderPrefix(message, "VEH_META:");
                                 final int senderId = this.clientId;
                                 // validate driver before relay/apply
                                 boolean allow = false;
