@@ -124,6 +124,7 @@ Changes
 - Resources: ice resource tiles now spawn directly in ice biome at higher frequency (lower noise threshold).
 - Biomes: increased ice resource spawn density again and shifted ice tint further blue to reduce grassy look.
 - Biomes: made ice tint more blue and blocked vegetation-type droppers from spawning on ice tiles.
+- Console: added `seticebiome` command to adjust ice tint at runtime and retint loaded ice tiles.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -211,6 +212,7 @@ Verification
 - Ice biome spawn density + ice resource placement not yet verified in-game.
 - Ice biome tint + ice resource density tweaks not yet verified in-game.
 - Ice biome vegetation suppression + tint adjustments not yet verified in-game.
+- `seticebiome` runtime tint updates not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

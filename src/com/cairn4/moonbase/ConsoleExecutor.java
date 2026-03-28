@@ -27,6 +27,7 @@ import com.cairn4.moonbase.entities.VehicleTrailer;
 import com.cairn4.moonbase.techtree.TechUpgrade;
 import com.cairn4.moonbase.tiles.BaseModule;
 import com.cairn4.moonbase.tiles.ItemDropper;
+import com.cairn4.moonbase.tiles.GroundTile;
 import com.cairn4.moonbase.tiles.Tile;
 import com.cairn4.moonbase.ui.FrontendScreen;
 import com.cairn4.moonbase.ui.GameScreen;
@@ -90,6 +91,30 @@ extends CommandExecutor {
 
     public void setWeather(String weather) {
         this.gameScreen.world.weatherManager.setWeather(weather);
+    }
+
+    public void seticebiome(float r, float g, float b) {
+        GroundTile.setIceTint(r, g, b);
+        int updated = 0;
+        try {
+            for (Chunk c : this.world.worldChunks.values()) {
+                if (c == null || c.groundTiles == null) continue;
+                for (GroundTile gt : c.groundTiles.values()) {
+                    if (gt == null) continue;
+                    if (gt.getBiome() == GroundTile.Biomes.ice) {
+                        gt.refreshIceTint();
+                        ++updated;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("seticebiome: refresh failed: " + e);
+        }
+        this.gameScreen.game.console.log("ICE_TINT: " + GroundTile.ICE_TINT_R + "," + GroundTile.ICE_TINT_G + "," + GroundTile.ICE_TINT_B + " (updated " + updated + " tiles)");
+    }
+
+    public void seticebiome(float v) {
+        this.seticebiome(v, v, v);
     }
 
     /**
@@ -1380,4 +1405,3 @@ extends CommandExecutor {
         }
     }
 }
-

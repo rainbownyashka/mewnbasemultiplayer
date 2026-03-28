@@ -42,6 +42,9 @@ implements Pool.Poolable {
     public static float[] altThresholds = new float[]{0.15f, 0.3f, 0.45f, 0.7f, 0.82f, 0.92f};
     public static float[] wetThresholds = new float[]{0.2f, 0.5f, 0.75f, 0.9f};
     public static Biomes[][] biomeTable = new Biomes[][]{{Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.ground}, {Biomes.rock, Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.ice, Biomes.ice, Biomes.ground, Biomes.ground, Biomes.volcanic}, {Biomes.ice, Biomes.ice, Biomes.volcanic, Biomes.volcanic, Biomes.volcanic}};
+    public static float ICE_TINT_R = 0.5f;
+    public static float ICE_TINT_G = 0.72f;
+    public static float ICE_TINT_B = 1.0f;
     private static int[] rockTileAlternates = new int[]{0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2};
     boolean resources = false;
     boolean discovered;
@@ -209,7 +212,8 @@ implements Pool.Poolable {
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
         if (this.getBiome() == Biomes.ice) {
-            this.image.setColor(0.5f, 0.72f, 1.0f, 1.0f);
+            this.image.setName("iceBase");
+            this.image.setColor(ICE_TINT_R, ICE_TINT_G, ICE_TINT_B, 1.0f);
         }
         this.group.addActor(this.image);
         if (this.autoTileGroup != null) {
@@ -293,7 +297,8 @@ implements Pool.Poolable {
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
             testLayer.setPosition(-0.01f, -0.01f);
             if (biomeLayer == Biomes.ice) {
-                testLayer.setColor(0.5f, 0.72f, 1.0f, 1.0f);
+                testLayer.setName("iceLayer");
+                testLayer.setColor(ICE_TINT_R, ICE_TINT_G, ICE_TINT_B, 1.0f);
             }
             this.group.addActor(testLayer);
         }
@@ -375,6 +380,28 @@ implements Pool.Poolable {
             }
         }
         return 1;
+    }
+
+    public static void setIceTint(float r, float g, float b) {
+        ICE_TINT_R = MathUtils.clamp(r, 0.0f, 1.0f);
+        ICE_TINT_G = MathUtils.clamp(g, 0.0f, 1.0f);
+        ICE_TINT_B = MathUtils.clamp(b, 0.0f, 1.0f);
+    }
+
+    public void refreshIceTint() {
+        if (this.getBiome() != Biomes.ice) {
+            return;
+        }
+        if (this.image != null) {
+            this.image.setColor(ICE_TINT_R, ICE_TINT_G, ICE_TINT_B, 1.0f);
+        }
+        if (this.group != null) {
+            for (Actor a : this.group.getChildren()) {
+                if (a != null && "iceLayer".equals(a.getName())) {
+                    a.setColor(ICE_TINT_R, ICE_TINT_G, ICE_TINT_B, 1.0f);
+                }
+            }
+        }
     }
 
     public void setDiscovered(boolean discovered) {
