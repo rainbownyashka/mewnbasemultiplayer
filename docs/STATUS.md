@@ -117,6 +117,7 @@ Changes
 - Planets: leaving planet now triggers new-planet generation (single-player only) with player+tech transfer.
 - Planets: TerrainGen now supports planetType profiles (default/crimson/ash) for different noise/biome feel.
 - Planets: reload loading-screen assets before travel to avoid black-screen crash.
+- Planets: ensure mission seed set on travel to avoid null seed crash.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.

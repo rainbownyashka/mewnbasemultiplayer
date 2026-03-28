@@ -150,6 +150,7 @@ implements Telegraph {
             int nextPlanetId = computeNextPlanetId();
             String nextPlanetType = pickPlanetType(nextPlanetId);
             String nextPlanetName = null;
+            String nextSeed = null;
             try {
                 Mission m = MoonBase.getCurrentMission();
                 if (m != null) {
@@ -159,6 +160,7 @@ implements Telegraph {
             if (nextPlanetName == null || nextPlanetName.length() == 0) {
                 nextPlanetName = "Planet-" + (nextPlanetId + 1);
             }
+            try { nextSeed = Integer.toString(com.badlogic.gdx.math.MathUtils.random(10000)); } catch (Exception ignored) {}
 
             MoonBase.pendingPlanetSwitch = new MoonBase.PendingPlanetSwitch(nextPlanetId, nextPlanetName, nextPlanetType);
             // Update mission in memory before new world generation
@@ -168,6 +170,9 @@ implements Telegraph {
                     m.planetId = nextPlanetId;
                     m.planetType = nextPlanetType;
                     m.setPlanetName(nextPlanetName);
+                    if (nextSeed != null) {
+                        m.seed = nextSeed;
+                    }
                 }
             } catch (Exception ignored) {}
 
@@ -238,6 +243,13 @@ implements Telegraph {
                         } catch (Exception ignored) {}
                     }
                     this.world.techManager.setSamples(MoonBase.pendingTechSamples);
+                }
+            } catch (Exception ignored) {}
+            // Ensure mission seed exists to avoid null when generating
+            try {
+                Mission m = MoonBase.getCurrentMission();
+                if (m != null && m.seed == null) {
+                    m.seed = Integer.toString(com.badlogic.gdx.math.MathUtils.random(10000));
                 }
             } catch (Exception ignored) {}
             // Persist new planet state immediately so worldData_pX is created
