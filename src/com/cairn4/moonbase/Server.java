@@ -491,6 +491,68 @@ public class Server {
         return sb.toString();
     }
 
+    private static com.cairn4.moonbase.entities.Vehicle findVehicleById(com.cairn4.moonbase.World world, int vehId) {
+        try {
+            if (world == null || vehId < 0) return null;
+            com.cairn4.moonbase.entities.Entity ent = world.getEntityById(vehId);
+            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) return (com.cairn4.moonbase.entities.Vehicle) ent;
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private static com.cairn4.moonbase.entities.Vehicle findVehicleByOwner(com.cairn4.moonbase.World world, int ownerId) {
+        try {
+            if (world == null || ownerId < 0) return null;
+            for (com.cairn4.moonbase.entities.Entity e : world.entityList) {
+                if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                if (v.driverOwnerId == ownerId || v.passengerOwnerId == ownerId) return v;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private static com.cairn4.moonbase.entities.Vehicle findVehicleNear(com.cairn4.moonbase.World world, float x, float y, float maxDist) {
+        try {
+            if (world == null || Float.isNaN(x) || Float.isNaN(y)) return null;
+            float best = maxDist;
+            com.cairn4.moonbase.entities.Vehicle bestV = null;
+            for (com.cairn4.moonbase.entities.Entity e : world.entityList) {
+                if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
+                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                float dx = v.getXPos() - x;
+                float dy = v.getYPos() - y;
+                float d = (float)Math.sqrt(dx * dx + dy * dy);
+                if (d < best) {
+                    best = d;
+                    bestV = v;
+                }
+            }
+            return bestV;
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private static com.cairn4.moonbase.entities.Vehicle findVehicleForOwnerOrNear(GameScreen gs, int vehId, int ownerId, float x, float y) {
+        try {
+            if (gs == null || gs.world == null) return null;
+            com.cairn4.moonbase.entities.Vehicle v = findVehicleById(gs.world, vehId);
+            if (v != null) return v;
+            v = findVehicleByOwner(gs.world, ownerId);
+            if (v != null) return v;
+            float px = x, py = y;
+            try {
+                com.cairn4.moonbase.Player rp = gs.getRemotePlayer(ownerId);
+                if (rp != null) {
+                    px = rp.getXPos();
+                    py = rp.getYPos();
+                }
+            } catch (Exception ignored) {}
+            return findVehicleNear(gs.world, px, py, 600.0f);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
 
     private static class ClientHandler implements Runnable {
         private Socket socket;
@@ -1185,9 +1247,8 @@ public class Server {
                                 if (vehId >= 0) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
-                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
-                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                            com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, ClientHandler.this.clientId, Float.NaN, Float.NaN);
+                                            if (v != null) {
                                                 boolean changed = false;
                                                 if (!v.hasDriver()) {
                                                     v.setDriver(ClientHandler.this.clientId);
@@ -1218,9 +1279,8 @@ public class Server {
                                 if (vehId >= 0) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
-                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
-                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                            com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, ClientHandler.this.clientId, Float.NaN, Float.NaN);
+                                            if (v != null) {
                                                 boolean changed = false;
                                                 if (v.driverOwnerId == ClientHandler.this.clientId) {
                                                     v.driverOwnerId = -1;
@@ -1257,16 +1317,18 @@ public class Server {
                                 final int senderId = this.clientId;
                                 // validate driver before relay/apply
                                 boolean allow = false;
+                                int resolvedVehId = -1;
+                                com.cairn4.moonbase.entities.Vehicle resolvedVeh = null;
                                 try {
                                     if (server.gameScreen != null && server.gameScreen.world != null) {
-                                        String[] parts = payload.split(":", 3);
-                                        if (parts.length >= 2) {
-                                            int vehId = safeParseInt(parts[1], -1);
-                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
-                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
-                                                allow = (v.driverOwnerId == senderId);
-                                            }
+                                        String[] parts = payload.split(":", 7);
+                                        int vehId = (parts.length >= 2) ? safeParseInt(parts[1], -1) : -1;
+                                        float px = (parts.length >= 4) ? safeParseFloat(parts[2], Float.NaN) : Float.NaN;
+                                        float py = (parts.length >= 4) ? safeParseFloat(parts[3], Float.NaN) : Float.NaN;
+                                        resolvedVeh = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, px, py);
+                                        if (resolvedVeh != null) {
+                                            resolvedVehId = (int)resolvedVeh.id;
+                                            allow = (resolvedVeh.driverOwnerId == senderId);
                                         }
                                     }
                                 } catch (Exception ignored) {}
@@ -1274,12 +1336,23 @@ public class Server {
                                     continue;
                                 }
                                 // relay to others (validated)
-                                server.broadcast("0:" + payload, this);
+                                String relayPayload = payload;
+                                try {
+                                    if (resolvedVehId > 0) {
+                                        String[] parts = payload.split(":", 7);
+                                        if (parts.length >= 7) {
+                                            relayPayload = "VEH_STATE:" + resolvedVehId + ":" + parts[2] + ":" + parts[3] + ":" + parts[4] + ":" + parts[5] + ":" + parts[6];
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                                final String relayPayloadFinal = relayPayload;
+                                server.broadcast("0:" + relayPayloadFinal, this);
                                 if (server.gameScreen != null) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
-                                            if (!payload.startsWith("VEH_STATE:")) return;
-                                            String[] parts = payload.split(":", 7);
+                                            String usePayload = relayPayloadFinal;
+                                            if (!usePayload.startsWith("VEH_STATE:")) return;
+                                            String[] parts = usePayload.split(":", 7);
                                             if (parts.length < 7) return;
                                             int vehId = safeParseInt(parts[1], -1);
                                             float x = safeParseFloat(parts[2], Float.NaN);
@@ -1288,9 +1361,8 @@ public class Server {
                                             float vx = safeParseFloat(parts[5], 0.0f);
                                             float vy = safeParseFloat(parts[6], 0.0f);
                                             if (vehId < 0) return;
-                                            com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
-                                            if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
+                                            com.cairn4.moonbase.entities.Vehicle v = findVehicleById(server.gameScreen.world, vehId);
+                                            if (v != null) {
                                                 if (v.driverOwnerId != senderId) return;
                                                 if (v.body != null) {
                                                     try { v.body.setTransform(x / 256.0f, y / 256.0f, rot * com.badlogic.gdx.math.MathUtils.degreesToRadians); } catch (Exception ignored) {}
@@ -1315,15 +1387,16 @@ public class Server {
                                 final int senderId = this.clientId;
                                 // validate driver before relay/apply
                                 boolean allow = false;
+                                int resolvedVehId = -1;
                                 try {
                                     if (server.gameScreen != null && server.gameScreen.world != null) {
                                         int idx1 = payload.indexOf(':');
                                         int idx2 = payload.indexOf(':', idx1 + 1);
                                         if (idx2 > 0) {
                                             int vehId = safeParseInt(payload.substring(idx1 + 1, idx2), -1);
-                                            com.cairn4.moonbase.entities.Entity ent = server.gameScreen.world.getEntityById(vehId);
-                                            if (ent instanceof com.cairn4.moonbase.entities.Vehicle) {
-                                                com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)ent;
+                                            com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, senderId, Float.NaN, Float.NaN);
+                                            if (v != null) {
+                                                resolvedVehId = (int)v.id;
                                                 allow = (v.driverOwnerId == senderId);
                                             }
                                         }
@@ -1333,22 +1406,33 @@ public class Server {
                                     continue;
                                 }
                                 // relay to others (validated)
-                                server.broadcast("0:" + payload, this);
+                                String relayPayload = payload;
+                                try {
+                                    if (resolvedVehId > 0) {
+                                        int idx1 = payload.indexOf(':');
+                                        int idx2 = payload.indexOf(':', idx1 + 1);
+                                        String meta = payload.substring(idx2 + 1);
+                                        relayPayload = "VEH_META:" + resolvedVehId + ":" + meta;
+                                    }
+                                } catch (Exception ignored) {}
+                                final String relayPayloadFinal = relayPayload;
+                                server.broadcast("0:" + relayPayloadFinal, this);
                                 if (server.gameScreen != null) {
                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
                                         try {
-                                            if (!payload.startsWith("VEH_META:")) return;
-                                            int idx1 = payload.indexOf(':');
-                                            int idx2 = payload.indexOf(':', idx1 + 1);
+                                            String usePayload = relayPayloadFinal;
+                                            if (!usePayload.startsWith("VEH_META:")) return;
+                                            int idx1 = usePayload.indexOf(':');
+                                            int idx2 = usePayload.indexOf(':', idx1 + 1);
                                             if (idx2 < 0) return;
-                                            String idStr = payload.substring(idx1 + 1, idx2);
+                                            String idStr = usePayload.substring(idx1 + 1, idx2);
                                             int vehId = safeParseInt(idStr, -1);
                                             if (vehId < 0) return;
                                             com.cairn4.moonbase.entities.Entity e = server.gameScreen.world.getEntityById(vehId);
                                             if (e instanceof com.cairn4.moonbase.entities.Vehicle) {
                                                 com.cairn4.moonbase.entities.Vehicle v = (com.cairn4.moonbase.entities.Vehicle)e;
                                                 if (v.driverOwnerId != senderId) return;
-                                                MultiplayerNetworkHelper.handleVehicleMeta(server.gameScreen, payload, senderId);
+                                                MultiplayerNetworkHelper.handleVehicleMeta(server.gameScreen, usePayload, senderId);
                                             }
                                         } catch (Exception e2) {
                                             Gdx.app.error("Server", "Failed to apply VEH_META locally", e2);
