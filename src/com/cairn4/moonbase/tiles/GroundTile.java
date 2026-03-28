@@ -209,7 +209,7 @@ implements Pool.Poolable {
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
         if (this.getBiome() == Biomes.ice) {
-            this.image.setColor(0.55f, 0.78f, 1.0f, 1.0f);
+            this.image.setColor(0.5f, 0.72f, 1.0f, 1.0f);
         }
         this.group.addActor(this.image);
         if (this.autoTileGroup != null) {
@@ -293,7 +293,7 @@ implements Pool.Poolable {
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
             testLayer.setPosition(-0.01f, -0.01f);
             if (biomeLayer == Biomes.ice) {
-                testLayer.setColor(0.55f, 0.78f, 1.0f, 1.0f);
+                testLayer.setColor(0.5f, 0.72f, 1.0f, 1.0f);
             }
             this.group.addActor(testLayer);
         }

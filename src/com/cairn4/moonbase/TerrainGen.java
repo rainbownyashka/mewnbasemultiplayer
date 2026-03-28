@@ -391,9 +391,13 @@ public class TerrainGen {
             int x = gp.x;
             int y = gp.y;
             if (!chunk.isTileEmpty(x, y)) continue;
+            GroundTile gt = chunk.getGroundTile(x, y);
+            if (gt != null && gt.getBiome() == GroundTile.Biomes.ice && this.isIceBiomeVegetation(idd.id)) {
+                continue;
+            }
             for (ItemDropperSpawnBiome biome : idd.spawnBiomes) {
                 GroundTile.Biomes b = GroundTile.Biomes.valueOf(biome.biome);
-                if (chunk.getGroundTile(x, y).getBiome() != b || !(this.noise[x][y] > biome.threshold)) continue;
+                if (gt.getBiome() != b || !(this.noise[x][y] > biome.threshold)) continue;
                 if (numInChunk <= limit) {
                     boolean usingVariation = false;
                     if (idd.dropperVariations.size() > 0) {
@@ -415,6 +419,14 @@ public class TerrainGen {
                 continue block0;
             }
         }
+    }
+
+    private boolean isIceBiomeVegetation(String id) {
+        if (id == null) {
+            return false;
+        }
+        String lower = id.toLowerCase();
+        return lower.contains("plant") || lower.contains("tree") || lower.contains("shroom") || lower.contains("sprout");
     }
 
     private void placeFeatures(Chunk chunk, FeatureGenData idd) {
