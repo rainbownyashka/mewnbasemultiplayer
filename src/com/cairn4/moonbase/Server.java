@@ -10,6 +10,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Properties;
+import java.io.Writer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
@@ -56,6 +58,11 @@ public class Server {
     private volatile long lastHostVehMetaSentMs = 0L;
     private final java.util.HashMap<Long, String> lastHostVehMeta = new java.util.HashMap<Long, String>();
     private volatile long lastCreatureStateSentMs = 0L;
+    private final Object serverPropsLock = new Object();
+    private Properties serverProperties = new Properties();
+    private volatile boolean serverPropsLoaded = false;
+    private volatile boolean techSyncEnabled = true;
+    private String serverPropsPath = null;
 
     public Server(int port) {
         this.port = port;
@@ -63,6 +70,7 @@ public class Server {
     try { activeServer = this; } catch (Throwable ignored) {}
     // preload player states if possible
     try { ensurePlayerStatesLoaded(); } catch (Exception ignored) {}
+    try { ensureServerPropertiesLoaded(); } catch (Exception ignored) {}
     }
 
     // allow in-game server startup code to attach the running GameScreen
@@ -79,11 +87,13 @@ public class Server {
             }
         } catch (Exception ignored) {}
 
+        try { ensureServerPropertiesLoaded(); } catch (Exception ignored) {}
         startHostPosThreadIfNeeded();
     }
 
     public void start() {
         running = true;
+        try { ensureServerPropertiesLoaded(); } catch (Exception ignored) {}
         startHostPosThreadIfNeeded();
         new Thread(() -> {
             try {
@@ -263,6 +273,77 @@ public class Server {
         } catch (IOException e) {
             Gdx.app.error("Server", "Error stopping server", e);
         }
+    }
+
+    public boolean isTechSyncEnabled() {
+        return this.techSyncEnabled;
+    }
+
+    private String getServerPropertiesPath() {
+        try {
+            String folder = com.cairn4.moonbase.MoonBase.currentSaveFolder;
+            if (folder == null || folder.trim().length() == 0) {
+                return "server.properties";
+            }
+            return "saves/" + folder + "/server.properties";
+        } catch (Exception ignored) {}
+        return "server.properties";
+    }
+
+    private void ensureServerPropertiesLoaded() {
+        synchronized (serverPropsLock) {
+            String path = getServerPropertiesPath();
+            if (serverPropsLoaded && path != null && path.equals(serverPropsPath)) return;
+            serverPropsLoaded = true;
+            serverPropsPath = path;
+            try {
+                com.badlogic.gdx.files.FileHandle fh = com.badlogic.gdx.Gdx.files.local(path);
+                if (!fh.exists()) {
+                    // defaults
+                    serverProperties.setProperty("syncTech", "true");
+                    techSyncEnabled = true;
+                    try {
+                        try { fh.parent().mkdirs(); } catch (Exception ignored) {}
+                        Writer writer = fh.writer(false, "UTF-8");
+                        serverProperties.store(writer, "MewnBase server settings");
+                        writer.close();
+                    } catch (Exception ignored) {}
+                } else {
+                    try {
+                        java.io.Reader reader = fh.reader("UTF-8");
+                        serverProperties.load(reader);
+                        reader.close();
+                    } catch (Exception ignored) {}
+                    String syncTech = serverProperties.getProperty("syncTech", "true");
+                    techSyncEnabled = "true".equalsIgnoreCase(syncTech.trim());
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private String buildTechSyncPayload() {
+        try {
+            if (this.gameScreen == null || this.gameScreen.world == null || this.gameScreen.world.techManager == null) {
+                return null;
+            }
+            com.cairn4.moonbase.techtree.TechManager tm = this.gameScreen.world.techManager;
+            java.util.ArrayList<String> unlocked = tm.getSaveData();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < unlocked.size(); i++) {
+                if (i > 0) sb.append(',');
+                sb.append(unlocked.get(i));
+            }
+            String csv = sb.toString();
+            return tm.samples + ":" + java.net.URLEncoder.encode(csv, "UTF-8");
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void broadcastTechSync() {
+        if (!this.techSyncEnabled) return;
+        String payload = buildTechSyncPayload();
+        if (payload == null) return;
+        try { this.broadcast("0:TECH_SYNC:" + payload, null); } catch (Exception ignored) {}
     }
 
     public synchronized void broadcast(String message, ClientHandler exclude) {
@@ -849,6 +930,9 @@ public class Server {
                     || "SPAWNREMOTE".equals(type)
                     || "REQUEST_APPEARANCE".equals(type)
                     || "CONNECTED".equals(type)
+                    || "TECH_SYNC".equals(type)
+                    || "TECH_RESEARCH".equals(type)
+                    || "TECH_SAMPLES_ADD".equals(type)
                     || "VEH_LOCK".equals(type)
                     || "VEH_UNLOCK".equals(type)
                     || "VEH_LOCK_DENY".equals(type)
@@ -1078,6 +1162,15 @@ public class Server {
 
                 // If we already have a saved state (fallback key), send it now
                 try { sendSavedStateIfAvailable(); } catch (Exception ignored) {}
+                // Send tech sync snapshot after initial state if enabled
+                try {
+                    if (server != null && server.isTechSyncEnabled()) {
+                        String payload = server.buildTechSyncPayload();
+                        if (payload != null) {
+                            sendMessage("TECH_SYNC:" + payload);
+                        }
+                    }
+                } catch (Exception ignored) {}
 
                 while (server.running) {
                     String raw = in.readUTF();
@@ -1103,6 +1196,41 @@ public class Server {
                         }
                     }
                     String message = type + ":" + msgPayload;
+                    if ("TECH_RESEARCH".equals(type) && server.gameScreen != null && server.isTechSyncEnabled()) {
+                        final String techId = msgPayload != null ? msgPayload.trim() : "";
+                        if (techId.length() > 0) {
+                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                                @Override public void run() {
+                                    try {
+                                        if (server.gameScreen != null && server.gameScreen.world != null && server.gameScreen.world.techManager != null) {
+                                            com.cairn4.moonbase.techtree.TechManager tm = server.gameScreen.world.techManager;
+                                            if (tm.canResearch(techId)) {
+                                                tm.research(techId);
+                                                try { server.broadcastTechSync(); } catch (Exception ignored) {}
+                                            }
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            });
+                        }
+                        continue;
+                    }
+                    if ("TECH_SAMPLES_ADD".equals(type) && server.gameScreen != null && server.isTechSyncEnabled()) {
+                        final int amt = safeParseInt(msgPayload, 0);
+                        if (amt != 0) {
+                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                                @Override public void run() {
+                                    try {
+                                        if (server.gameScreen != null && server.gameScreen.world != null && server.gameScreen.world.techManager != null) {
+                                            server.gameScreen.world.techManager.addSamples(amt);
+                                            try { server.broadcastTechSync(); } catch (Exception ignored) {}
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            });
+                        }
+                        continue;
+                    }
                     // If client is broadcasting a player animation play request, rebroadcast and apply locally when possible
                         if (message.startsWith("ANIMPLAY:") && server.gameScreen != null) {
                         try {

@@ -110,6 +110,7 @@ Changes
 - Shutdown: stop active server on game dispose so host doesn't keep running after exit.
 - Shutdown: add JVM shutdown hook to stop server on hard exits.
 - Vehicle MP: preserve remote velocity during interpolation so wheel animations match host.
+- Multiplayer tech: added server.properties (syncTech) and TECH_SYNC/TECH_RESEARCH/TECH_SAMPLES_ADD for server-authoritative tech tree + samples.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -190,6 +191,7 @@ Verification
 - Server shutdown on exit not yet verified in-game.
 - JVM shutdown hook not yet verified in-game.
 - Remote wheel animation sync not yet verified in-game.
+- Tech sync + server.properties not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

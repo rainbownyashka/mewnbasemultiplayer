@@ -8,6 +8,8 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.SerializationException;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.NetworkHelper;
+import com.cairn4.moonbase.Server;
 import com.cairn4.moonbase.PlayerStatus;
 import com.cairn4.moonbase.World;
 import com.cairn4.moonbase.techtree.TechTree;
@@ -78,6 +80,12 @@ extends Observable {
     }
 
     public void research(String id) {
+        try {
+            if (this.world != null && this.world.gameScreen != null && this.world.gameScreen.client != null) {
+                NetworkHelper.sendPayload(this.world.gameScreen, "TECH_RESEARCH:" + id);
+                return;
+            }
+        } catch (Exception ignored) {}
         TechUpgrade tech = this.getTech(id);
         tech.unlocked = true;
         this.samples -= tech.cost;
@@ -92,6 +100,12 @@ extends Observable {
         MoonBase cfr_ignored_0 = this.world.gameScreen.game;
         MoonBase.achievementAdapter.techUnlocked(this.getNumberOfTechsUnlocked());
         this.notifyHud();
+        try {
+            Server s = Server.getActiveServer();
+            if (s != null && s.isTechSyncEnabled()) {
+                try { s.broadcastFromServer("TECH_SYNC:" + this.samples + ":" + java.net.URLEncoder.encode(String.join(",", this.getSaveData()), "UTF-8")); } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
     }
 
     public int getNumberOfTechsUnlocked() {
@@ -133,8 +147,20 @@ extends Observable {
     }
 
     public void addSamples(int amount) {
+        try {
+            if (this.world != null && this.world.gameScreen != null && this.world.gameScreen.client != null) {
+                NetworkHelper.sendPayload(this.world.gameScreen, "TECH_SAMPLES_ADD:" + amount);
+                return;
+            }
+        } catch (Exception ignored) {}
         this.samples += amount;
         this.notifyHud();
+        try {
+            Server s = Server.getActiveServer();
+            if (s != null && s.isTechSyncEnabled()) {
+                try { s.broadcastFromServer("TECH_SYNC:" + this.samples + ":" + java.net.URLEncoder.encode(String.join(",", this.getSaveData()), "UTF-8")); } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
     }
 
     public void setSamples(int samples) {
@@ -147,4 +173,3 @@ extends Observable {
         this.notifyObservers("researchSamplesUpdate");
     }
 }
-

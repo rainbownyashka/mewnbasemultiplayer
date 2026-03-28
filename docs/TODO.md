@@ -33,3 +33,5 @@
 - Shutdown: verify server stops when client/game exits.
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
+- Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.
+- Tech sync: verify research + samples from client are applied by server and propagated to all clients.

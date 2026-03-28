@@ -39,8 +39,9 @@ import com.cairn4.moonbase.net.ProtocolV2;
      public GameScreen screen;
      private Map<String, Long> recentMessages = new ConcurrentHashMap<>();
      private static final long DUPLICATE_WINDOW_MS = 500L;
-     private Map<Integer, Float> flipOverrides = new ConcurrentHashMap<>();
-     private Set<Integer> pendingSpawns = new ConcurrentSkipListSet<>();
+    private Map<Integer, Float> flipOverrides = new ConcurrentHashMap<>();
+    private Set<Integer> pendingSpawns = new ConcurrentSkipListSet<>();
+    private volatile String pendingTechSyncPayload = null;
      private int clientId = -1;
      private Socket socket;
      private DataInputStream in;
@@ -244,6 +245,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
          }
          try {
              flushPendingSpawns();
+             flushPendingTechSync();
              ProtocolV2.Decoded decoded = ProtocolV2.decode(msg);
              if (decoded == null) {
                  return;
@@ -352,6 +354,14 @@ import com.cairn4.moonbase.net.ProtocolV2;
                  }
                  return;
              }
+            if ("TECH_SYNC".equals(type)) {
+                try {
+                    applyTechSync(payload);
+                } catch (Exception e) {
+                    Gdx.app.error("Client", "Failed to apply TECH_SYNC", e);
+                }
+                return;
+            }
              String frag = type + ":" + payload;
              if (frag != null && frag.length() != 0) {
                  try {
@@ -1029,6 +1039,58 @@ import com.cairn4.moonbase.net.ProtocolV2;
         }
     }
 
+    private void flushPendingTechSync() {
+        try {
+            if (pendingTechSyncPayload == null) return;
+            if (this.screen == null || this.screen.world == null || this.screen.world.techManager == null) return;
+            String payload = pendingTechSyncPayload;
+            pendingTechSyncPayload = null;
+            applyTechSync(payload);
+        } catch (Exception ignored) {}
+    }
+
+    private void applyTechSync(String payload) {
+        if (payload == null) return;
+        if (this.screen == null || this.screen.world == null || this.screen.world.techManager == null) {
+            pendingTechSyncPayload = payload;
+            return;
+        }
+        final String payloadFinal = payload;
+        com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+            try {
+                if (this.screen == null || this.screen.world == null || this.screen.world.techManager == null) {
+                    pendingTechSyncPayload = payloadFinal;
+                    return;
+                }
+                int idx = payloadFinal.indexOf(':');
+                if (idx <= 0) return;
+                int samples = safeParseInt(payloadFinal.substring(0, idx), 0);
+                String csvEnc = payloadFinal.substring(idx + 1);
+                String csv = "";
+                try { csv = java.net.URLDecoder.decode(csvEnc, "UTF-8"); } catch (Exception ignored) {}
+                java.util.HashSet<String> unlocked = new java.util.HashSet<String>();
+                if (csv != null && csv.length() > 0) {
+                    String[] parts = csv.split(",");
+                    for (String p : parts) {
+                        String t = p.trim();
+                        if (t.length() > 0) unlocked.add(t);
+                    }
+                }
+                com.cairn4.moonbase.techtree.TechManager tm = this.screen.world.techManager;
+                if (tm.techTree != null && tm.techTree.upgrades != null) {
+                    for (com.cairn4.moonbase.techtree.TechUpgrade tu : tm.techTree.upgrades) {
+                        if (tu == null || tu.id == null) continue;
+                        tu.unlocked = unlocked.contains(tu.id);
+                    }
+                }
+                tm.setSamples(samples);
+                tm.notifyHud();
+            } catch (Exception e) {
+                Gdx.app.error("Client", "Failed to apply tech sync on render thread", e);
+            }
+        });
+    }
+
     private float safeParseFloat(String s, float def) {
         try {
             return Float.parseFloat(s.trim());
@@ -1043,6 +1105,9 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 || "SPAWNREMOTE".equals(type)
                 || "REQUEST_APPEARANCE".equals(type)
                 || "CONNECTED".equals(type)
+                || "TECH_SYNC".equals(type)
+                || "TECH_RESEARCH".equals(type)
+                || "TECH_SAMPLES_ADD".equals(type)
                 || "VEH_LOCK".equals(type)
                 || "VEH_UNLOCK".equals(type)
                 || "VEH_LOCK_DENY".equals(type)
