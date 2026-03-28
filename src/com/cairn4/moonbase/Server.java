@@ -14,6 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import com.cairn4.moonbase.net.ProtocolV2;
 //sdawd
 public class Server {
     // active server reference for in-process access
@@ -234,6 +235,12 @@ public class Server {
                 }
             } catch (Exception ignored) {}
         }
+        String frame = message;
+        ProtocolV2.Decoded d = decodeLegacyOrFrame(message, 0);
+        if (d != null) {
+            frame = encodeFrame(d);
+        }
+        if (frame == null) return;
         for (ClientHandler client : clients.values()) {
             if (client != exclude) {
                 try {
@@ -242,11 +249,11 @@ public class Server {
                 try {
                     long now = System.currentTimeMillis();
                     if ((now % 1000L) < 50L) {
-                        System.out.println("Server: sending to clientId=" + client.clientId + " message=" + message);
+                        System.out.println("Server: sending to clientId=" + client.clientId + " message=" + frame);
                     }
                 } catch (Exception ignored) {}
             }
-            client.sendMessage(message);
+            client.sendMessage(frame);
                 } catch (Exception e) {
                     Gdx.app.error("Server", "Error sending message to client " + client.clientId + ": " + message, e);
                     try { System.out.println("Server: exception sending to client " + client.clientId + " : " + e); } catch (Exception ignored) {}
@@ -491,6 +498,40 @@ public class Server {
         return sb.toString();
     }
 
+    private static ProtocolV2.Decoded decodeLegacyOrFrame(String message, int defaultFromId) {
+        try {
+            if (message == null) return null;
+            if (message.startsWith(ProtocolV2.PREFIX + "|")) {
+                return ProtocolV2.decode(message);
+            }
+            int fromId = defaultFromId;
+            String legacy = message;
+            int firstColon = legacy.indexOf(':');
+            if (firstColon > 0) {
+                try {
+                    int id = Integer.parseInt(legacy.substring(0, firstColon));
+                    String rest = legacy.substring(firstColon + 1);
+                    if (rest.indexOf(':') > 0) {
+                        fromId = id;
+                        legacy = rest;
+                    }
+                } catch (Exception ignored) {}
+            }
+            int idx = legacy.indexOf(':');
+            if (idx < 0) return null;
+            String type = legacy.substring(0, idx);
+            String payload = legacy.substring(idx + 1);
+            return new ProtocolV2.Decoded(fromId, type, payload);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String encodeFrame(ProtocolV2.Decoded d) {
+        if (d == null) return null;
+        return ProtocolV2.encode(d.fromId, d.type, d.payload);
+    }
+
     private static com.cairn4.moonbase.entities.Vehicle findVehicleById(com.cairn4.moonbase.World world, int vehId) {
         try {
             if (world == null || vehId < 0) return null;
@@ -598,7 +639,8 @@ public class Server {
                 sendInitialWorldData();
                 // Signal end of binary init payload so client can safely start reading UTF messages
                 try {
-                    sendMessage("INIT_DONE");
+                    this.out.writeUTF("INIT_DONE");
+                    this.out.flush();
                 } catch (Exception ignored) {}
 
                 // Wait for client READY to avoid sending live messages before it is listening
@@ -606,7 +648,8 @@ public class Server {
                     try { this.socket.setSoTimeout(10000); } catch (Exception ignored) {}
                     try {
                         String first = in.readUTF();
-                        if (!"READY".equals(first)) {
+                        ProtocolV2.Decoded d = ProtocolV2.decode(first);
+                        if (d == null || !"READY".equals(d.type)) {
                             Gdx.app.error("Server", "Expected READY from client " + this.clientId + " but got: " + first);
                         }
                     } catch (java.net.SocketTimeoutException ste) {
@@ -737,8 +780,13 @@ public class Server {
                 try { sendSavedStateIfAvailable(); } catch (Exception ignored) {}
 
                 while (server.running) {
-                    String message = in.readUTF();
-                    Gdx.app.log("Server", "Received from client " + this.clientId + ": " + message);
+                    String raw = in.readUTF();
+                    Gdx.app.log("Server", "Received from client " + this.clientId + ": " + raw);
+                    ProtocolV2.Decoded d = ProtocolV2.decode(raw);
+                    if (d == null) {
+                        continue;
+                    }
+                    String message = d.type + ":" + (d.payload == null ? "" : d.payload);
                     // If client is broadcasting a player animation play request, rebroadcast and apply locally when possible
                         if (message.startsWith("ANIMPLAY:") && server.gameScreen != null) {
                         try {
@@ -2026,19 +2074,25 @@ public class Server {
                 if (this.out == null) {
                     return;
                 }
+                String frame = message;
+                ProtocolV2.Decoded d = decodeLegacyOrFrame(message, 0);
+                if (d != null) {
+                    frame = encodeFrame(d);
+                }
+                if (frame == null) return;
                 try {
                     long now = System.currentTimeMillis();
                     if ((now % 1000L) < 50L) {
-                        System.out.println("ClientHandler.sendMessage: clientId=" + this.clientId + " message=" + message);
+                        System.out.println("ClientHandler.sendMessage: clientId=" + this.clientId + " message=" + frame);
                     }
                 } catch (Exception ignored) {}
                 try {
-                    this.out.writeUTF(message);
+                    this.out.writeUTF(frame);
                     this.out.flush();
                     try {
                         long now2 = System.currentTimeMillis();
                         if ((now2 % 1000L) < 50L) {
-                            appendDebugLog("SENT: " + message);
+                            appendDebugLog("SENT: " + frame);
                         }
                     } catch (Exception ignored) {}
                 } catch (Exception e) {

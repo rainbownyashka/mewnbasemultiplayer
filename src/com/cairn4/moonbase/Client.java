@@ -19,6 +19,7 @@ package com.cairn4.moonbase;
  import com.cairn4.moonbase.ui.BuildingPlacementCursor;
  import com.cairn4.moonbase.ui.GameScreen;
  import com.cairn4.moonbase.worlddata.TileData;
+import com.cairn4.moonbase.net.ProtocolV2;
  import java.io.DataInputStream;
  import java.io.DataOutputStream;
  import java.io.PrintWriter;
@@ -52,9 +53,9 @@ package com.cairn4.moonbase;
     private float lastSentX = Float.NaN;
     private float lastSentY = Float.NaN;
     private long lastSentMillis = 0L;
-    private long lastVehSentMillis = 0L;
-    private long lastVehMetaSentMillis = 0L;
-    private String lastVehMeta = null;
+     private long lastVehSentMillis = 0L;
+     private long lastVehMetaSentMillis = 0L;
+     private String lastVehMeta = null;
     private long lastPlayerStateSentMillis = 0L;
      private boolean diagnosticMode = false;
      private String host;
@@ -196,9 +197,9 @@ package com.cairn4.moonbase;
                  this.readerThread.setDaemon(true);
                  this.readerThread.start();
                  try { System.out.println("[Client] connect: reader thread started (connector)"); } catch (Exception ignored) {}
-                 startSender();
                  // Inform server we are ready to receive initial live messages
-                 try { System.out.println("[Client] connect: sending READY"); sendMessage("READY"); } catch (Exception ignored) {}
+                 try { System.out.println("[Client] connect: sending READY"); sendFrame(ProtocolV2.encode(this.clientId, "READY", ProtocolV2.VERSION)); } catch (Exception ignored) {}
+                 startSender();
              } catch (Exception e) {
                  Gdx.app.error("Client", "Failed to connect to " + this.host + ":" + this.port, e);
                  this.running = false;
@@ -230,8 +231,15 @@ package com.cairn4.moonbase;
          }
          try {
              flushPendingSpawns();
-             if (msg.startsWith("CONNECTED:")) {
-                 final int id = safeParseInt(msg.substring("CONNECTED:".length()).trim(), -1);
+             ProtocolV2.Decoded decoded = ProtocolV2.decode(msg);
+             if (decoded == null) {
+                 return;
+             }
+             final int srcId = decoded.fromId;
+             final String type = decoded.type != null ? decoded.type : "";
+             final String payload = decoded.payload != null ? decoded.payload : "";
+             if ("CONNECTED".equals(type)) {
+                 final int id = safeParseInt(payload.trim(), -1);
                  Gdx.app.log("Client", "Noted CONNECTED:" + id + " (will send SPAWNREMOTE)");
                  try {
                      // First send our APPEARANCE so others don't spawn an empty puppet
@@ -243,10 +251,10 @@ package com.cairn4.moonbase;
                          String payloadAppearance = "APPEARANCE:" + face + "|" + java.net.URLEncoder.encode(color == null ? "" : color, "UTF-8") + "|" + java.net.URLEncoder.encode(nick == null ? "" : nick, "UTF-8");
                          NetworkHelper.sendPayload(this.screen, payloadAppearance);
                          // Then announce spawn
-                         NetworkHelper.sendPayload(this.screen, "SPAWNREMOTE");
+                         NetworkHelper.sendPayload(this.screen, "SPAWNREMOTE:" + id);
                      } else {
-                         sendMessage("APPEARANCE:0||");
-                         sendMessage("SPAWNREMOTE");
+                        sendMessage("APPEARANCE:0||");
+                        sendMessage("SPAWNREMOTE:" + id);
                      }
                  } catch (Exception e) {
                      Gdx.app.error("Client", "Failed to announce SPAWNREMOTE after CONNECTED", e);
@@ -261,8 +269,8 @@ package com.cairn4.moonbase;
                  }
                  return;
              }
-             if (msg.startsWith("DISCONNECTED:")) {
-                 final int id = safeParseInt(msg.substring("DISCONNECTED:".length()).trim(), -1);
+             if ("DISCONNECTED".equals(type)) {
+                 final int id = safeParseInt(payload.trim(), -1);
                  if (this.screen != null)
                      Gdx.app.postRunnable(() -> {
                          try {
@@ -281,70 +289,57 @@ package com.cairn4.moonbase;
                  return;
              }
              //
-             if (msg.startsWith("APPEARANCE:")) {
+             if ("APPEARANCE".equals(type)) {
                  try {
-                     if (MultiplayerNetworkHelper.handleAppearance(this.screen, msg, -1)) {
+                     if (MultiplayerNetworkHelper.handleAppearance(this.screen, "APPEARANCE:" + payload, -1)) {
                          return;
                      }
                  } catch (Exception e) {
                      Gdx.app.error("Client", "Exception handling APPEARANCE message", e);
                  }
              }
-             if (msg.startsWith("PING:")) {
+             if ("PING".equals(type)) {
                  try {
-                     System.out.println("[Client] PING: " + msg.substring("PING:".length()).toUpperCase());
+                     System.out.println("[Client] PING: " + payload.toUpperCase());
                  } catch (Exception exception) {
                  }
                  return;
              }
              // Обработка сообщений от других клиентов (формат: ID:сообщение)
-             int colon = msg.indexOf(":");
-             if (colon <= 0) {
-                 return;
-             }
-             String idPart = msg.substring(0, colon);
-             String payload = msg.substring(colon + 1);
-             int srcId;
-             try {
-                 srcId = Integer.parseInt(idPart);
-             } catch (NumberFormatException nfe) {
-                 return;
-             }
-
-            //
-            if ("SPAWNREMOTE".equals(payload) || payload.startsWith("SPAWNREMOTE:")) {
-                if (MultiplayerNetworkHelper.handleSpawnRemote(screen, payload, srcId)) {
+            if ("SPAWNREMOTE".equals(type)) {
+                String spawnPayload = "SPAWNREMOTE:" + (payload == null || payload.length() == 0 ? Integer.toString(srcId) : payload);
+                if (MultiplayerNetworkHelper.handleSpawnRemote(screen, spawnPayload, srcId)) {
                     return;
                 }
-                final int id = "SPAWNREMOTE".equals(payload) ? srcId : safeParseInt(payload.substring("SPAWNREMOTE:".length()), Integer.MIN_VALUE);
+                final int id = safeParseInt(payload, Integer.MIN_VALUE);
                 if (id != Integer.MIN_VALUE) {
                     pendingSpawns.add(id);
                 }
                 return;
             }
 
-             if (payload.startsWith("PING:")) {
+             if ("PING".equals(type)) {
                  try {
-                     System.out.println("[Client] PING from " + srcId + ": " + payload.substring("PING:".length()).toUpperCase());
+                     System.out.println("[Client] PING from " + srcId + ": " + payload.toUpperCase());
                  } catch (Exception exception) {
                  }
                  return;
              }
-             String frag = payload;
+             String frag = type + ":" + payload;
              if (frag != null && frag.length() != 0) {
                  try {
-                         if (frag.startsWith("CHAT:")) {
+                         if ("CHAT".equals(type)) {
                              // 
-                             if (!MultiplayerNetworkHelper.handleChat(this.screen, frag, srcId)) {
+                             if (!MultiplayerNetworkHelper.handleChat(this.screen, "CHAT:" + payload, srcId)) {
                                  Gdx.app.error("Client", "Failed to handle CHAT payload via helper", null);
                              }
-                        } else if (frag.startsWith("APPEARANCE:")) {
+                        } else if ("APPEARANCE".equals(type)) {
                             try {
-                                MultiplayerNetworkHelper.handleAppearance(this.screen, frag, srcId);
+                                MultiplayerNetworkHelper.handleAppearance(this.screen, "APPEARANCE:" + payload, srcId);
                             } catch (Exception ignored) {}
-                        } else if (frag.startsWith("TIMEWEATHER:")) {
+                        } else if ("TIMEWEATHER".equals(type)) {
                             try {
-                                String rest = frag.substring("TIMEWEATHER:".length());
+                                String rest = payload;
                                 String[] parts = rest.split(":", 8);
                                 if (parts.length >= 8 && this.screen != null) {
                                     final int day = safeParseInt(parts[0], 0);
@@ -403,90 +398,89 @@ package com.cairn4.moonbase;
                                     return;
                                 }
                             } catch (Exception ignored) {}
-                        } else if (frag.startsWith("VEH_OCCUPY:")) {
+                        } else if ("VEH_OCCUPY".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleOccupy(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleOccupy(this.screen, "VEH_OCCUPY:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_OCCUPY", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_OCCUPY", e);
                             }
-                        } else if (frag.startsWith("VEH_SPAWN:")) {
+                        } else if ("VEH_SPAWN".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleSpawn(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleSpawn(this.screen, "VEH_SPAWN:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_SPAWN", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_SPAWN", e);
                             }
-                        } else if (frag.startsWith("ENTITY_SPAWN:")) {
+                        } else if ("ENTITY_SPAWN".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleEntitySpawn(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleEntitySpawn(this.screen, "ENTITY_SPAWN:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle ENTITY_SPAWN", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling ENTITY_SPAWN", e);
                             }
-                        } else if (frag.startsWith("VEH_STATE:")) {
+                        } else if ("VEH_STATE".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleState(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleState(this.screen, "VEH_STATE:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_STATE", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_STATE", e);
                             }
-                        } else if (frag.startsWith("VEH_META:")) {
+                        } else if ("VEH_META".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleMeta(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleMeta(this.screen, "VEH_META:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_META", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_META", e);
                             }
-                        } else if (frag.startsWith("VEH_INV_SYNC:")) {
+                        } else if ("VEH_INV_SYNC".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleInvSync(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleInvSync(this.screen, "VEH_INV_SYNC:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_INV_SYNC", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_INV_SYNC", e);
                             }
-                        } else if (frag.startsWith("VEH_LOCK:") || frag.startsWith("VEH_UNLOCK:") || frag.startsWith("VEH_LOCK_DENY:")) {
+                        } else if ("VEH_LOCK".equals(type) || "VEH_UNLOCK".equals(type) || "VEH_LOCK_DENY".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleVehicleLock(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleVehicleLock(this.screen, type + ":" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle VEH_LOCK", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling VEH_LOCK", e);
                             }
-                        } else if (frag.startsWith("BASE_INV_SYNC:")) {
+                        } else if ("BASE_INV_SYNC".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleBaseInvSync(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleBaseInvSync(this.screen, "BASE_INV_SYNC:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle BASE_INV_SYNC", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling BASE_INV_SYNC", e);
                             }
-                        } else if (frag.startsWith("BASE_LOCK:") || frag.startsWith("BASE_UNLOCK:") || frag.startsWith("BASE_LOCK_DENY:")) {
+                        } else if ("BASE_LOCK".equals(type) || "BASE_UNLOCK".equals(type) || "BASE_LOCK_DENY".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleBaseLock(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleBaseLock(this.screen, type + ":" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle BASE_LOCK", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling BASE_LOCK", e);
                             }
-                        } else if (frag.startsWith("GENERATOR_FUEL:")) {
+                        } else if ("GENERATOR_FUEL".equals(type)) {
                             try {
-                                if (!MultiplayerNetworkHelper.handleGeneratorFuel(this.screen, frag, srcId)) {
+                                if (!MultiplayerNetworkHelper.handleGeneratorFuel(this.screen, "GENERATOR_FUEL:" + payload, srcId)) {
                                     Gdx.app.error("Client", "Failed to handle GENERATOR_FUEL", null);
                                 }
                             } catch (Exception e) {
                                 Gdx.app.error("Client", "Exception handling GENERATOR_FUEL", e);
                             }
-                        } else if (frag.startsWith("INVENTORY_UPDATE:")) {
+                        } else if ("INVENTORY_UPDATE".equals(type)) {
                              try {
-                                 String enc = frag.substring("INVENTORY_UPDATE:".length());
-                                 String json = java.net.URLDecoder.decode(enc, "UTF-8");
+                                 String json = payload;
                                  Gdx.app.log("Client", "Received INVENTORY_UPDATE for " + srcId + ": " + json);
                                  // Save to local save file
                                  try {
@@ -554,8 +548,8 @@ package com.cairn4.moonbase;
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Error parsing INVENTORY_UPDATE", e);
                              }
-                         } else if (frag.startsWith("ANIM:")) {
-                             String rest = frag.substring("ANIM:".length());
+                         } else if ("ANIM".equals(type)) {
+                             String rest = payload;
                              String[] parts = rest.split(":", 4);
                              final int wx = (parts.length > 1) ? safeParseInt(parts[1], Integer.MIN_VALUE) : Integer.MIN_VALUE;
                              final int wy = (parts.length > 2) ? safeParseInt(parts[2], Integer.MIN_VALUE) : Integer.MIN_VALUE;
@@ -900,10 +894,9 @@ package com.cairn4.moonbase;
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Error parsing ANIMTEST", e);
                              }
-                         } else if (frag.startsWith("REQUEST_APPEARANCE:")) {
+                         } else if ("REQUEST_APPEARANCE".equals(type)) {
                              try {
-                                 String rest = frag.substring("REQUEST_APPEARANCE:".length());
-                                 final int id = safeParseInt(rest, Integer.MIN_VALUE);
+                                 final int id = safeParseInt(payload, Integer.MIN_VALUE);
                                  if (id != Integer.MIN_VALUE && this.screen != null)
                                      Gdx.app.postRunnable(() -> {
                                          try {
@@ -921,7 +914,7 @@ package com.cairn4.moonbase;
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Error parsing REQUEST_APPEARANCE", e);
                              }
-                         } else if (frag.startsWith("POS:")) {
+                         } else if ("POS".equals(type)) {
                              // Use unified handler for POS
                              try {
                                 try {
@@ -930,25 +923,25 @@ package com.cairn4.moonbase;
                                         Gdx.app.log("Client", "[POS:recv] " + frag);
                                     }
                                 } catch (Exception ignored) {}
-                                 if (!MultiplayerNetworkHelper.handlePosition(this.screen, frag, srcId)) {
+                                 if (!MultiplayerNetworkHelper.handlePosition(this.screen, "POS:" + payload, srcId)) {
                                      Gdx.app.error("Client", "Error parsing POS via helper", null);
                                  }
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Exception while handling POS message", e);
                              }
-                         } else if (frag.startsWith("TILE_BUILD_START:")) {
+                         } else if ("TILE_BUILD_START".equals(type)) {
                              // Use the unified handler for TILE_BUILD_START
                              try {
-                                 if (!MultiplayerNetworkHelper.handleTileBuildStart(this.screen, frag, srcId)) {
+                                 if (!MultiplayerNetworkHelper.handleTileBuildStart(this.screen, "TILE_BUILD_START:" + payload, srcId)) {
                                      Gdx.app.error("Client", "Error handling TILE_BUILD_START via helper", null);
                                  }
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Exception while handling TILE_BUILD_START", e);
                              }
-                         } else if (frag.startsWith("TILE_") || frag.startsWith("ITEM_")) {
+                         } else if (type.startsWith("TILE_") || type.startsWith("ITEM_")) {
                              try {
                                  if (this.screen != null && this.screen.world != null) {
-                                     final String f = frag;
+                                     final String f = type + ":" + payload;
                                      Gdx.app.postRunnable(() -> {
                                          try {
                                              try {
@@ -1022,20 +1015,39 @@ package com.cairn4.moonbase;
          }
      }
 
-     public void sendMessage(String payload) {
-         synchronized (this.outLock) {
-             if (this.out == null) {
-                 return;
-             }
-             try {
-                 this.out.writeUTF(payload);
-                 this.out.flush();
-                 appendDebugLog("SENT: " + payload);
-             } catch (Exception e) {
-                 Gdx.app.error("Client", "Failed to send payload", e);
-             }
-         }
-     }
+    private void sendFrame(String frame) {
+        synchronized (this.outLock) {
+            if (this.out == null) {
+                return;
+            }
+            try {
+                this.out.writeUTF(frame);
+                this.out.flush();
+                appendDebugLog("SENT: " + frame);
+            } catch (Exception e) {
+                Gdx.app.error("Client", "Failed to send payload", e);
+            }
+        }
+    }
+
+    public void send(String type, String payload) {
+        String frame = ProtocolV2.encode(this.clientId, type, payload);
+        if (frame != null) {
+            sendFrame(frame);
+        }
+    }
+
+    // Legacy-compatible send (payload formatted as TYPE:...); wraps into MB2 frame.
+    public void sendMessage(String payload) {
+        if (payload == null) return;
+        if (payload.startsWith(ProtocolV2.PREFIX + "|")) {
+            sendFrame(payload);
+            return;
+        }
+        String[] tp = splitTypePayload(payload);
+        if (tp == null) return;
+        send(tp[0], tp[1]);
+    }
 
      private void startSender() {
          if (this.senderThread != null && this.senderThread.isAlive()) {
@@ -1055,13 +1067,13 @@ package com.cairn4.moonbase;
                              float vx = 0f, vy = 0f;
                              try { vx = this.screen.world.player.getLastReportedVelocity().x; } catch (Exception ignored) {}
                              try { vy = this.screen.world.player.getLastReportedVelocity().y; } catch (Exception ignored) {}
-                             String payload = "POS:PLAYER:" + this.clientId + ":" + x + ":" + y + ":" + vx + ":" + vy;
+                             String payload = "PLAYER:" + this.clientId + ":" + x + ":" + y + ":" + vx + ":" + vy;
                              try {
                                  if ((now / 1000L) != ((this.lastSentMillis - 50L) / 1000L)) {
                                      Gdx.app.log("Client", "[POS:send] x=" + x + " y=" + y + " vx=" + vx + " vy=" + vy);
                                  }
                              } catch (Exception ignored) {}
-                                sendMessage(this.clientId + ":" + payload);
+                                send("POS", payload);
                             }
 
                             // Vehicle state sync when driving (driver only)
@@ -1079,8 +1091,8 @@ package com.cairn4.moonbase;
                                                     vy = v.body.getLinearVelocity().y * 256.0f;
                                                 }
                                             } catch (Exception ignored) {}
-                                            String vp = "VEH_STATE:" + v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + rot + ":" + vx + ":" + vy;
-                                            sendMessage(this.clientId + ":" + vp);
+                                            String vp = v.id + ":" + v.getXPos() + ":" + v.getYPos() + ":" + rot + ":" + vx + ":" + vy;
+                                            send("VEH_STATE", vp);
                                         }
                                     }
                                     // Vehicle meta/state sync (damage, power, abilities, etc.)
@@ -1089,7 +1101,8 @@ package com.cairn4.moonbase;
                                         if (meta != null && (!meta.equals(this.lastVehMeta) || now - this.lastVehMetaSentMillis >= 1000L)) {
                                             this.lastVehMeta = meta;
                                             this.lastVehMetaSentMillis = now;
-                                            sendMessage(this.clientId + ":" + meta);
+                                            if (meta.startsWith("VEH_META:")) meta = meta.substring("VEH_META:".length());
+                                            send("VEH_META", meta);
                                         } else {
                                             this.lastVehMetaSentMillis = now;
                                         }
@@ -1104,7 +1117,7 @@ package com.cairn4.moonbase;
                                     if (stateJson != null && stateJson.length() > 0) {
                                         try {
                                             String enc = java.net.URLEncoder.encode(stateJson, "UTF-8");
-                                            sendMessage(this.clientId + ":" + "PLAYER_STATE:" + enc);
+                                            send("PLAYER_STATE", enc);
                                         } catch (Exception ignored) {}
                                     }
                                     this.lastPlayerStateSentMillis = now;
@@ -1188,7 +1201,7 @@ package com.cairn4.moonbase;
     }
 
     private static java.util.List<java.util.Map<String, String>> parseInventoryArray(String json) {
-         java.util.List<java.util.Map<String, String>> res = new java.util.ArrayList<>();
+        java.util.List<java.util.Map<String, String>> res = new java.util.ArrayList<>();
          try {
              int idx = json.indexOf("\"inventory\"");
              if (idx < 0) return res;
@@ -1213,6 +1226,29 @@ package com.cairn4.moonbase;
              }
          } catch (Exception ignored) {}
         return res;
+    }
+
+    private static String[] splitTypePayload(String message) {
+        try {
+            String legacy = message;
+            int firstColon = legacy.indexOf(':');
+            if (firstColon > 0) {
+                try {
+                    int id = Integer.parseInt(legacy.substring(0, firstColon));
+                    String rest = legacy.substring(firstColon + 1);
+                    if (rest.indexOf(':') > 0) {
+                        legacy = rest;
+                    }
+                } catch (Exception ignored) {}
+            }
+            int idx = legacy.indexOf(':');
+            if (idx < 0) return null;
+            String type = legacy.substring(0, idx);
+            String payload = legacy.substring(idx + 1);
+            return new String[]{type, payload};
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String buildPlayerStateJson() {

@@ -15,4 +15,5 @@
 - Eval server: run Java eval against live ctx.
 - Player state persistence: verify reconnect restores inventory/stats/pos from multiplayer_players.json.
 - Headless/server-only: verify `-Dmewnbase.serverOnly=1` boots into save + server, no UI, no RPC.
+- Protocol v2: run fulltest and verify READY handshake + MB2 framing (no legacy frames in logs).
 - Server-only mode still uses LWJGL; decide if/when to add true headless backend.
