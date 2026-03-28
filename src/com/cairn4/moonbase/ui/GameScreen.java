@@ -120,6 +120,10 @@ implements Telegraph {
         return this.remotePlayers.get(clientId);
     }
 
+    public java.util.Collection<com.cairn4.moonbase.Player> getRemotePlayers() {
+        return this.remotePlayers.values();
+    }
+
     public void setupCameraLag(Player player) {
         this.cameraLag = new CameraLag(player, this.camera, 60.0f, 40.0f);
     }

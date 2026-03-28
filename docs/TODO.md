@@ -25,3 +25,4 @@
 - Server-only mode still uses LWJGL; decide if/when to add true headless backend.
 - Minimap: verify map opens without hanging and clamp bounds behave (log should show clamped=true when world bounds are huge).
 - MP: verify remote player spawn after connect when mission not yet initialized (no SPAWNREMOTE NPE).
+- Minimap: verify multiple player markers + name labels render correctly.

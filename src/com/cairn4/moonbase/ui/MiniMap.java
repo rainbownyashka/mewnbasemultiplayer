@@ -38,6 +38,7 @@ import com.cairn4.moonbase.Audio;
 import com.cairn4.moonbase.BaseGroup;
 import com.cairn4.moonbase.Chunk;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.Player;
 import com.cairn4.moonbase.PlayerInput;
 import com.cairn4.moonbase.Vars;
 import com.cairn4.moonbase.World;
@@ -790,7 +791,7 @@ implements Telegraph {
         this.showIcons();
         this.showLander(this.minChunkX, this.minChunkY);
         this.addPlayerMarkedLocations();
-        this.addPlayerMarker();
+        this.addPlayerMarkers();
         this.centerOnPlayer(false);
         this.updateOffsetOrigin();
     }
@@ -828,14 +829,37 @@ implements Telegraph {
         return mapPos;
     }
 
-    private void addPlayerMarker() {
-        Vector2 playerMapPos = this.worldTileToMapPos(this.gameScreen.world.player.getX(), this.gameScreen.world.player.getY());
+    private void addPlayerMarkers() {
+        addPlayerMarkerFor(this.gameScreen.world.player);
+        for (Player remote : this.gameScreen.getRemotePlayers()) {
+            if (remote == null) continue;
+            addPlayerMarkerFor(remote);
+        }
+    }
+
+    private void addPlayerMarkerFor(Player player) {
+        int tileX = MathUtils.floor(player.getXPos() / Tile.TILE_SIZE);
+        int tileY = MathUtils.floor(player.getYPos() / Tile.TILE_SIZE);
+        Vector2 playerMapPos = this.worldTileToMapPos(tileX, tileY);
+
+        Group markerGroup = new Group();
+        this.groupOffset.addActor(markerGroup);
+        markerGroup.setPosition(playerMapPos.x, playerMapPos.y, 1);
+
         Image playerPos = new Image(this.gameScreen.skin.getDrawable("equippedFlag"));
         playerPos.setSize(48.0f, 48.0f);
         playerPos.setOrigin(1);
         playerPos.addAction(Actions.forever(Actions.sequence((Action)Actions.scaleTo(0.9f, 0.9f, 1.0f, Interpolation.sine), (Action)Actions.scaleTo(1.1f, 1.1f, 1.0f, Interpolation.sine))));
-        playerPos.setPosition(playerMapPos.x, playerMapPos.y, 1);
-        this.groupOffset.addActor(playerPos);
+        playerPos.setPosition(0.0f, 0.0f, 1);
+        markerGroup.addActor(playerPos);
+
+        String name = (player.name != null && !player.name.isEmpty()) ? player.name : "Player";
+        Label nameLabel = new Label((CharSequence)name, this.baseScreen.labelStyle);
+        nameLabel.setFontScale(0.35f);
+        nameLabel.setColor(Color.WHITE);
+        nameLabel.setAlignment(1);
+        nameLabel.setPosition(52.0f, 14.0f, 1);
+        markerGroup.addActor(nameLabel);
     }
 
     private void centerOnPlayer(boolean animate) {
