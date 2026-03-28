@@ -106,6 +106,7 @@ Changes
 - Vehicle MP: interpolate remote vehicle transforms to reduce jitter.
 - Creature MP: host now targets nearest player (including remote) for aggro/attacks.
 - Creature MP: server broadcasts CREATURE_STATE so clients see host creature movement/attacks.
+- Vehicle MP: preserve remote velocity during interpolation so wheel animations match host.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -182,6 +183,7 @@ Verification
 - Vehicle interpolation not yet verified in-game (check rotation smoothness).
 - Creature targeting of remote players not yet verified in-game.
 - Creature sync not yet verified in-game (clients should see host creature movement/attacks).
+- Remote wheel animation sync not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

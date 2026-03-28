@@ -111,6 +111,8 @@ DamageTaker {
     private float netTargetX = 0.0f;
     private float netTargetY = 0.0f;
     private float netTargetRot = 0.0f;
+    private float netTargetVx = 0.0f;
+    private float netTargetVy = 0.0f;
     protected ArrayList<Wheel> wheels = new ArrayList();
     public BuggieTrunkUI trunkUI;
     public BuggieTrunk trunk;
@@ -155,10 +157,12 @@ DamageTaker {
     public boolean isDriver(int ownerId) { return ownerId >= 0 && this.driverOwnerId == ownerId; }
     public boolean isPassenger(int ownerId) { return ownerId >= 0 && this.passengerOwnerId == ownerId; }
 
-    public void setNetTarget(float x, float y, float rot) {
+    public void setNetTarget(float x, float y, float rot, float vx, float vy) {
         this.netTargetX = x;
         this.netTargetY = y;
         this.netTargetRot = rot;
+        this.netTargetVx = vx;
+        this.netTargetVy = vy;
         this.netHasTarget = true;
     }
 
@@ -710,7 +714,7 @@ DamageTaker {
                 float nrot = MathUtils.lerpAngleDeg(curRot, this.netTargetRot, rotAlpha);
                 if (this.body != null) {
                     this.body.setTransform(nx / 256.0f, ny / 256.0f, nrot * MathUtils.degreesToRadians);
-                    this.body.setLinearVelocity(0.0f, 0.0f);
+                    this.body.setLinearVelocity(this.netTargetVx / 256.0f, this.netTargetVy / 256.0f);
                 }
             } catch (Exception ignored) {}
         } else {

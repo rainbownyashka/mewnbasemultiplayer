@@ -472,7 +472,7 @@ public class MultiplayerNetworkHelper {
                         }
                     } catch (Exception ignored) {}
                     v.netControlled = true;
-                    v.setNetTarget(x, y, rot);
+                    v.setNetTarget(x, y, rot, vx, vy);
                     if (v.body == null) {
                         try { v.setWorldPos(x, y); } catch (Exception ignored) {}
                     }
