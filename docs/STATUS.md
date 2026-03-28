@@ -129,6 +129,7 @@ Changes
 - Assets: saved updated tiles atlas/png with ice regions under `assets_override/Tiles/` for manual editing and re-pack.
 - Assets: regenerated ice tiles with stronger blue palette to eliminate green look.
 - Assets: updated Tiles/tiles.png with user-edited ice textures (jar re-packed).
+- Assets: re-packed Tiles/tiles.atlas alongside tiles.png to ensure test/ice-* regions are present.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
