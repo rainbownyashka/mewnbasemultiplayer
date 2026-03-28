@@ -128,6 +128,7 @@ Changes
 - Biomes: generated dedicated ice tile sprites in Tiles/tiles.atlas (test/ice-*) and switched ice biome to use them (no green bleed).
 - Assets: saved updated tiles atlas/png with ice regions under `assets_override/Tiles/` for manual editing and re-pack.
 - Assets: regenerated ice tiles with stronger blue palette to eliminate green look.
+- Assets: updated Tiles/tiles.png with user-edited ice textures (jar re-packed).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
