@@ -197,16 +197,16 @@ implements Pool.Poolable {
                 break;
             }
             case ice: {
-                this.spriteName = "test/ground-15";
+                this.spriteName = resolveIceSpriteName("modded/ice-15", "test/ground-15");
                 float rI = MathUtils.random();
                 if (rI > 0.4f && rI <= 0.9f) {
                     int rAlt = MathUtils.random(1, 5);
-                    this.spriteName = this.spriteName + "-alt" + rAlt;
+                    this.spriteName = resolveIceSpriteName(this.spriteName + "-alt" + rAlt, this.spriteName);
                     break;
                 }
                 if (!(rI > 0.9f)) break;
                 int rAlt = MathUtils.random(6, 9);
-                this.spriteName = this.spriteName + "-alt" + rAlt;
+                this.spriteName = resolveIceSpriteName(this.spriteName + "-alt" + rAlt, this.spriteName);
             }
         }
         Image baseImage = null;
@@ -381,6 +381,17 @@ implements Pool.Poolable {
     protected String getBiomeSpriteName(Biomes b) {
         if (b == Biomes.ice) return "ground";
         return b.toString();
+    }
+
+    private String resolveIceSpriteName(String preferred, String fallback) {
+        try {
+            if (this.world != null && this.world.gameScreen != null && this.world.gameScreen.skin != null) {
+                if (this.world.gameScreen.skin.has(preferred, com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                    return preferred;
+                }
+            }
+        } catch (Exception ignored) {}
+        return fallback;
     }
 
     protected int getBiomeGroupLayer(Biomes b) {

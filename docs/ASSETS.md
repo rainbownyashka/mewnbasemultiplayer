@@ -24,6 +24,7 @@ This project uses LibGDX texture atlases. Ground tiles and many world sprites co
   - `Tiles/modded.png` (if used)
 - Do not rely on tint alone for color shifts; to fully change hue, update the sprite pixels.
 - If you add new regions (e.g., `test/ice-*`), you must add them to the atlas and ensure the atlas is loaded into the skin.
+- Ice biome will prefer `modded/ice-15` (and `modded/ice-15-alt1..9`) if present; otherwise it falls back to `test/ground-15`.
 
 ## Editing existing tiles (no atlas layout changes)
 
