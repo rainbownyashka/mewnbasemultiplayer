@@ -149,6 +149,7 @@ Changes
 - Ice biome: now prefers `modded/ice-15*` tiles if present, otherwise falls back to `test/ground-15`.
 - Ice biome: availability check now uses TextureRegion (skin regions) so modded tiles are detected even if Drawable cache is absent.
 - Server: host position thread now skips when player body is missing; Player.dispose nulls body to avoid Box2D native crash on exit.
+- Assets: regenerated modded ice tiles with procedural icy textures (replaced flat blue placeholders).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
