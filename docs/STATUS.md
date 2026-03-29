@@ -152,6 +152,7 @@ Changes
 - Assets: replaced modded ice tiles with user-provided `ice.png` variants (5 tiles, repeated for alt slots).
 - PvP: added server.properties toggles (pvp/pvpMelee/pvpVehicle) and network damage handling (PVP_HIT/PVP_DAMAGE).
 - PvP: vehicles can now damage players on crash; melee can hit nearest remote player in range.
+- TerrainGen: added temperature noise and ice biome now depends on cold temperature (with warm spawn bias).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -228,6 +229,7 @@ Verification
 - Compiled GroundTile.java with patch_manual.ps1 (2026-03-29) for ice modded detection.
 - Compiled Player.java and Server.java with patch_manual.ps1 (2026-03-29).
 - Compiled Server.java, Client.java, PlayerAnimController.java, Vehicle.java, CrashListener.java with patch_manual.ps1 (2026-03-29).
+- Compiled TerrainGen.java and GroundTile.java with patch_manual.ps1 (2026-03-29).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).

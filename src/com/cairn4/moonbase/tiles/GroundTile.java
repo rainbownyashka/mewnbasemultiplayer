@@ -33,14 +33,17 @@ implements Pool.Poolable {
     public boolean edge = false;
     public float altitude = 0.5f;
     public float wetness = 0.5f;
+    public float temperature = 0.0f;
     public int altIndex = 0;
     public int wetIndex = 0;
+    public int tempIndex = 0;
     public AltitudeTypes altitudeType;
     public WetnessTypes wetnessType;
     private String spriteName;
     protected String walkSoundFx;
     public static float[] altThresholds = new float[]{0.15f, 0.3f, 0.45f, 0.7f, 0.82f, 0.92f};
     public static float[] wetThresholds = new float[]{0.2f, 0.5f, 0.75f, 0.9f};
+    public static float[] tempThresholds = new float[]{0.25f, 0.45f, 0.6f, 0.75f};
     public static Biomes[][] biomeTable = new Biomes[][]{{Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.mud}, {Biomes.ground, Biomes.ground, Biomes.ground, Biomes.mud, Biomes.ground}, {Biomes.rock, Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.rock, Biomes.ground, Biomes.ground, Biomes.ground, Biomes.ground}, {Biomes.ice, Biomes.ice, Biomes.ground, Biomes.ground, Biomes.volcanic}, {Biomes.ice, Biomes.ice, Biomes.volcanic, Biomes.volcanic, Biomes.volcanic}};
     public static float ICE_TINT_R = 1.0f;
     public static float ICE_TINT_G = 1.0f;
@@ -512,21 +515,62 @@ implements Pool.Poolable {
     }
 
     public void calcBiome(float alt, float wet) {
+        this.calcBiome(alt, wet, 0.0f);
+    }
+
+    public void calcBiome(float alt, float wet, float temp) {
         this.altitude = alt;
         this.wetness = wet;
+        this.temperature = temp;
         float fixedAlt = (alt + 1.0f) / 2.0f;
         this.altIndex = GroundTile.toAltIndex(fixedAlt);
         float fixedWet = (wet + 1.0f) / 2.0f;
         this.wetIndex = GroundTile.toWetIndex(fixedWet);
-        this.biome = biomeTable[this.altIndex][this.wetIndex];
+        float fixedTemp = (temp + 1.0f) / 2.0f;
+        this.tempIndex = GroundTile.toTempIndex(fixedTemp);
+        Biomes base = biomeTable[this.altIndex][this.wetIndex];
+        if (this.tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
+            this.biome = Biomes.ice;
+        } else {
+            this.biome = base;
+        }
     }
 
     public static Biomes calcBiomeTest(float alt, float wet) {
+        return calcBiomeTest(alt, wet, 0.0f);
+    }
+
+    public static Biomes calcBiomeTest(float alt, float wet, float temp) {
         float fixedAlt = (alt + 1.0f) / 2.0f;
         int altIndex = GroundTile.toAltIndex(fixedAlt);
         float fixedWet = (wet + 1.0f) / 2.0f;
         int wetIndex = GroundTile.toWetIndex(fixedWet);
-        return biomeTable[altIndex][wetIndex];
+        float fixedTemp = (temp + 1.0f) / 2.0f;
+        int tempIndex = GroundTile.toTempIndex(fixedTemp);
+        Biomes base = biomeTable[altIndex][wetIndex];
+        if (tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
+            return Biomes.ice;
+        }
+        return base;
+    }
+
+    public static int toTempIndex(float t) {
+        if (t < tempThresholds[0]) {
+            return 0;
+        }
+        if (t >= tempThresholds[0] && t < tempThresholds[1]) {
+            return 1;
+        }
+        if (t >= tempThresholds[1] && t < tempThresholds[2]) {
+            return 2;
+        }
+        if (t >= tempThresholds[2] && t < tempThresholds[3]) {
+            return 3;
+        }
+        if (t >= tempThresholds[3]) {
+            return 4;
+        }
+        return 0;
     }
 
     public void setBiome(String biome) {

@@ -34,14 +34,19 @@ import za.co.luma.math.sampling.UniformPoissonDiskSampler;
 public class TerrainGen {
     private SimplexNoise simplexNoiseAlt;
     private SimplexNoise simplexNoiseWet;
+    private SimplexNoise simplexNoiseTemp;
     private int seed;
     private int seedWet;
+    private int seedTemp;
     private float altitudeNoise = 0.015f;
     private float altitudeSmoothing = 1.2f;
     private float wetnessNoise = 0.02f;
     private float wetnessSmoothing = 1.2f;
+    private float temperatureNoise = 0.01f;
+    private float temperatureSmoothing = 1.0f;
     private float altitudeBias = 0.0f;
     private float wetnessBias = 0.0f;
+    private float temperatureBias = 0.0f;
     private boolean enableVolcanos = true;
     private boolean enableSamples = true;
     private boolean enableNpcs = true;
@@ -50,6 +55,7 @@ public class TerrainGen {
     float[][] noise;
     float[][] altitude;
     float[][] wetness;
+    float[][] temperature;
     float x;
     float y = 10.0f;
     float z;
@@ -82,6 +88,8 @@ public class TerrainGen {
         this.simplexNoiseAlt = new SimplexNoise(this.seed);
         this.seedWet = this.seed + 1;
         this.simplexNoiseWet = new SimplexNoise(this.seedWet);
+        this.seedTemp = this.seed + 2;
+        this.simplexNoiseTemp = new SimplexNoise(this.seedTemp);
         this.chunkCoords.clear();
         for (int x = 0; x < 10; ++x) {
             for (int y = 0; y < 10; ++y) {
@@ -102,8 +110,11 @@ public class TerrainGen {
         altitudeSmoothing = 1.2f;
         wetnessNoise = 0.02f;
         wetnessSmoothing = 1.2f;
+        temperatureNoise = 0.01f;
+        temperatureSmoothing = 1.0f;
         altitudeBias = 0.0f;
         wetnessBias = 0.0f;
+        temperatureBias = 0.0f;
         enableVolcanos = true;
         enableSamples = true;
         enableNpcs = true;
@@ -114,6 +125,7 @@ public class TerrainGen {
             wetnessSmoothing = 0.6f;
             altitudeBias = 0.15f;
             wetnessBias = -0.35f;
+            temperatureBias = 0.25f;
             enableVolcanos = true;
             enableSamples = true;
             enableNpcs = false;
@@ -124,6 +136,7 @@ public class TerrainGen {
             wetnessSmoothing = 0.4f;
             altitudeBias = 0.25f;
             wetnessBias = -0.5f;
+            temperatureBias = 0.35f;
             enableVolcanos = true;
             enableSamples = true;
             enableNpcs = false;
@@ -149,6 +162,9 @@ public class TerrainGen {
         this.seedWet = seedAlt + 1;
         this.simplexNoiseWet = new SimplexNoise(this.seedWet);
         MoonBase.log("TerrainGen: Setting terrain wet seed to " + this.seedWet);
+        this.seedTemp = seedAlt + 2;
+        this.simplexNoiseTemp = new SimplexNoise(this.seedTemp);
+        MoonBase.log("TerrainGen: Setting terrain temp seed to " + this.seedTemp);
     }
 
     public void newSeed() {
@@ -156,6 +172,8 @@ public class TerrainGen {
         this.seedWet = MathUtils.random(10000);
         this.simplexNoiseAlt = new SimplexNoise(this.seed);
         this.simplexNoiseWet = new SimplexNoise(this.seedWet);
+        this.seedTemp = MathUtils.random(10000);
+        this.simplexNoiseTemp = new SimplexNoise(this.seedTemp);
         Gdx.app.log("MoonBase", "TerrainGen: creating new seed for old game save: " + this.seed);
     }
 
@@ -346,10 +364,17 @@ public class TerrainGen {
                 return TerrainGen.this.safeSpawnWetness(x += (float)(chunk.chunkX * 10), y += (float)(chunk.chunkY * 10), value);
             }
         });
+        this.temperature = this.generateNoiseTemp(this.temperatureNoise, this.temperatureSmoothing, chunk.chunkX * 10, chunk.chunkY * 10, new DistanceModifier(){
+
+            @Override
+            public float distanceMod(float x, float y, float value) {
+                return TerrainGen.this.safeSpawnTemperature(x += (float)(chunk.chunkX * 10), y += (float)(chunk.chunkY * 10), value);
+            }
+        });
         for (int x = 0; x < 10; ++x) {
             for (int y = 0; y < 10; ++y) {
                 GroundTile gt = chunk.getGroundTile(x, y);
-                gt.calcBiome(this.altitude[x][y], this.wetness[x][y]);
+                gt.calcBiome(this.altitude[x][y], this.wetness[x][y], this.temperature[x][y]);
                 gt.createDrawables();
                 chunk.gtBiomeArray[y * 10 + x] = gt.getBiome();
                 chunk.gtDiscoveryArray[y * 10 + x] = false;
@@ -378,6 +403,15 @@ public class TerrainGen {
             endValue = MathUtils.clamp(endValue, -2.0f, GroundTile.wetThresholds[0]);
         } else if (!(distFromCenter >= 100.0f) || distFromCenter < 600.0f) {
             // empty if block
+        }
+        return endValue;
+    }
+
+    private float safeSpawnTemperature(float x, float y, float value) {
+        float endValue = value;
+        float distFromCenter = Vector2.dst(x, y, 500.0f, 500.0f);
+        if (distFromCenter < 150.0f) {
+            endValue = MathUtils.clamp(endValue + 0.4f, -1.0f, 1.0f);
         }
         return endValue;
     }
@@ -513,6 +547,36 @@ public class TerrainGen {
                         noise[x][y] = distanceMod.distanceMod(x, y, noise[x][y]);
                     }
                     noise[x][y] = MathUtils.clamp(noise[x][y] + wetnessBias, -1.0f, 1.0f);
+                    if (noise[x][y] < this.mingen) {
+                        this.mingen = noise[x][y];
+                    }
+                    if (!(noise[x][y] > this.maxgen)) continue;
+                    this.maxgen = noise[x][y];
+                }
+            }
+            layerF *= 3.5f;
+            weight *= 0.25f;
+        }
+        return noise;
+    }
+
+    private float[][] generateNoiseTemp(float features, float smoothing, int startX, int startY, DistanceModifier distanceMod) {
+        this.simplexNoiseTemp = new SimplexNoise(this.seedTemp);
+        int width = 10;
+        int height = 10;
+        float layerF = features;
+        float weight = smoothing;
+        float[][] noise = new float[width][height];
+        for (int i = 0; i < 3; ++i) {
+            for (int x = 0; x < width; ++x) {
+                for (int y = 0; y < height; ++y) {
+                    float[] fArray = noise[x];
+                    int n = y;
+                    fArray[n] = fArray[n] + (float)SimplexNoise.noise((float)(x + startX) * layerF + 2000.0f, (float)(y + startY) * layerF + 2000.0f) * weight;
+                    if (distanceMod != null) {
+                        noise[x][y] = distanceMod.distanceMod(x, y, noise[x][y]);
+                    }
+                    noise[x][y] = MathUtils.clamp(noise[x][y] + temperatureBias, -1.0f, 1.0f);
                     if (noise[x][y] < this.mingen) {
                         this.mingen = noise[x][y];
                     }

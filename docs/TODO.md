@@ -35,6 +35,7 @@
 - PvP: verify melee hits apply to remote players when pvpMelee=true.
 - PvP: verify vehicle ramming damages players when pvpVehicle=true.
 - PvP: decide damage tuning and whether to add cooldown/anti-spam.
+- Biomes: verify temperature-based ice placement feels right (tune tempThresholds/temperatureBias).
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
 - Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.
