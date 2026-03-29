@@ -56,3 +56,4 @@
 - Multiplayer: verify initial sync gating prevents early load/NPE and that timeout shows loadingWorldData error.
 - Debug: run once to capture stack trace for Tiles/test/* loads and remove the temporary logging.
 - Docs: keep docs/ASSETS.md updated if atlas pipeline changes.
+- Assets: verify Tiles/modded.atlas loads and modded/* drawables resolve in-game/eval.

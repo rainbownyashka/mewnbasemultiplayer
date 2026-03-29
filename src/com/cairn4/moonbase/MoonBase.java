@@ -373,6 +373,12 @@ implements Telegraph {
         AssetManagerSingleton.getInstance().load("walls.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("static.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("Tiles/tiles.atlas", TextureAtlas.class);
+        // Optional modded atlas (assets_override/Tiles/modded.atlas)
+        try {
+            if (Gdx.files.internal("Tiles/modded.atlas").exists()) {
+                AssetManagerSingleton.getInstance().load("Tiles/modded.atlas", TextureAtlas.class);
+            }
+        } catch (Exception ignored) {}
         AssetManagerSingleton.getInstance().load("researchobjects.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("playerheads.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("techtree.atlas", TextureAtlas.class);

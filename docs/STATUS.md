@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-03-28
+Last update: 2026-03-29
 
 Changes
 - Restructured workspace to a simpler layout (basegame/, src/, work/, out/, tools/, backups/, old/).
@@ -145,6 +145,7 @@ Changes
 - Multiplayer: initial sync now gates load via client sync-ready flag; world waits in update loop and times out with error instead of racing load.
 - Debug: AssetManager now logs stack traces when loading Tiles/test/* to find the offending caller.
 - Docs: added docs/ASSETS.md with the full workflow for editing/adding tile textures and atlas pitfalls.
+- Assets: added optional Tiles/modded.atlas + modded.png and code loads/registers it when present.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -215,6 +216,8 @@ Verification
 - Compiled MultiplayerNetworkHelper.java, StorageUI.java, MiningRigUI.java, BuggieTrunkUI.java, StorageCrate.java, StoragePile.java with patch_manual.ps1 (2026-03-28) for UI refresh + remote anim.
 - Compiled MiniMap.java with patch_manual.ps1 (2026-03-28) for minimap bounds clamp + logging.
 - Compiled GroundTile.java with patch_manual.ps1 (2026-03-28) for ice biome tint update.
+- Compiled MoonBase.java and GameScreen.java with patch_manual.ps1 (2026-03-29).
+- Patched jar with Tiles/modded.atlas and Tiles/modded.png (2026-03-29).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).
@@ -234,6 +237,7 @@ Verification
 - Ice biome vegetation suppression + tint adjustments not yet verified in-game.
 - `seticebiome` runtime tint updates not yet verified in-game.
 - Ice tile atlas swap (test/ice-*) not yet verified in-game.
+- Modded atlas load + drawable registration not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

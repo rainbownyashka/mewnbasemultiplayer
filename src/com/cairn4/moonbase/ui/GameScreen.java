@@ -315,6 +315,13 @@ implements Telegraph {
         this.staticAtlas = AssetManagerSingleton.getInstance().get("static.atlas", TextureAtlas.class);
         this.skin.addRegions(this.staticAtlas);
         this.tileAtlas = AssetManagerSingleton.getInstance().get("Tiles/tiles.atlas", TextureAtlas.class);
+        // Optional modded atlas (if present, extend skin regions)
+        try {
+            if (AssetManagerSingleton.getInstance().isLoaded("Tiles/modded.atlas")) {
+                TextureAtlas modded = AssetManagerSingleton.getInstance().get("Tiles/modded.atlas", TextureAtlas.class);
+                if (modded != null) this.skin.addRegions(modded);
+            }
+        } catch (Exception ignored) {}
         for (Texture t : this.tileAtlas.getTextures()) {
             t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
