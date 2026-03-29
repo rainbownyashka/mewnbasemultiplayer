@@ -1,12 +1,75 @@
 modded.png
-size: 1,1
+size: 512,512
 format: RGBA8888
 filter: Nearest,Nearest
 repeat: none
-modded/placeholder
+modded/ice-15
   rotate: false
   xy: 0, 0
-  size: 1, 1
-  orig: 1, 1
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt1
+  rotate: false
+  xy: 128, 0
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt2
+  rotate: false
+  xy: 256, 0
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt3
+  rotate: false
+  xy: 384, 0
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt4
+  rotate: false
+  xy: 0, 128
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt5
+  rotate: false
+  xy: 128, 128
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt6
+  rotate: false
+  xy: 256, 128
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt7
+  rotate: false
+  xy: 384, 128
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt8
+  rotate: false
+  xy: 0, 256
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+modded/ice-15-alt9
+  rotate: false
+  xy: 128, 256
+  size: 128, 128
+  orig: 128, 128
   offset: 0, 0
   index: -1

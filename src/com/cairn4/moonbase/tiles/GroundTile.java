@@ -386,7 +386,7 @@ implements Pool.Poolable {
     private String resolveIceSpriteName(String preferred, String fallback) {
         try {
             if (this.world != null && this.world.gameScreen != null && this.world.gameScreen.skin != null) {
-                if (this.world.gameScreen.skin.has(preferred, com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                if (this.world.gameScreen.skin.has(preferred, com.badlogic.gdx.graphics.g2d.TextureRegion.class)) {
                     return preferred;
                 }
             }
