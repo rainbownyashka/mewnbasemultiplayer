@@ -138,6 +138,7 @@ Changes
 - Assets: exported individual ice tile PNGs under Tiles/test/* (no extension) and packed into jar to satisfy any direct texture loads.
 - Assets: exported all test/* tile regions as standalone files under Tiles/test/* to stop direct file-load errors.
 - GroundTile: switched ground/ice tile drawables to use atlas regions directly (tileAtlas/iceAtlas) instead of Skin.getDrawable to avoid missing drawable errors.
+- GroundTile: added fallback/guard when atlas region is missing to avoid null texture crashes and log the missing region.
 - Debug: AssetManager now logs stack traces when loading Tiles/test/* to find the offending caller.
 - Docs: added docs/ASSETS.md with the full workflow for editing/adding tile textures and atlas pitfalls.
 

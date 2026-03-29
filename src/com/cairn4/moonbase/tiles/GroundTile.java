@@ -217,6 +217,14 @@ implements Pool.Poolable {
         if (region == null) {
             region = this.world.gameScreen.tileAtlas.findRegion(this.spriteName);
         }
+        if (region == null) {
+            region = this.world.gameScreen.tileAtlas.findRegion("test/ground-15");
+            MoonBase.log("GroundTile: missing region " + this.spriteName + ", fallback to test/ground-15");
+        }
+        if (region == null) {
+            MoonBase.log("GroundTile: missing fallback region test/ground-15, skipping tile draw");
+            return;
+        }
         this.image = new Image(region);
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
@@ -309,6 +317,10 @@ implements Pool.Poolable {
             TextureAtlas.AtlasRegion layerRegion = layerAtlas.findRegion(fileName);
             if (layerRegion == null) {
                 layerRegion = this.world.gameScreen.tileAtlas.findRegion(fileName);
+            }
+            if (layerRegion == null) {
+                MoonBase.log("GroundTile: missing layer region " + fileName + ", skipping layer");
+                return;
             }
             Image testLayer = new Image(layerRegion);
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
