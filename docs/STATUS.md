@@ -134,6 +134,7 @@ Changes
 - Assets: re-packed Tiles/tiles.atlas and Tiles/tiles.png under the correct jar path (Tiles/...) so regions resolve.
 - Assets: moved ice textures into a dedicated atlas (Tiles/ice.atlas + Tiles/ice.png) and restored original Tiles/tiles.*.
 - GameScreen: now loads Tiles/ice.atlas and registers regions into skin.
+- Assets: ensured Tiles/ice.* are actually stored under the Tiles/ path inside the jar.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
