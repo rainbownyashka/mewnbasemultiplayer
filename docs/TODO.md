@@ -48,4 +48,5 @@
 - Assets: verify ice biome uses new test/ice-* atlas regions and no longer shows green ground bleed.
 - Assets: verify Tiles/ice.atlas loads and ice regions resolve without missing drawable errors.
 - Assets: confirm direct file loads for Tiles/test/ice-* no longer crash (jar contains Tiles/test/*).
+- Assets: confirm direct file loads for Tiles/test/* (water/mud/ground/etc) no longer crash.
 - Docs: keep docs/ASSETS.md updated if atlas pipeline changes.
