@@ -34,6 +34,7 @@ import com.cairn4.moonbase.ItemFactory;
 import com.cairn4.moonbase.ItemStack;
 import com.cairn4.moonbase.Mission;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.NetworkHelper;
 import com.cairn4.moonbase.ParticleActor;
 import com.cairn4.moonbase.Player;
 import com.cairn4.moonbase.Repairable;
@@ -881,6 +882,24 @@ DamageTaker {
                     ((Creature)o).takeDamage(10.0f * diff, Vehicle.this.damageDef);
                 }
             });
+        }
+        if (diff > 0.5f && endCrashSpeed > 4.0f && o instanceof Player) {
+            final Player p = (Player)o;
+            Audio.getInstance().playSound("sounds/buggie-crash2.ogg", diff * 0.05f, MathUtils.random(0.8f, 1.1f));
+            float dmg = 10.0f * diff;
+            try {
+                com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+                if (s != null) {
+                    if (s.isPvpVehicleEnabled()) {
+                        s.applyPvpDamage(p.ownerId, dmg, this.driverOwnerId, "VEHICLE");
+                    }
+                } else if (this.world != null && this.world.gameScreen != null) {
+                    // client -> server
+                    NetworkHelper.sendPayload(this.world.gameScreen, "PVP_HIT:" + p.ownerId + ":" + dmg + ":VEHICLE");
+                } else {
+                    p.playerStatus.takeHitDamage(dmg);
+                }
+            } catch (Exception ignored) {}
         }
     }
 

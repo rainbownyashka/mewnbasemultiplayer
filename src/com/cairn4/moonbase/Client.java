@@ -394,6 +394,34 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 }
                 return;
             }
+            if ("PVP_DAMAGE".equals(type)) {
+                try {
+                    String[] parts = payload.split(":");
+                    if (parts.length >= 2 && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
+                        int targetId = safeParseInt(parts[0], -1);
+                        float dmg = safeParseFloat(parts[1], 0.0f);
+                        int attackerId = (parts.length >= 3) ? safeParseInt(parts[2], -1) : -1;
+                        String kind = (parts.length >= 4) ? parts[3] : "";
+                        if (targetId == this.clientId || targetId == this.screen.world.player.ownerId) {
+                            final float fdmg = dmg;
+                            final int atk = attackerId;
+                            final String k = kind;
+                            Gdx.app.postRunnable(() -> {
+                                try {
+                                    this.screen.world.player.playerStatus.takeHitDamage(fdmg);
+                                    String msg2 = (k != null && k.length() > 0) ? ("Hit by " + k) : "Hit!";
+                                    if (atk >= 0) {
+                                        String nick = knownNicks.get(atk);
+                                        if (nick != null && nick.length() > 0) msg2 = nick + " hit you";
+                                    }
+                                    this.screen.hud.hudNotifications.newMessage((String)null, msg2, Color.valueOf("e33e46"));
+                                } catch (Exception ignored) {}
+                            });
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return;
+            }
              String frag = type + ":" + payload;
              if (frag != null && frag.length() != 0) {
                  try {

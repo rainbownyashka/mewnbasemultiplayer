@@ -62,6 +62,9 @@ public class Server {
     private Properties serverProperties = new Properties();
     private volatile boolean serverPropsLoaded = false;
     private volatile boolean techSyncEnabled = true;
+    private volatile boolean pvpEnabled = false;
+    private volatile boolean pvpMeleeEnabled = false;
+    private volatile boolean pvpVehicleEnabled = false;
     private String serverPropsPath = null;
 
     public Server(int port) {
@@ -279,6 +282,42 @@ public class Server {
         return this.techSyncEnabled;
     }
 
+    public boolean isPvpEnabled() {
+        ensureServerPropertiesLoaded();
+        return this.pvpEnabled;
+    }
+
+    public boolean isPvpMeleeEnabled() {
+        ensureServerPropertiesLoaded();
+        return this.pvpEnabled && this.pvpMeleeEnabled;
+    }
+
+    public boolean isPvpVehicleEnabled() {
+        ensureServerPropertiesLoaded();
+        return this.pvpEnabled && this.pvpVehicleEnabled;
+    }
+
+    public void applyPvpDamage(int targetId, float amount, int attackerId, String kind) {
+        if (!isPvpEnabled()) return;
+        float dmg = amount;
+        if (Float.isNaN(dmg) || dmg <= 0.0f) return;
+        if (dmg > 200.0f) dmg = 200.0f; // clamp to avoid abuse spikes
+        // Apply to host player if targetId is host (0)
+        try {
+            if (targetId == 0 && this.gameScreen != null && this.gameScreen.world != null && this.gameScreen.world.player != null) {
+                this.gameScreen.world.player.playerStatus.takeHitDamage(dmg);
+            }
+        } catch (Exception ignored) {}
+        // Send to target client if online
+        try {
+            ClientHandler ch = this.clients.get(Integer.valueOf(targetId));
+            if (ch != null) {
+                String k = (kind == null ? "" : kind);
+                ch.sendMessage("0:PVP_DAMAGE:" + targetId + ":" + dmg + ":" + attackerId + ":" + k);
+            }
+        } catch (Exception ignored) {}
+    }
+
     private String getServerPropertiesPath() {
         try {
             String folder = com.cairn4.moonbase.MoonBase.currentSaveFolder;
@@ -302,6 +341,12 @@ public class Server {
                     // defaults
                     serverProperties.setProperty("syncTech", "true");
                     techSyncEnabled = true;
+                    serverProperties.setProperty("pvp", "false");
+                    serverProperties.setProperty("pvpMelee", "false");
+                    serverProperties.setProperty("pvpVehicle", "false");
+                    pvpEnabled = false;
+                    pvpMeleeEnabled = false;
+                    pvpVehicleEnabled = false;
                     try {
                         try { fh.parent().mkdirs(); } catch (Exception ignored) {}
                         Writer writer = fh.writer(false, "UTF-8");
@@ -316,6 +361,12 @@ public class Server {
                     } catch (Exception ignored) {}
                     String syncTech = serverProperties.getProperty("syncTech", "true");
                     techSyncEnabled = "true".equalsIgnoreCase(syncTech.trim());
+                    String pvp = serverProperties.getProperty("pvp", "false");
+                    pvpEnabled = "true".equalsIgnoreCase(pvp.trim());
+                    String pvpMelee = serverProperties.getProperty("pvpMelee", "false");
+                    pvpMeleeEnabled = "true".equalsIgnoreCase(pvpMelee.trim());
+                    String pvpVehicle = serverProperties.getProperty("pvpVehicle", "false");
+                    pvpVehicleEnabled = "true".equalsIgnoreCase(pvpVehicle.trim());
                 }
             } catch (Exception ignored) {}
         }
@@ -2451,6 +2502,22 @@ public class Server {
                                     String json = java.net.URLDecoder.decode(data, "UTF-8");
                                     String key = getPlayerStateKey();
                                     server.storePlayerState(key, json);
+                                } catch (Exception ignored) {}
+                                continue;
+                            }
+                            if (message.startsWith("PVP_HIT:")) {
+                                try {
+                                    if (!server.isPvpEnabled()) continue;
+                                    String data = message.substring("PVP_HIT:".length());
+                                    String[] parts = data.split(":");
+                                    if (parts.length >= 2) {
+                                        int targetId = safeParseInt(parts[0], -1);
+                                        float dmg = safeParseFloat(parts[1], 0.0f);
+                                        String kind = (parts.length >= 3) ? parts[2] : "";
+                                        if (targetId >= 0 && targetId != this.clientId) {
+                                            server.applyPvpDamage(targetId, dmg, this.clientId, kind);
+                                        }
+                                    }
                                 } catch (Exception ignored) {}
                                 continue;
                             }

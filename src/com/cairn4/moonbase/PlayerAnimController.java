@@ -11,6 +11,7 @@ import com.cairn4.moonbase.ItemData;
 import com.cairn4.moonbase.ItemFactory;
 import com.cairn4.moonbase.ItemStack;
 import com.cairn4.moonbase.MoonBase;
+import com.cairn4.moonbase.NetworkHelper;
 import com.cairn4.moonbase.Player;
 import com.cairn4.moonbase.entities.Creature;
 import com.cairn4.moonbase.entities.LightAnimator;
@@ -185,6 +186,34 @@ public class PlayerAnimController {
                         dmg = MathUtils.random(PlayerAnimController.this.player.minMeleeDamage, PlayerAnimController.this.player.maxMeleeDamage);
                     }
                     creatureToHit.takeDamage(dmg, PlayerAnimController.this.damageDef);
+                    try {
+                        // PvP melee: hit nearest remote player in range
+                        if (!PlayerAnimController.this.player.isRemote && PlayerAnimController.this.player.world != null && PlayerAnimController.this.player.world.gameScreen != null) {
+                            com.cairn4.moonbase.ui.GameScreen gs = PlayerAnimController.this.player.world.gameScreen;
+                            com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+                            float range = 90.0f;
+                            com.cairn4.moonbase.Player nearest = null;
+                            float best = range;
+                            for (com.cairn4.moonbase.Player rp : gs.getRemotePlayers()) {
+                                if (rp == null) continue;
+                                float dist = new com.badlogic.gdx.math.Vector2(rp.getXPos(), rp.getYPos()).dst(PlayerAnimController.this.player.getXPos(), PlayerAnimController.this.player.getYPos());
+                                if (dist <= best) {
+                                    best = dist;
+                                    nearest = rp;
+                                }
+                            }
+                            if (nearest != null) {
+                                if (s != null) {
+                                    if (s.isPvpMeleeEnabled()) {
+                                        s.applyPvpDamage(nearest.ownerId, dmg, PlayerAnimController.this.player.ownerId, "MELEE");
+                                    }
+                                } else {
+                                    // client -> server
+                                    NetworkHelper.sendPayload(gs, "PVP_HIT:" + nearest.ownerId + ":" + dmg + ":MELEE");
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
                     float pitch2 = MathUtils.random(0.9f, 1.1f);
                     Audio.getInstance().playSound("sounds/shovel-hit.ogg", 0.4f, pitch2);
                 }

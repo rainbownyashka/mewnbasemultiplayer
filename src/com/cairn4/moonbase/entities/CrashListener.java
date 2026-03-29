@@ -29,9 +29,6 @@ implements ContactListener {
             b = (Vehicle)contact.getFixtureB().getBody().getUserData();
             o = contact.getFixtureA().getBody().getUserData();
         }
-        if (o instanceof Player) {
-            b = null;
-        }
         if (b != null && this.hit) {
             b.finishCrash(o);
             this.hit = false;
@@ -61,4 +58,3 @@ implements ContactListener {
         }
     }
 }
-
