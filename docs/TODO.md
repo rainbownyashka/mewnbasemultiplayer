@@ -49,5 +49,6 @@
 - Assets: verify Tiles/ice.atlas loads and ice regions resolve without missing drawable errors.
 - Assets: confirm direct file loads for Tiles/test/ice-* no longer crash (jar contains Tiles/test/*).
 - Assets: confirm direct file loads for Tiles/test/* (water/mud/ground/etc) no longer crash.
+- GroundTile: verify atlas-direct lookup fixes missing drawable errors for test/ground-* and test/ice-*.
 - Debug: run once to capture stack trace for Tiles/test/* loads and remove the temporary logging.
 - Docs: keep docs/ASSETS.md updated if atlas pipeline changes.

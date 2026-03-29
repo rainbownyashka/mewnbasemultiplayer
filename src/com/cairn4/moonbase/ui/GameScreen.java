@@ -85,6 +85,7 @@ implements Telegraph {
     public HeatDistortEffect heatFx;
     private long lastLoad;
     public TextureAtlas tileAtlas;
+    public TextureAtlas iceAtlas;
     public TextureAtlas wallsAtlas;
     public TextureAtlas staticAtlas;
     public TextureAtlas headAtlas;
@@ -319,11 +320,11 @@ implements Telegraph {
             t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
         this.skin.addRegions(this.tileAtlas);
-        TextureAtlas iceAtlas = AssetManagerSingleton.getInstance().get("Tiles/ice.atlas", TextureAtlas.class);
-        for (Texture t : iceAtlas.getTextures()) {
+        this.iceAtlas = AssetManagerSingleton.getInstance().get("Tiles/ice.atlas", TextureAtlas.class);
+        for (Texture t : this.iceAtlas.getTextures()) {
             t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
-        this.skin.addRegions(iceAtlas);
+        this.skin.addRegions(this.iceAtlas);
         this.headAtlas = AssetManagerSingleton.getInstance().get("playerheads.atlas", TextureAtlas.class);
         this.skin.addRegions(this.headAtlas);
         this.techTreeAtlas = AssetManagerSingleton.getInstance().get("techtree.atlas", TextureAtlas.class);

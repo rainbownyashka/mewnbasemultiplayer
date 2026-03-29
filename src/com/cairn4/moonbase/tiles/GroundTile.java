@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.utils.TiledDrawable;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.Pool;
 import com.cairn4.moonbase.Chunk;
 import com.cairn4.moonbase.MoonBase;
@@ -208,7 +209,15 @@ implements Pool.Poolable {
                 this.spriteName = this.spriteName + "-alt" + rAlt;
             }
         }
-        this.image = new Image(this.world.gameScreen.skin.getDrawable(this.spriteName));
+        TextureAtlas useAtlas = this.world.gameScreen.tileAtlas;
+        if (this.getBiome() == Biomes.ice && this.world.gameScreen.iceAtlas != null) {
+            useAtlas = this.world.gameScreen.iceAtlas;
+        }
+        TextureAtlas.AtlasRegion region = useAtlas.findRegion(this.spriteName);
+        if (region == null) {
+            region = this.world.gameScreen.tileAtlas.findRegion(this.spriteName);
+        }
+        this.image = new Image(region);
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
         if (this.getBiome() == Biomes.ice) {
@@ -293,7 +302,15 @@ implements Pool.Poolable {
                     fileName = fileName + altEdge;
                 }
             }
-            Image testLayer = new Image(this.world.gameScreen.skin.getDrawable(fileName));
+            TextureAtlas layerAtlas = this.world.gameScreen.tileAtlas;
+            if (biomeLayer == Biomes.ice && this.world.gameScreen.iceAtlas != null) {
+                layerAtlas = this.world.gameScreen.iceAtlas;
+            }
+            TextureAtlas.AtlasRegion layerRegion = layerAtlas.findRegion(fileName);
+            if (layerRegion == null) {
+                layerRegion = this.world.gameScreen.tileAtlas.findRegion(fileName);
+            }
+            Image testLayer = new Image(layerRegion);
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
             testLayer.setPosition(-0.01f, -0.01f);
             if (biomeLayer == Biomes.ice) {
