@@ -142,6 +142,7 @@ Changes
 - GroundTile: added placeholder drawable + autoTileGroup guard so missing regions can't crash autotiling.
 - Graphics rollback: restored Tiles/tiles.atlas + tiles.png to original and removed ice-atlas usage in GameScreen/MoonBase.
 - GroundTile: reverted to Skin.getDrawable for tile regions with safe fallback placeholder.
+- Multiplayer: initial sync now gates load via client sync-ready flag; world waits in update loop and times out with error instead of racing load.
 - Debug: AssetManager now logs stack traces when loading Tiles/test/* to find the offending caller.
 - Docs: added docs/ASSETS.md with the full workflow for editing/adding tile textures and atlas pitfalls.
 

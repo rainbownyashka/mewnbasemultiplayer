@@ -85,6 +85,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
             dir.deleteDirectory();
             dir.mkdirs();
             try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").delete(); } catch (Exception ignored) {}
+            try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = false; } catch (Exception ignored) {}
         } catch (Exception ignored) {}
         this.running = true;
         new Thread(() -> {
@@ -118,6 +119,8 @@ import com.cairn4.moonbase.net.ProtocolV2;
                      } catch (Exception e) {
                          Gdx.app.error("Client", "Failed reading assigned clientId (continuing)", e);
                      }
+                     boolean gotGameSave = false;
+                     boolean gotWorldData = false;
                      try {
                          int gameSaveLen = this.in.readInt();
                         if (gameSaveLen > 0) {
@@ -133,6 +136,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              receivedGameSave.writeBytes(gameSaveBytes, false);
                              Gdx.app.log("Client", "gameSave.json received (" + gameSaveLen + " bytes).");
                              try { System.out.println("[Client] connect: wrote gameSave.json, len=" + gameSaveLen); } catch (Exception ignored) {}
+                             gotGameSave = true;
                              
                              // Set current save folder to multiplayer_received for loading
                              try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
@@ -154,9 +158,14 @@ import com.cairn4.moonbase.net.ProtocolV2;
                             try { System.out.println("[Client] connect: wrote worldData.json, len=" + worldDataLen); } catch (Exception ignored) {}
                             try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").writeString("ok", false); } catch (Exception ignored) {}
                             try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
+                            gotWorldData = true;
                         }
                     } catch (Exception e) {
                         Gdx.app.error("Client", "Failed reading initial worldData blob (continuing)", e);
+                    }
+                    if (gotGameSave && gotWorldData) {
+                        try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = true; } catch (Exception ignored) {}
+                        Gdx.app.log("Client", "Initial sync complete (gameSave + worldData).");
                     }
                  } catch (Exception ex) {
                      Gdx.app.error("Client", "Error consuming initial server blobs", ex);

@@ -71,6 +71,7 @@ implements Telegraph {
     public static final String discordInviteURL = "https://discord.gg/mewnbase";
     public static String currentSaveFolder = null;
     public static boolean isMultiplayer = false;
+    public static volatile boolean multiplayerSyncReady = false;
     public static String multiplayerHost = "127.0.0.1";
     public static int multiplayerPort = 7777;
     // multiplayer nickname (set via menu or console)

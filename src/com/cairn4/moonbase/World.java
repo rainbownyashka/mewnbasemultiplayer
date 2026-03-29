@@ -70,6 +70,8 @@ public class World {
     public Lander lander;
     public Player player;
     public GameStates gameState;
+    private boolean pendingMpLoad = false;
+    private long pendingMpStartMs = 0L;
     public BaseManager baseManager;
     public TechManager techManager;
     public RegrowthManager regrowthManager;
@@ -166,41 +168,10 @@ public class World {
             try {
                 String cur = com.cairn4.moonbase.MoonBase.currentSaveFolder;
                 if (com.cairn4.moonbase.MoonBase.isMultiplayer && "multiplayer_received".equals(cur)) {
-                    Gdx.app.log("MewnBase", "World: running as multiplayer client; deferring load until multiplayer_received files present...");
+                    Gdx.app.log("MewnBase", "World: multiplayer client waiting for initial sync before load...");
                     this.gameState = GameStates.start;
-                    // Poll for the received save files on a background thread and load when ready
-                    new Thread(() -> {
-                        try {
-                            int attempts = 0;
-                            while (attempts < 600) { // ~60s max (600 * 100ms)
-                                try {
-                                com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
-                                com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
-                                com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
-                                com.badlogic.gdx.files.FileHandle done = Gdx.files.local("saves/multiplayer_received/.sync_done");
-                                if (w.exists() && (g.exists() || d.exists()) && done.exists()) {
-                                    Gdx.app.log("MewnBase", "World: detected multiplayer_received save files, scheduling load...");
-                                        com.badlogic.gdx.Gdx.app.postRunnable(() -> {
-                                            try {
-                                                gameScreen.gameLoader.loadGame(this);
-                                                this.gameState = GameStates.playing;
-                                            } catch (Exception e) {
-                                                Gdx.app.error("MewnBase", "World: failed to load deferred multiplayer_received save", e);
-                                                this.gameState = GameStates.start;
-                                            }
-                                        });
-                                        return;
-                                    }
-                                } catch (Exception ignored) {}
-                                attempts++;
-                                try { Thread.sleep(100L); } catch (InterruptedException ie) { break; }
-                            }
-                            // timeout: keep in start state; do not attempt load without worldData.json
-                            Gdx.app.log("MewnBase", "World: timed out waiting for multiplayer_received files; staying in start state");
-                        } catch (Exception e) {
-                            Gdx.app.error("MewnBase", "World: error while waiting for multiplayer_received files", e);
-                        }
-                    }, "MewnBase-World-DeferredLoad").start();
+                    this.pendingMpLoad = true;
+                    this.pendingMpStartMs = com.badlogic.gdx.utils.TimeUtils.millis();
                 } else {
                     gameScreen.gameLoader.loadGame(this);
                     this.gameState = GameStates.playing;
@@ -213,6 +184,42 @@ public class World {
         this.ambientWorldSound = Audio.getInstance().getSound("music/wind.ogg");
         this.ambientWorldSoundId = Audio.getInstance().playSoundLoop(this.ambientWorldSound, 0.5f, 1.0f, 0.0f);
         this.fog = new Fog(this.gameScreen, this);
+    }
+
+    private boolean multiplayerReceivedFilesReady() {
+        try {
+            com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
+            com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
+            com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
+            return w.exists() && (g.exists() || d.exists());
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private void tryDeferredMultiplayerLoad() {
+        if (!this.pendingMpLoad) return;
+        if (!com.cairn4.moonbase.MoonBase.multiplayerSyncReady) {
+            // Still waiting on client sync
+        } else if (this.multiplayerReceivedFilesReady()) {
+            try {
+                this.gameScreen.gameLoader.loadGame(this);
+                this.gameState = GameStates.playing;
+            } catch (Exception e) {
+                Gdx.app.error("MewnBase", "World: failed to load multiplayer_received after sync", e);
+                this.gameState = GameStates.start;
+            } finally {
+                this.pendingMpLoad = false;
+            }
+            return;
+        }
+        long elapsed = com.badlogic.gdx.utils.TimeUtils.millis() - this.pendingMpStartMs;
+        if (elapsed > 60000L) {
+            Gdx.app.error("MewnBase", "World: timed out waiting for multiplayer_received files; returning to menu");
+            this.pendingMpLoad = false;
+            try {
+                this.gameScreen.errorReturnToMainMenu(com.cairn4.moonbase.LoadingErrors.loadingWorldData);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void makeEmptyWorld() {
@@ -296,6 +303,9 @@ public class World {
     }
 
     public void update(float delta) {
+        if (this.pendingMpLoad) {
+            this.tryDeferredMultiplayerLoad();
+        }
         this.rayHandler.setCombinedMatrix(this.gameScreen.b2dCam);
         switch (this.gameState) {
             case start: {
