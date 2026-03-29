@@ -4,16 +4,11 @@
 package com.cairn4.moonbase.tiles;
 
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TiledDrawable;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.Pool;
 import com.cairn4.moonbase.Chunk;
 import com.cairn4.moonbase.MoonBase;
@@ -55,7 +50,7 @@ implements Pool.Poolable {
     boolean discovered;
     private Vector2 cameraPos = new Vector2(0.0f, 0.0f);
     private Vector2 tileWorldPos = new Vector2(0.0f, 0.0f);
-    private static TextureRegionDrawable missingDrawable;
+    private static com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable missingDrawable;
 
     public String getSprite() {
         return this.spriteName;
@@ -202,7 +197,7 @@ implements Pool.Poolable {
                 break;
             }
             case ice: {
-                this.spriteName = "test/ice-15";
+                this.spriteName = "test/ground-15";
                 float rI = MathUtils.random();
                 if (rI > 0.4f && rI <= 0.9f) {
                     int rAlt = MathUtils.random(1, 5);
@@ -214,25 +209,20 @@ implements Pool.Poolable {
                 this.spriteName = this.spriteName + "-alt" + rAlt;
             }
         }
-        TextureAtlas useAtlas = this.world.gameScreen.tileAtlas;
-        if (this.getBiome() == Biomes.ice && this.world.gameScreen.iceAtlas != null) {
-            useAtlas = this.world.gameScreen.iceAtlas;
+        Image baseImage = null;
+        try {
+            baseImage = new Image(this.world.gameScreen.skin.getDrawable(this.spriteName));
+        } catch (Exception e) {
+            MoonBase.log("GroundTile: missing drawable " + this.spriteName + ", fallback to test/ground-15");
+            try {
+                baseImage = new Image(this.world.gameScreen.skin.getDrawable("test/ground-15"));
+            } catch (Exception e2) {
+                MoonBase.log("GroundTile: missing fallback drawable test/ground-15, using empty placeholder");
+                baseImage = new Image(getMissingDrawable());
+                baseImage.setVisible(false);
+            }
         }
-        TextureAtlas.AtlasRegion region = useAtlas.findRegion(this.spriteName);
-        if (region == null) {
-            region = this.world.gameScreen.tileAtlas.findRegion(this.spriteName);
-        }
-        if (region == null) {
-            region = this.world.gameScreen.tileAtlas.findRegion("test/ground-15");
-            MoonBase.log("GroundTile: missing region " + this.spriteName + ", fallback to test/ground-15");
-        }
-        if (region != null) {
-            this.image = new Image(region);
-        } else {
-            MoonBase.log("GroundTile: missing fallback region test/ground-15, using empty placeholder");
-            this.image = new Image(getMissingDrawable());
-            this.image.setVisible(false);
-        }
+        this.image = baseImage;
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
         if (this.getBiome() == Biomes.ice) {
@@ -317,19 +307,13 @@ implements Pool.Poolable {
                     fileName = fileName + altEdge;
                 }
             }
-            TextureAtlas layerAtlas = this.world.gameScreen.tileAtlas;
-            if (biomeLayer == Biomes.ice && this.world.gameScreen.iceAtlas != null) {
-                layerAtlas = this.world.gameScreen.iceAtlas;
-            }
-            TextureAtlas.AtlasRegion layerRegion = layerAtlas.findRegion(fileName);
-            if (layerRegion == null) {
-                layerRegion = this.world.gameScreen.tileAtlas.findRegion(fileName);
-            }
-            if (layerRegion == null) {
-                MoonBase.log("GroundTile: missing layer region " + fileName + ", skipping layer");
+            Image testLayer;
+            try {
+                testLayer = new Image(this.world.gameScreen.skin.getDrawable(fileName));
+            } catch (Exception e) {
+                MoonBase.log("GroundTile: missing layer drawable " + fileName + ", skipping layer");
                 return;
             }
-            Image testLayer = new Image(layerRegion);
             testLayer.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
             testLayer.setPosition(-0.01f, -0.01f);
             if (biomeLayer == Biomes.ice) {
@@ -395,7 +379,7 @@ implements Pool.Poolable {
     }
 
     protected String getBiomeSpriteName(Biomes b) {
-        if (b == Biomes.ice) return "ice";
+        if (b == Biomes.ice) return "ground";
         return b.toString();
     }
 
@@ -423,16 +407,16 @@ implements Pool.Poolable {
         return 1;
     }
 
-    private static TextureRegionDrawable getMissingDrawable() {
+    private static com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable getMissingDrawable() {
         if (missingDrawable != null) {
             return missingDrawable;
         }
-        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        com.badlogic.gdx.graphics.Pixmap pm = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         pm.setColor(0, 0, 0, 0);
         pm.fill();
-        Texture tex = new Texture(pm);
+        com.badlogic.gdx.graphics.Texture tex = new com.badlogic.gdx.graphics.Texture(pm);
         pm.dispose();
-        missingDrawable = new TextureRegionDrawable(new TextureRegion(tex));
+        missingDrawable = new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(new com.badlogic.gdx.graphics.g2d.TextureRegion(tex));
         return missingDrawable;
     }
 

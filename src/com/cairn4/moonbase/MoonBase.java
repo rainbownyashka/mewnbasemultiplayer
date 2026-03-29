@@ -372,7 +372,6 @@ implements Telegraph {
         AssetManagerSingleton.getInstance().load("walls.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("static.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("Tiles/tiles.atlas", TextureAtlas.class);
-        AssetManagerSingleton.getInstance().load("Tiles/ice.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("researchobjects.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("playerheads.atlas", TextureAtlas.class);
         AssetManagerSingleton.getInstance().load("techtree.atlas", TextureAtlas.class);

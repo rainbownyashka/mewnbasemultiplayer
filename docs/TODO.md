@@ -52,5 +52,6 @@
 - GroundTile: verify atlas-direct lookup fixes missing drawable errors for test/ground-* and test/ice-*.
 - GroundTile: verify missing-region fallback only logs when expected and does not hide real issues.
 - GroundTile: verify placeholder path doesn’t leak textures or spam logs during normal play.
+- Graphics: verify rollback loads test/ground-* and test/water-* without missing drawable/file errors.
 - Debug: run once to capture stack trace for Tiles/test/* loads and remove the temporary logging.
 - Docs: keep docs/ASSETS.md updated if atlas pipeline changes.
