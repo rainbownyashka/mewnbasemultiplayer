@@ -135,6 +135,7 @@ Changes
 - Assets: moved ice textures into a dedicated atlas (Tiles/ice.atlas + Tiles/ice.png) and restored original Tiles/tiles.*.
 - GameScreen: now loads Tiles/ice.atlas and registers regions into skin.
 - Assets: ensured Tiles/ice.* are actually stored under the Tiles/ path inside the jar.
+- Assets: exported individual ice tile PNGs under Tiles/test/* (no extension) and packed into jar to satisfy any direct texture loads.
 - Docs: added docs/ASSETS.md with the full workflow for editing/adding tile textures and atlas pitfalls.
 
 Impact
