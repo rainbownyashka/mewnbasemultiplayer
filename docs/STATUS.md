@@ -137,6 +137,7 @@ Changes
 - Assets: ensured Tiles/ice.* are actually stored under the Tiles/ path inside the jar.
 - Assets: exported individual ice tile PNGs under Tiles/test/* (no extension) and packed into jar to satisfy any direct texture loads.
 - Assets: exported all test/* tile regions as standalone files under Tiles/test/* to stop direct file-load errors.
+- Debug: AssetManager now logs stack traces when loading Tiles/test/* to find the offending caller.
 - Docs: added docs/ASSETS.md with the full workflow for editing/adding tile textures and atlas pitfalls.
 
 Impact
