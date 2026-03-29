@@ -529,6 +529,9 @@ implements Pool.Poolable {
         float fixedTemp = (temp + 1.0f) / 2.0f;
         this.tempIndex = GroundTile.toTempIndex(fixedTemp);
         Biomes base = biomeTable[this.altIndex][this.wetIndex];
+        if (this.tempIndex <= 1 && base == Biomes.volcanic) {
+            base = Biomes.rock;
+        }
         if (this.tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
             this.biome = Biomes.ice;
         } else {
@@ -548,6 +551,9 @@ implements Pool.Poolable {
         float fixedTemp = (temp + 1.0f) / 2.0f;
         int tempIndex = GroundTile.toTempIndex(fixedTemp);
         Biomes base = biomeTable[altIndex][wetIndex];
+        if (tempIndex <= 1 && base == Biomes.volcanic) {
+            base = Biomes.rock;
+        }
         if (tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
             return Biomes.ice;
         }
