@@ -195,6 +195,7 @@ implements Speaker {
     @Override
     public float getXPos() {
         if (this.vehicle == null) {
+            if (this.body == null) return 0.0f;
             return this.body.getPosition().x * 256.0f;
         }
         return this.vehicle.getWorldX();
@@ -203,6 +204,7 @@ implements Speaker {
     @Override
     public float getYPos() {
         if (this.vehicle == null) {
+            if (this.body == null) return 0.0f;
             return this.body.getPosition().y * 256.0f;
         }
         return this.vehicle.getWorldY();
@@ -738,6 +740,7 @@ implements Speaker {
         } catch (Exception e) {
             // ignore
         }
+        this.body = null;
     }
 
     private void updateLight() {

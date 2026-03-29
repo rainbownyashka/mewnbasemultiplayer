@@ -130,7 +130,7 @@ public class Server {
             Thread hostPosThread = new Thread(() -> {
                 while (true) {
                     try {
-                        if (Server.this.running && Server.this.gameScreen != null && Server.this.gameScreen.world != null && Server.this.gameScreen.world.player != null) {
+                        if (Server.this.running && Server.this.gameScreen != null && Server.this.gameScreen.world != null && Server.this.gameScreen.world.player != null && Server.this.gameScreen.world.player.body != null) {
                             float x = 0f, y = 0f, vx = 0f, vy = 0f;
                             try { x = Server.this.gameScreen.world.player.getXPos(); } catch (Exception ignored2) {}
                             try { y = Server.this.gameScreen.world.player.getYPos(); } catch (Exception ignored2) {}

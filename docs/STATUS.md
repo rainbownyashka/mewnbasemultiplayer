@@ -148,6 +148,7 @@ Changes
 - Assets: added optional Tiles/modded.atlas + modded.png and code loads/registers it when present.
 - Ice biome: now prefers `modded/ice-15*` tiles if present, otherwise falls back to `test/ground-15`.
 - Ice biome: availability check now uses TextureRegion (skin regions) so modded tiles are detected even if Drawable cache is absent.
+- Server: host position thread now skips when player body is missing; Player.dispose nulls body to avoid Box2D native crash on exit.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -222,6 +223,7 @@ Verification
 - Patched jar with Tiles/modded.atlas and Tiles/modded.png (2026-03-29).
 - Compiled GroundTile.java with patch_manual.ps1 (2026-03-29).
 - Compiled GroundTile.java with patch_manual.ps1 (2026-03-29) for ice modded detection.
+- Compiled Player.java and Server.java with patch_manual.ps1 (2026-03-29).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).
