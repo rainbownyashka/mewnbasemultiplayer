@@ -39,6 +39,8 @@
 - Biomes: verify volcanic-to-rock clamp removes lava near ice without killing volcanic areas entirely.
 - Biomes: verify spawn area no longer generates volcanic/ice tiles (smooth temperature bias).
 - Biomes: verify ice overlay alpha looks natural and doesn't wash out underlying biomes.
+- Biomes: ice overlay sometimes disappears/reappears while moving between chunks (investigate autoTile/visibility).
+- Ice resource: verify ice is walkable while still drill-harvestable (sensor physics).
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
 - Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.

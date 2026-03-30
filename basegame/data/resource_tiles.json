@@ -1097,6 +1097,8 @@
         }
       ],
       "sprites": ["ice", "ice2"],
+      "physicsBody": "rock",
+      "physicsSensor": true,
       "interactWith": [
         {
           "withAnyItem": true,

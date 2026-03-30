@@ -185,6 +185,10 @@ public class Tile {
     }
 
     protected void setupPhysics(String loaderObject, float scale) {
+        this.setupPhysics(loaderObject, scale, false);
+    }
+
+    protected void setupPhysics(String loaderObject, float scale, boolean isSensor) {
         this.categoryBits = (short)2;
         this.maskBits = (short)92;
         BodyDef bodyDef = new BodyDef();
@@ -193,6 +197,7 @@ public class Tile {
         fd.density = 1.0f;
         fd.friction = 0.5f;
         fd.restitution = 0.3f;
+        fd.isSensor = isSensor;
         fd.filter.categoryBits = this.categoryBits;
         fd.filter.maskBits = (short)(this.maskBits + this.categoryBits);
         this.body = this.world.b2dWorld.createBody(bodyDef);
@@ -464,4 +469,3 @@ public class Tile {
 
     }
 }
-

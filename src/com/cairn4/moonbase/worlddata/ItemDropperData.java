@@ -27,6 +27,7 @@ public class ItemDropperData {
     public ArrayList<String> spineAnimations;
     public String spineRegrowAnim;
     public String physicsBody;
+    public boolean physicsSensor;
     public String minimapHexColor;
     public float regrowTime;
     public String respawnId;
@@ -44,4 +45,3 @@ public class ItemDropperData {
     public ArrayList<ItemDropperVariationData> dropperVariations = new ArrayList();
     public float zSortOffset = 0.0f;
 }
-

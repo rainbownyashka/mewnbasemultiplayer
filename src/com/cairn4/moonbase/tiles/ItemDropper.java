@@ -91,7 +91,12 @@ extends Tile {
             this.behaviorList.add(this.transformCooldownTimer);
         }
         if (this.rdData.physicsBody != null) {
-            this.setupPhysics(this.rdData.physicsBody);
+            if (this.rdData.physicsSensor) {
+                this.setupPhysics(this.rdData.physicsBody, 0.5f, true);
+                this.walkable = true;
+            } else {
+                this.setupPhysics(this.rdData.physicsBody);
+            }
         } else {
             this.walkable = true;
         }
@@ -535,4 +540,3 @@ extends Tile {
         }
     }
 }
-
