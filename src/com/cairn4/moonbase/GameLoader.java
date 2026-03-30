@@ -380,6 +380,13 @@ public class GameLoader {
                     }
                 }
             } catch (Exception ignored) {}
+            try {
+                world.planetGenConfig = planetGen;
+                if (planetGen != null && world.weatherManager != null) {
+                    world.weatherManager.setChanceMultiplier(planetGen.weatherChanceMultiplier);
+                    world.weatherManager.setLightningDelayMultiplier(planetGen.lightningDelayMultiplier);
+                }
+            } catch (Exception ignored) {}
             this.worldData = GameLoader.loadWorldDataFile(m.planetId);
             world.worldChunks = world.chunkLoader.loadAllChunks(this.worldData);
             int seed = gsd.terrainGenSeed;

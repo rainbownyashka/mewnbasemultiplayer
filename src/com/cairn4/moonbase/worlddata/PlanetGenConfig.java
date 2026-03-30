@@ -28,6 +28,13 @@ public class PlanetGenConfig {
     public boolean enableSamples = true;
     public boolean enableNpcs = true;
 
+    // Dynamic climate
+    public float tempDayNightAmplitude = 0.0f;
+    public float weatherTempInfluence = 0.0f;
+    public float weatherChanceMultiplier = 1.0f;
+    public float lightningDelayMultiplier = 1.0f;
+    public float meteorRatePerMinute = 0.0f;
+
     public static PlanetGenConfig randomConfig(Mission m) {
         PlanetGenConfig c = new PlanetGenConfig();
         c.seed = MathUtils.random(10000);
@@ -49,6 +56,15 @@ public class PlanetGenConfig {
         c.enableVolcanos = MathUtils.randomBoolean(0.8f);
         c.enableSamples = MathUtils.randomBoolean(0.9f);
         c.enableNpcs = MathUtils.randomBoolean(0.7f);
+        c.tempDayNightAmplitude = MathUtils.random(0.1f, 0.45f);
+        c.weatherTempInfluence = MathUtils.random(0.2f, 0.6f);
+        c.weatherChanceMultiplier = MathUtils.random(0.7f, 1.4f);
+        c.lightningDelayMultiplier = MathUtils.random(0.7f, 1.5f);
+        if (MathUtils.randomBoolean(0.6f)) {
+            c.meteorRatePerMinute = MathUtils.random(0.02f, 0.12f);
+        } else {
+            c.meteorRatePerMinute = 0.0f;
+        }
         return c;
     }
 

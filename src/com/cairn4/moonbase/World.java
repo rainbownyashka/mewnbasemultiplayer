@@ -36,6 +36,7 @@ import com.cairn4.moonbase.Tutorial;
 import com.cairn4.moonbase.WeatherManager;
 import com.cairn4.moonbase.dialog.DialogController;
 import com.cairn4.moonbase.entities.Entity;
+import com.cairn4.moonbase.entities.Meteor;
 import com.cairn4.moonbase.entities.NpcBonuses;
 import com.cairn4.moonbase.entities.TemperatureDealer;
 import com.cairn4.moonbase.techtree.TechManager;
@@ -50,6 +51,7 @@ import com.cairn4.moonbase.worlddata.ChunkLoader;
 import com.cairn4.moonbase.worlddata.ItemDropperData;
 import com.cairn4.moonbase.worlddata.ItemDropperFactory;
 import com.cairn4.moonbase.worlddata.ItemDropperSpawnBiome;
+import com.cairn4.moonbase.worlddata.PlanetGenConfig;
 import com.cairn4.moonbase.worlddata.WeatherData;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -82,6 +84,7 @@ public class World {
     public long nextEntityId = 0L;
     public DayCycle dayCycle;
     public WeatherManager weatherManager;
+    public PlanetGenConfig planetGenConfig;
     public Lights lights;
     public Fog fog;
     // When true, Chunk will not broadcast tile change events (used when applying remote updates)
@@ -98,12 +101,19 @@ public class World {
     boolean timeUpdateOn = true;
     float timeSkipDelta = 0.0f;
     boolean needToApplyTimeskip = false;
+    private boolean debugIceOnce = false;
+    private boolean debugIceOverlayOnce = false;
+    private float meteorTimer = 0.0f;
 
     public Player getPlayer() {
         if (this.player != null) {
             return this.player;
         }
         return null;
+    }
+
+    public TerrainGen getTerrainGen() {
+        return this.terrainGen;
     }
 
     public static GridPoint2 getGridPointFromPoolAndSet(int x, int y) {
@@ -306,6 +316,8 @@ public class World {
         if (this.pendingMpLoad) {
             this.tryDeferredMultiplayerLoad();
         }
+        this.tryDebugIceOnce();
+        this.tryDebugIceOverlayOnce();
         this.rayHandler.setCombinedMatrix(this.gameScreen.b2dCam);
         switch (this.gameState) {
             case start: {
@@ -348,6 +360,7 @@ public class World {
                 this.gameScreen.playerUpdateCounter.stop();
                 this.dayCycle.update(worldDelta);
                 this.weatherManager.update(worldDelta);
+                this.updateMeteors(worldDelta);
                 if (this.player.changedChunks) {
                     this.chunkLoader.changeChunks(this.player.chunkX, this.player.chunkY);
                     this.player.changedChunks = false;
@@ -748,6 +761,89 @@ public class World {
         }
     }
 
+    private void tryDebugIceOnce() {
+        if (this.debugIceOnce) return;
+        if (this.player == null) return;
+        String prop = null;
+        try { prop = System.getProperty("mewnbase.debugIce"); } catch (Exception ignored) {}
+        if (prop == null || prop.trim().length() == 0) return;
+        String radiusProp = null;
+        int radius = 8;
+        try { radiusProp = System.getProperty("mewnbase.debugIceRadius"); } catch (Exception ignored) {}
+        try { if (radiusProp != null) radius = Integer.parseInt(radiusProp.trim()); } catch (Exception ignored) {}
+        this.debugIceOnce = true;
+        int px = (int)(this.player.getXPos() / Tile.TILE_SIZE);
+        int py = (int)(this.player.getYPos() / Tile.TILE_SIZE);
+        int iceCount = 0;
+        float minTemp = 999f, maxTemp = -999f;
+        float minAlpha = 999f, maxAlpha = -999f;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                GroundTile gt = this.getGroundTile(px + dx, py + dy);
+                if (gt == null) continue;
+                if (gt.getBiome() != GroundTile.Biomes.ice) continue;
+                iceCount++;
+                float t = gt.temperature;
+                float a = gt.computeIceOverlayAlpha();
+                if (t < minTemp) minTemp = t;
+                if (t > maxTemp) maxTemp = t;
+                if (a < minAlpha) minAlpha = a;
+                if (a > maxAlpha) maxAlpha = a;
+            }
+        }
+        GroundTile here = this.getGroundTile(px, py);
+        float hereTemp = here != null ? here.temperature : 0f;
+        float hereAlpha = here != null ? here.computeIceOverlayAlpha() : 0f;
+        MoonBase.log("DEBUG_ICE: pos=" + px + "," + py +
+            " radius=" + radius +
+            " iceCount=" + iceCount +
+            " temp[min,max]=[" + minTemp + "," + maxTemp + "]" +
+            " alpha[min,max]=[" + minAlpha + "," + maxAlpha + "]" +
+            " hereTemp=" + hereTemp +
+            " hereAlpha=" + hereAlpha +
+            " bias=" + GroundTile.ICE_ALPHA_BIAS +
+            " scale=" + GroundTile.ICE_ALPHA_SCALE +
+            " gamma=" + GroundTile.ICE_ALPHA_GAMMA +
+            " override=" + GroundTile.ICE_ALPHA_OVERRIDE);
+    }
+
+    private void tryDebugIceOverlayOnce() {
+        if (this.debugIceOverlayOnce) return;
+        if (this.player == null) return;
+        String prop = null;
+        try { prop = System.getProperty("mewnbase.debugIceOverlay"); } catch (Exception ignored) {}
+        if (prop == null || prop.trim().length() == 0) return;
+        this.debugIceOverlayOnce = true;
+        int px = (int)(this.player.getXPos() / Tile.TILE_SIZE);
+        int py = (int)(this.player.getYPos() / Tile.TILE_SIZE);
+        int radius = 12;
+        int iceTiles = 0;
+        int overlays = 0;
+        int overlaysOnIce = 0;
+        float minAlpha = 999f, maxAlpha = -999f;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                GroundTile gt = this.getGroundTile(px + dx, py + dy);
+                if (gt == null) continue;
+                boolean isIce = gt.getBiome() == GroundTile.Biomes.ice;
+                if (isIce) iceTiles++;
+                float a = gt.lastIceAlpha;
+                if (a < minAlpha) minAlpha = a;
+                if (a > maxAlpha) maxAlpha = a;
+                if (gt.iceOverlayAdded) {
+                    overlays++;
+                    if (isIce) overlaysOnIce++;
+                }
+            }
+        }
+        MoonBase.log("DEBUG_ICE_OVERLAY: pos=" + px + "," + py +
+            " radius=" + radius +
+            " iceTiles=" + iceTiles +
+            " overlays=" + overlays +
+            " overlaysOnIce=" + overlaysOnIce +
+            " alpha[min,max]=[" + minAlpha + "," + maxAlpha + "]");
+    }
+
     public long getEntityId() {
         ++this.nextEntityId;
         return this.nextEntityId;
@@ -766,6 +862,23 @@ public class World {
         GroundTile gt = this.getGroundTile(worldX, worldY);
         if (gt != null) {
             baseTemp = gt.getTemperature();
+        }
+        // Apply dynamic climate offsets (day/night + weather)
+        if (this.planetGenConfig != null) {
+            float dayAmp = this.planetGenConfig.tempDayNightAmplitude;
+            if (dayAmp != 0.0f && this.dayCycle != null) {
+                float dayLight = this.dayCycle.getDayLight();
+                float daySigned = (dayLight - 0.5f) * 2.0f; // -1..1
+                baseTemp += daySigned * dayAmp;
+            }
+            float weatherInfluence = this.planetGenConfig.weatherTempInfluence;
+            if (weatherInfluence != 0.0f && this.weatherManager != null) {
+                float rain = this.weatherManager.getRainRate();
+                float dust = this.weatherManager.getDustRate();
+                float wind = this.weatherManager.getWindSpeed();
+                float weatherDelta = (-rain * 0.6f) + (-dust * 0.2f) + (-wind * 0.1f);
+                baseTemp += weatherDelta * weatherInfluence;
+            }
         }
         return baseTemp;
     }
@@ -795,6 +908,22 @@ public class World {
             highestTempEntity = t;
         }
         return tempValue += highestTempEntity;
+    }
+
+    private void updateMeteors(float delta) {
+        if (this.planetGenConfig == null) return;
+        if (this.planetGenConfig.meteorRatePerMinute <= 0.0f) return;
+        if (this.player == null || this.gameScreen == null) return;
+        float interval = 60.0f / this.planetGenConfig.meteorRatePerMinute;
+        this.meteorTimer += delta;
+        if (this.meteorTimer < interval) return;
+        this.meteorTimer -= interval;
+        int px = this.player.getX();
+        int py = this.player.getY();
+        int radius = 10;
+        int wx = px + MathUtils.random(-radius, radius);
+        int wy = py + MathUtils.random(-radius, radius);
+        new Meteor(this, this.gameScreen.mainGroup, wx, wy);
     }
 
     // network: handle incoming tile/item events from multiplayer

@@ -87,6 +87,8 @@ extends Observable {
     List<Vector2DDouble> lightningPointList;
     public ArrayList<GridPoint2> lightningGridPoints = new ArrayList();
     int consequtiveStreak = 1;
+    private float chanceMultiplier = 1.0f;
+    private float lightningDelayMultiplier = 1.0f;
 
     public WeatherManager(World world) {
         this.loadData();
@@ -156,6 +158,16 @@ extends Observable {
             }
         }
         MoonBase.log("WeatherManager: weather mode: " + (Object)((Object)this.weatherMode));
+    }
+
+    public void setChanceMultiplier(float mul) {
+        if (mul <= 0.0f) mul = 1.0f;
+        this.chanceMultiplier = mul;
+    }
+
+    public void setLightningDelayMultiplier(float mul) {
+        if (mul <= 0.0f) mul = 1.0f;
+        this.lightningDelayMultiplier = mul;
     }
 
     public float getTimer() {
@@ -235,7 +247,7 @@ extends Observable {
             this.lightningTimer += delta;
             if (this.lightningTimer > this.lightningDelay) {
                 this.lightningTimer = 0.0f;
-                this.lightningDelay = 12.0f + (float)MathUtils.random(-5, 5);
+                this.lightningDelay = (12.0f + (float)MathUtils.random(-5, 5)) * this.lightningDelayMultiplier;
                 this.spawnLightningBolts();
             }
         }
@@ -378,16 +390,17 @@ extends Observable {
     private void randomRoll() {
         float max = this.rollStartingBase;
         for (WeatherData w : this.weatherDataList) {
-            max += w.chance;
+            max += w.chance * this.chanceMultiplier;
         }
         float r = MathUtils.random(0.0f, max);
         float baseR = 0.0f;
         for (WeatherData w : this.weatherDataList) {
-            if (r <= w.chance + baseR) {
+            float weighted = w.chance * this.chanceMultiplier;
+            if (r <= weighted + baseR) {
                 this.nextData = w;
                 break;
             }
-            baseR += w.chance;
+            baseR += weighted;
         }
     }
 
@@ -477,4 +490,3 @@ extends Observable {
         this.windSpeed = windSpeed;
     }
 }
-
