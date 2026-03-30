@@ -117,6 +117,31 @@ extends CommandExecutor {
         this.seticebiome(v, v, v);
     }
 
+    @ConsoleDoc(description="Scan nearby tiles for ice next to volcanic", paramDescriptions={"radiusTiles"})
+    public void biomecheck(int radiusTiles) {
+        int r = Math.max(1, radiusTiles);
+        int px = (int)(this.world.player.getXPos() / Tile.TILE_SIZE);
+        int py = (int)(this.world.player.getYPos() / Tile.TILE_SIZE);
+        int hits = 0;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dy = -r; dy <= r; dy++) {
+                GroundTile gt = this.world.getGroundTile(px + dx, py + dy);
+                if (gt == null || gt.getBiome() != GroundTile.Biomes.ice) continue;
+                GroundTile n1 = this.world.getGroundTile(px + dx + 1, py + dy);
+                GroundTile n2 = this.world.getGroundTile(px + dx - 1, py + dy);
+                GroundTile n3 = this.world.getGroundTile(px + dx, py + dy + 1);
+                GroundTile n4 = this.world.getGroundTile(px + dx, py + dy - 1);
+                if ((n1 != null && n1.getBiome() == GroundTile.Biomes.volcanic) ||
+                    (n2 != null && n2.getBiome() == GroundTile.Biomes.volcanic) ||
+                    (n3 != null && n3.getBiome() == GroundTile.Biomes.volcanic) ||
+                    (n4 != null && n4.getBiome() == GroundTile.Biomes.volcanic)) {
+                    hits++;
+                }
+            }
+        }
+        this.gameScreen.game.console.log("biomecheck: ice touching volcanic within " + r + " tiles = " + hits);
+    }
+
     /**
      * Send chat message to other peers (or server) and log locally.
      * Builds payload: CHAT:<urlencodedNick>:<urlencodedText>

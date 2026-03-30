@@ -155,6 +155,8 @@ Changes
 - TerrainGen: added temperature noise and ice biome now depends on cold temperature (with warm spawn bias).
 - Biomes: volcanic no longer appears in cold temperature zones (prevents lava next to ice).
 - Biomes: replaced spawn clamp with smooth temperature bias around (500,500) to keep spawn temperate.
+- Biomes: ice now renders as an alpha overlay based on temperature (smooth blending instead of hard switch).
+- Console: added `biomecheck` to scan for ice touching volcanic near the player.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -234,6 +236,7 @@ Verification
 - Compiled TerrainGen.java and GroundTile.java with patch_manual.ps1 (2026-03-29).
 - Compiled GroundTile.java with patch_manual.ps1 (2026-03-29) for cold-volcanic clamp.
 - Compiled TerrainGen.java and GroundTile.java with patch_manual.ps1 (2026-03-30) for spawn temperature bias.
+- Compiled GroundTile.java and ConsoleExecutor.java with patch_manual.ps1 (2026-03-30).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).

@@ -228,7 +228,9 @@ implements Pool.Poolable {
         this.image = baseImage;
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
-        if (this.getBiome() == Biomes.ice) {
+        float iceAlpha = getIceOverlayAlpha();
+        boolean useIceOverlay = iceAlpha > 0.05f;
+        if (this.getBiome() == Biomes.ice && !useIceOverlay) {
             this.image.setName("iceBase");
             this.image.setColor(ICE_TINT_R, ICE_TINT_G, ICE_TINT_B, 1.0f);
         }
@@ -238,6 +240,17 @@ implements Pool.Poolable {
         } else {
             this.autoTileGroup = new Group();
             this.group.addActor(this.autoTileGroup);
+        }
+        if (useIceOverlay) {
+            try {
+                String iceSprite = pickIceOverlaySprite();
+                Image iceImg = new Image(this.world.gameScreen.skin.getDrawable(iceSprite));
+                iceImg.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
+                iceImg.setPosition(-0.01f, -0.01f);
+                iceImg.getColor().a = iceAlpha;
+                iceImg.setName("iceOverlay");
+                this.group.addActor(iceImg);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -454,6 +467,19 @@ implements Pool.Poolable {
                 }
             }
         }
+    }
+
+    private float getIceOverlayAlpha() {
+        float coldness = (-this.temperature - 0.05f) / 0.6f;
+        return MathUtils.clamp(coldness, 0.0f, 1.0f);
+    }
+
+    private String pickIceOverlaySprite() {
+        int h = Math.abs((this.worldX * 73856093) ^ (this.worldY * 19349663));
+        int idx = h % 10;
+        String base = resolveIceSpriteName("modded/ice-15", "test/ground-15");
+        if (idx == 0) return base;
+        return resolveIceSpriteName(base + "-alt" + idx, base);
     }
 
     public void setDiscovered(boolean discovered) {
