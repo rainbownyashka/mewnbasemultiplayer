@@ -28,6 +28,7 @@ import com.cairn4.moonbase.worlddata.EntityData;
 import com.cairn4.moonbase.worlddata.GameSaveData;
 import com.cairn4.moonbase.worlddata.InventoryItemData;
 import com.cairn4.moonbase.worlddata.PlanetData;
+import com.cairn4.moonbase.worlddata.PlanetGenConfig;
 import com.cairn4.moonbase.worlddata.PlayerData;
 import com.cairn4.moonbase.worlddata.StatusEffectData;
 import com.cairn4.moonbase.worlddata.WorldData;
@@ -304,11 +305,31 @@ public class GameLoader {
                     m.planetType = currentPd.planetType;
                 }
             }
+            PlanetGenConfig planetGen = GameLoader.loadOrCreatePlanetGenConfig(MoonBase.currentSaveFolder, m.planetId, m);
+            if (planetGen != null) {
+                if (planetGen.planetType != null && planetGen.planetType.length() > 0) {
+                    m.planetType = planetGen.planetType;
+                }
+                if (planetGen.dayCycleMode != null && planetGen.dayCycleMode.length() > 0) {
+                    try { m.dayCycleMode = Mission.dayCycleModes.valueOf(planetGen.dayCycleMode); } catch (Exception ignored) {}
+                }
+                if (planetGen.weatherMode != null && planetGen.weatherMode.length() > 0) {
+                    try { m.weatherMode = Mission.weatherModes.valueOf(planetGen.weatherMode); } catch (Exception ignored) {}
+                }
+                if (planetGen.missionDayLength > 0) {
+                    m.missionDayLength = planetGen.missionDayLength;
+                }
+                if (currentPd != null && planetGen.seed > 0) {
+                    currentPd.terrainGenSeed = planetGen.seed;
+                }
+            }
             m.missionCompleteReady = gsd.missionCompleteReady;
             m.missionComplete = gsd.missionComplete;
             world.gameScreen.game.setMission(m);
             try {
-                m.dayCycleMode = Mission.dayCycleModes.valueOf(gsd.dayCycleModes);
+                if (m.dayCycleMode == null) {
+                    m.dayCycleMode = Mission.dayCycleModes.valueOf(gsd.dayCycleModes);
+                }
             }
             catch (Exception e) {
                 m.dayCycleMode = Mission.dayCycleModes.defaultDay;
@@ -326,7 +347,9 @@ public class GameLoader {
                 m.techTreeMode = Mission.techTreeModes.allTechUnlocked;
             }
             try {
-                m.weatherMode = Mission.weatherModes.valueOf(gsd.weatherMode);
+                if (m.weatherMode == null) {
+                    m.weatherMode = Mission.weatherModes.valueOf(gsd.weatherMode);
+                }
             }
             catch (Exception e) {
                 m.weatherMode = Mission.weatherModes.normal;
@@ -349,7 +372,14 @@ public class GameLoader {
             }
             int chunkX = loadPlayerData.chunkX;
             int chunkY = loadPlayerData.chunkY;
-            try { if (world.terrainGen != null) world.terrainGen.setPlanetType(m.planetType); } catch (Exception ignored) {}
+            try {
+                if (world.terrainGen != null) {
+                    world.terrainGen.setPlanetType(m.planetType);
+                    if (planetGen != null) {
+                        world.terrainGen.applyPlanetGenConfig(planetGen);
+                    }
+                }
+            } catch (Exception ignored) {}
             this.worldData = GameLoader.loadWorldDataFile(m.planetId);
             world.worldChunks = world.chunkLoader.loadAllChunks(this.worldData);
             int seed = gsd.terrainGenSeed;
@@ -716,5 +746,58 @@ public class GameLoader {
             prevSave1temp.delete();
             prevSave2temp.delete();
         }
+    }
+
+    public static PlanetGenConfig loadOrCreatePlanetGenConfig(String saveFolder, int planetId, Mission mission) {
+        try {
+            FileHandle cfgFile = getPlanetGenConfigFile(saveFolder, planetId);
+            if (cfgFile.exists()) {
+                String fileText = cfgFile.readString(SAVEFILE_CHARSET);
+                Json json = new Json();
+                json.setIgnoreUnknownFields(true);
+                return json.fromJson(PlanetGenConfig.class, fileText);
+            }
+            PlanetGenConfig cfg = null;
+            String prop = System.getProperty("mewnbase.planetgen");
+            if (prop != null && prop.trim().length() > 0) {
+                String trimmed = prop.trim();
+                if (trimmed.startsWith("{")) {
+                    Json json = new Json();
+                    json.setIgnoreUnknownFields(true);
+                    cfg = json.fromJson(PlanetGenConfig.class, trimmed);
+                } else {
+                    FileHandle f = Gdx.files.local(trimmed);
+                    if (!f.exists()) {
+                        f = Gdx.files.internal(trimmed);
+                    }
+                    if (f.exists()) {
+                        String text = f.readString(SAVEFILE_CHARSET);
+                        Json json = new Json();
+                        json.setIgnoreUnknownFields(true);
+                        cfg = json.fromJson(PlanetGenConfig.class, text);
+                    } else {
+                        MoonBase.error("PlanetGen: config not found: " + trimmed);
+                    }
+                }
+            }
+            if (cfg == null) {
+                cfg = PlanetGenConfig.randomConfig(mission);
+            }
+            try {
+                Json json = new Json();
+                String out = json.prettyPrint(cfg);
+                cfgFile.writeString(out, false, SAVEFILE_CHARSET);
+            } catch (Exception e) {
+                MoonBase.error("PlanetGen: failed to write config " + cfgFile.path());
+            }
+            return cfg;
+        } catch (Exception e) {
+            MoonBase.error("PlanetGen: failed to load/create config");
+            return null;
+        }
+    }
+
+    public static FileHandle getPlanetGenConfigFile(String saveFolder, int planetId) {
+        return Gdx.files.local("saves/" + saveFolder + "/planet_" + planetId + ".json");
     }
 }

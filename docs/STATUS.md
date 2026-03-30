@@ -239,6 +239,7 @@ Verification
 - Compiled GroundTile.java and ConsoleExecutor.java with patch_manual.ps1 (2026-03-30).
 - Compiled Tile.java, ItemDropper.java, ItemDropperData.java with patch_manual.ps1 (2026-03-30) to allow sensor-only physics for item droppers (ice).
 - Added Mining Rig biome drops for ice in resource_tiles.json (2026-03-30).
+- Added per-planet planetgen config loading (random defaults + optional override via -Dmewnbase.planetgen) and TerrainGen apply hook (2026-03-30).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).
@@ -260,6 +261,7 @@ Verification
 - Ice tile atlas swap (test/ice-*) not yet verified in-game.
 - Modded atlas load + drawable registration not yet verified in-game.
 - Ice resource sensor physics (walkable + drill contact) not yet verified in-game.
+- Planet gen config file creation + override not yet verified in-game.
 
 Risks
 - Auto-connect runs a blocking sync fetch thread; if target host is down, the connection attempt will still take up to socket timeout before returning to menu.

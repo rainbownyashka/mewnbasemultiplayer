@@ -42,6 +42,8 @@
 - Biomes: ice overlay sometimes disappears/reappears while moving between chunks (investigate autoTile/visibility).
 - Ice resource: verify ice is walkable while still drill-harvestable (sensor physics).
 - Mining Rig: verify ice biome drops appear in the Mining Rig UI and produce ice.
+- PlanetGen: verify planet_<id>.json is created on first load and reused on re-entry.
+- PlanetGen: verify -Dmewnbase.planetgen path/inline JSON override works for new planets.
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
 - Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.

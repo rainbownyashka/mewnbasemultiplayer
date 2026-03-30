@@ -147,6 +147,28 @@ public class TerrainGen {
         this.applyPlanetProfile(type);
     }
 
+    public void applyPlanetGenConfig(com.cairn4.moonbase.worlddata.PlanetGenConfig cfg) {
+        if (cfg == null) return;
+        if (cfg.planetType != null && cfg.planetType.length() > 0) {
+            this.applyPlanetProfile(cfg.planetType);
+        }
+        if (cfg.altitudeNoise > 0.0f) this.altitudeNoise = cfg.altitudeNoise;
+        if (cfg.altitudeSmoothing > 0.0f) this.altitudeSmoothing = cfg.altitudeSmoothing;
+        if (cfg.wetnessNoise > 0.0f) this.wetnessNoise = cfg.wetnessNoise;
+        if (cfg.wetnessSmoothing > 0.0f) this.wetnessSmoothing = cfg.wetnessSmoothing;
+        if (cfg.temperatureNoise > 0.0f) this.temperatureNoise = cfg.temperatureNoise;
+        if (cfg.temperatureSmoothing > 0.0f) this.temperatureSmoothing = cfg.temperatureSmoothing;
+        this.altitudeBias = cfg.altitudeBias;
+        this.wetnessBias = cfg.wetnessBias;
+        this.temperatureBias = cfg.temperatureBias;
+        this.enableVolcanos = cfg.enableVolcanos;
+        this.enableSamples = cfg.enableSamples;
+        this.enableNpcs = cfg.enableNpcs;
+        if (cfg.seed > 0) {
+            this.setSeed(cfg.seed);
+        }
+    }
+
     public int getSeed() {
         return this.seed;
     }
@@ -380,6 +402,8 @@ public class TerrainGen {
                 chunk.gtDiscoveryArray[y * 10 + x] = false;
             }
         }
+        // Enforce separation between ice and volcanic after initial paint
+        this.resolveIceVolcanicAdjacency(chunk);
     }
 
     private float safeSpawnAltitude(float x, float y, float value) {
@@ -593,6 +617,85 @@ public class TerrainGen {
             weight *= 0.25f;
         }
         return noise;
+    }
+
+    // Deterministic temperature value for a single world tile (used when loading older saves)
+    public float getTemperatureAt(int worldX, int worldY) {
+        this.simplexNoiseTemp = new SimplexNoise(this.seedTemp);
+        float layerF = this.temperatureNoise;
+        float weight = this.temperatureSmoothing;
+        float value = 0.0f;
+        for (int i = 0; i < 3; ++i) {
+            value += (float)SimplexNoise.noise((float)worldX * layerF + 2000.0f, (float)worldY * layerF + 2000.0f) * weight;
+            value = this.safeSpawnTemperature(worldX, worldY, value);
+            value = MathUtils.clamp(value + temperatureBias, -1.0f, 1.0f);
+            layerF *= 3.5f;
+            weight *= 0.25f;
+        }
+        return value;
+    }
+
+    // Resolve any direct adjacency between ice and volcanic by inserting a rock buffer.
+    public void resolveIceVolcanicAdjacency(Chunk chunk) {
+        java.util.HashSet<Chunk> changed = new java.util.HashSet<>();
+        boolean changedAny = false;
+        for (int x = 0; x < 10; ++x) {
+            for (int y = 0; y < 10; ++y) {
+                GroundTile gt = chunk.getGroundTile(x, y);
+                if (gt == null) continue;
+                GroundTile.Biomes b = gt.getBiome();
+                if (b == GroundTile.Biomes.ice) {
+                    changedAny |= convertNeighborVolcanicToRock(chunk, x, y, changed);
+                } else if (b == GroundTile.Biomes.volcanic) {
+                    if (isNeighborIce(chunk, x, y)) {
+                        gt.setBiome(GroundTile.Biomes.rock);
+                        gt.createDrawables();
+                        chunk.gtBiomeArray[y * 10 + x] = gt.getBiome();
+                        changed.add(chunk);
+                        changedAny = true;
+                    }
+                }
+            }
+        }
+        if (changedAny) {
+            for (Chunk c : changed) {
+                try { c.updateAutoTile(); } catch (Exception ignored) {}
+                try { c.setMapDirty(true); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private boolean isNeighborIce(Chunk chunk, int localX, int localY) {
+        GroundTile n1 = chunk.world.getGroundTile(chunk.chunkX * 10 + localX + 1, chunk.chunkY * 10 + localY);
+        GroundTile n2 = chunk.world.getGroundTile(chunk.chunkX * 10 + localX - 1, chunk.chunkY * 10 + localY);
+        GroundTile n3 = chunk.world.getGroundTile(chunk.chunkX * 10 + localX, chunk.chunkY * 10 + localY + 1);
+        GroundTile n4 = chunk.world.getGroundTile(chunk.chunkX * 10 + localX, chunk.chunkY * 10 + localY - 1);
+        return (n1 != null && n1.getBiome() == GroundTile.Biomes.ice) ||
+               (n2 != null && n2.getBiome() == GroundTile.Biomes.ice) ||
+               (n3 != null && n3.getBiome() == GroundTile.Biomes.ice) ||
+               (n4 != null && n4.getBiome() == GroundTile.Biomes.ice);
+    }
+
+    private boolean convertNeighborVolcanicToRock(Chunk chunk, int localX, int localY, java.util.HashSet<Chunk> changed) {
+        boolean changedAny = false;
+        changedAny |= convertIfVolcanic(chunk.world.getGroundTile(chunk.chunkX * 10 + localX + 1, chunk.chunkY * 10 + localY), changed);
+        changedAny |= convertIfVolcanic(chunk.world.getGroundTile(chunk.chunkX * 10 + localX - 1, chunk.chunkY * 10 + localY), changed);
+        changedAny |= convertIfVolcanic(chunk.world.getGroundTile(chunk.chunkX * 10 + localX, chunk.chunkY * 10 + localY + 1), changed);
+        changedAny |= convertIfVolcanic(chunk.world.getGroundTile(chunk.chunkX * 10 + localX, chunk.chunkY * 10 + localY - 1), changed);
+        return changedAny;
+    }
+
+    private boolean convertIfVolcanic(GroundTile gt, java.util.HashSet<Chunk> changed) {
+        if (gt != null && gt.getBiome() == GroundTile.Biomes.volcanic) {
+            gt.setBiome(GroundTile.Biomes.rock);
+            gt.createDrawables();
+            if (gt.chunk != null) {
+                gt.chunk.gtBiomeArray[gt.y * 10 + gt.x] = gt.getBiome();
+                changed.add(gt.chunk);
+            }
+            return true;
+        }
+        return false;
     }
 
     public void spawnFeature(String featureId, Chunk chunk, int x, int y) {
