@@ -1837,6 +1837,20 @@
           "dropChance": 0.5
         }
       ]
+    },
+    {
+      "biome": "ice",
+      "collectTimeMultiplier": 1.2,
+      "items": [
+        {
+          "itemId": "ice",
+          "dropChance": 0.9
+        },
+        {
+          "itemId": "rock",
+          "dropChance": 0.1
+        }
+      ]
     }
   ]
 }

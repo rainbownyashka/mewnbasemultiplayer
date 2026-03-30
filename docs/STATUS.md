@@ -238,6 +238,7 @@ Verification
 - Compiled TerrainGen.java and GroundTile.java with patch_manual.ps1 (2026-03-30) for spawn temperature bias.
 - Compiled GroundTile.java and ConsoleExecutor.java with patch_manual.ps1 (2026-03-30).
 - Compiled Tile.java, ItemDropper.java, ItemDropperData.java with patch_manual.ps1 (2026-03-30) to allow sensor-only physics for item droppers (ice).
+- Added Mining Rig biome drops for ice in resource_tiles.json (2026-03-30).
 - Minimap clamp/logging not yet verified in-game (needs manual map open check).
 - Deferred SPAWNREMOTE fix not yet verified in-game (client should see host after connect).
 - Minimap player markers not yet verified in-game (check remote names on map).

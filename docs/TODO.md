@@ -41,6 +41,7 @@
 - Biomes: verify ice overlay alpha looks natural and doesn't wash out underlying biomes.
 - Biomes: ice overlay sometimes disappears/reappears while moving between chunks (investigate autoTile/visibility).
 - Ice resource: verify ice is walkable while still drill-harvestable (sensor physics).
+- Mining Rig: verify ice biome drops appear in the Mining Rig UI and produce ice.
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
 - Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.
