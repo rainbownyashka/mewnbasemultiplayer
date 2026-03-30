@@ -37,7 +37,7 @@
 - PvP: decide damage tuning and whether to add cooldown/anti-spam.
 - Biomes: verify temperature-based ice placement feels right (tune tempThresholds/temperatureBias).
 - Biomes: verify volcanic-to-rock clamp removes lava near ice without killing volcanic areas entirely.
-- Biomes: verify spawn area no longer generates volcanic tiles (new spawn-radius clamp).
+- Biomes: verify spawn area no longer generates volcanic/ice tiles (smooth temperature bias).
 - Shutdown: verify JVM shutdown hook stops server on forced exit/crash.
 - Vehicle MP: verify wheel animations follow host movement (remote velocity interpolation).
 - Tech sync: verify server.properties syncTech works and clients receive TECH_SYNC on connect.

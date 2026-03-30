@@ -410,8 +410,13 @@ public class TerrainGen {
     private float safeSpawnTemperature(float x, float y, float value) {
         float endValue = value;
         float distFromCenter = Vector2.dst(x, y, 500.0f, 500.0f);
-        if (distFromCenter < 150.0f) {
-            endValue = MathUtils.clamp(endValue + 0.4f, -1.0f, 1.0f);
+        // Smoothly bias temperature towards neutral around spawn to avoid lava/ice there
+        float radius = 260.0f;
+        if (distFromCenter < radius) {
+            float t = 1.0f - (distFromCenter / radius);
+            // ease curve for softer falloff
+            t = t * t * (3.0f - 2.0f * t);
+            endValue = endValue * (1.0f - t);
         }
         return endValue;
     }

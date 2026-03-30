@@ -532,12 +532,6 @@ implements Pool.Poolable {
         if (this.tempIndex <= 2 && base == Biomes.volcanic) {
             base = Biomes.rock;
         }
-        try {
-            float dist = Vector2.dst(this.worldX, this.worldY, 500.0f, 500.0f);
-            if (dist < 160.0f && base == Biomes.volcanic) {
-                base = Biomes.ground;
-            }
-        } catch (Exception ignored) {}
         if (this.tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
             this.biome = Biomes.ice;
         } else {
