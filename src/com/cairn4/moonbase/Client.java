@@ -653,6 +653,73 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              } catch (Exception e) {
                                  Gdx.app.error("Client", "Error parsing INVENTORY_UPDATE", e);
                              }
+                        } else if ("TP".equals(type)) {
+                            try {
+                                String[] parts = payload.split(":", 3);
+                                if (parts.length >= 2 && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
+                                    final int tx = safeParseInt(parts[0], Integer.MIN_VALUE);
+                                    final int ty = safeParseInt(parts[1], Integer.MIN_VALUE);
+                                    if (tx != Integer.MIN_VALUE && ty != Integer.MIN_VALUE) {
+                                        Gdx.app.postRunnable(() -> {
+                                            try {
+                                                com.cairn4.moonbase.Player p = this.screen.world.player;
+                                                if (p != null) {
+                                                    p.exitVehicleRemote();
+                                                    p.moveToTile(tx, ty);
+                                                    p.forcePositionUpdate();
+                                                    try {
+                                                        float wx = tx * com.cairn4.moonbase.tiles.Tile.TILE_SIZE;
+                                                        float wy = ty * com.cairn4.moonbase.tiles.Tile.TILE_SIZE;
+                                                        String pos = "POS:PLAYER:" + p.ownerId + ":" + wx + ":" + wy + ":0:0";
+                                                        com.cairn4.moonbase.NetworkHelper.sendPayload(this.screen, pos);
+                                                    } catch (Exception ignored) {}
+                                                }
+                                            } catch (Exception ignored) {}
+                                        });
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        } else if ("XFER_GIVE".equals(type)) {
+                            try {
+                                String[] parts = payload.split(":", 3);
+                                if (parts.length >= 2 && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
+                                    String item = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                                    int amt = safeParseInt(parts[1], 1);
+                                    if (amt <= 0) amt = 1;
+                                    final String fitem = item;
+                                    final int famt = amt;
+                                    Gdx.app.postRunnable(() -> {
+                                        try {
+                                            com.cairn4.moonbase.Player p = this.screen.world.player;
+                                            if (p != null) {
+                                                p.playerInventory.add(new com.cairn4.moonbase.ItemStack(fitem, famt), true);
+                                                p.inventoryUpdate();
+                                            }
+                                        } catch (Exception ignored) {}
+                                    });
+                                }
+                            } catch (Exception ignored) {}
+                        } else if ("XFER_TAKE".equals(type)) {
+                            try {
+                                String[] parts = payload.split(":", 3);
+                                if (parts.length >= 2 && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
+                                    String item = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                                    int amt = safeParseInt(parts[1], 1);
+                                    if (amt <= 0) amt = 1;
+                                    final String fitem = item;
+                                    final int famt = amt;
+                                    Gdx.app.postRunnable(() -> {
+                                        try {
+                                            com.cairn4.moonbase.Player p = this.screen.world.player;
+                                            if (p != null) {
+                                                p.playerInventory.removeAmountOfItemId(famt, fitem);
+                                                p.inventoryUpdate();
+                                            }
+                                        } catch (Exception ignored) {}
+                                    });
+                                }
+                            } catch (Exception ignored) {}
+                        } else if ("ANIM".equals(type)) {
                          } else if ("ANIM".equals(type)) {
                              String rest = payload;
                              String[] parts = rest.split(":", 4);

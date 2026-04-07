@@ -117,6 +117,131 @@ extends CommandExecutor {
         this.seticebiome(v, v, v);
     }
 
+    @ConsoleDoc(description="Set ice overlay alpha curve params", paramDescriptions={"bias","scale"})
+    public void seticealpha(float bias, float scale) {
+        try {
+            com.cairn4.moonbase.tiles.GroundTile.setIceAlphaParams(bias, scale);
+            if (this.gameScreen != null && this.gameScreen.world != null) {
+                for (com.cairn4.moonbase.Chunk c : this.gameScreen.world.worldChunks.values()) {
+                    for (com.cairn4.moonbase.tiles.GroundTile gt : c.groundTiles.values()) {
+                        if (gt != null) {
+                            gt.createDrawables();
+                        }
+                    }
+                }
+            }
+            this.gameScreen.game.console.log("seticealpha: bias=" + bias + " scale=" + scale);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("seticealpha: refresh failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Set ice overlay alpha bias", paramDescriptions={"bias"})
+    public void seticealpha(float bias) {
+        this.seticealpha(bias, com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_SCALE);
+    }
+
+    @ConsoleDoc(description="Force ice overlay alpha (0..1). Use -1 to disable override.", paramDescriptions={"alpha"})
+    public void forceicealpha(float alpha) {
+        try {
+            com.cairn4.moonbase.tiles.GroundTile.setIceAlphaOverride(alpha);
+            if (this.gameScreen != null && this.gameScreen.world != null) {
+                for (com.cairn4.moonbase.Chunk c : this.gameScreen.world.worldChunks.values()) {
+                    for (com.cairn4.moonbase.tiles.GroundTile gt : c.groundTiles.values()) {
+                        if (gt != null) {
+                            gt.createDrawables();
+                        }
+                    }
+                }
+            }
+            this.gameScreen.game.console.log("forceicealpha: " + alpha);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("forceicealpha: refresh failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Disable ice alpha override", paramDescriptions={})
+    public void forceicealphaoff() {
+        this.forceicealpha(-1.0f);
+    }
+
+    @ConsoleDoc(description="Print ice alpha diagnostics at player tile", paramDescriptions={})
+    public void icealphahere() {
+        try {
+            int tx = (int)(this.world.player.getXPos() / com.cairn4.moonbase.tiles.Tile.TILE_SIZE);
+            int ty = (int)(this.world.player.getYPos() / com.cairn4.moonbase.tiles.Tile.TILE_SIZE);
+            this.icealphaat(tx, ty);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("icealphahere failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Print ice alpha diagnostics at tile", paramDescriptions={"tileX","tileY"})
+    public void icealphaat(int tileX, int tileY) {
+        try {
+            com.cairn4.moonbase.tiles.GroundTile gt = this.world.getGroundTile(tileX, tileY);
+            if (gt == null) {
+                this.gameScreen.game.console.log("icealphaat: no ground tile at " + tileX + "," + tileY);
+                return;
+            }
+            float temp = gt.temperature;
+            float bias = com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_BIAS;
+            float scale = com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_SCALE;
+            float override = com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_OVERRIDE;
+            float alpha = (override >= 0.0f) ? MathUtils.clamp(override,0f,1f) : MathUtils.clamp((-temp - bias) / scale, 0f, 1f);
+            this.gameScreen.game.console.log("icealphaat: biome=" + gt.getBiome() +
+                " temp=" + temp + " bias=" + bias + " scale=" + scale + " override=" + override + " alpha=" + alpha);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("icealphaat failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Print current ice alpha params", paramDescriptions={})
+    public void icealphaparams() {
+        this.gameScreen.game.console.log("ICE_ALPHA: bias=" + com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_BIAS +
+            " scale=" + com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_SCALE +
+            " gamma=" + com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_GAMMA +
+            " override=" + com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_OVERRIDE);
+    }
+
+    @ConsoleDoc(description="Set ice overlay gamma (lower = stronger alpha)", paramDescriptions={"gamma"})
+    public void seticealphagamma(float gamma) {
+        try {
+            com.cairn4.moonbase.tiles.GroundTile.setIceAlphaGamma(gamma);
+            if (this.gameScreen != null && this.gameScreen.world != null) {
+                for (com.cairn4.moonbase.Chunk c : this.gameScreen.world.worldChunks.values()) {
+                    for (com.cairn4.moonbase.tiles.GroundTile gt : c.groundTiles.values()) {
+                        if (gt != null) {
+                            gt.createDrawables();
+                        }
+                    }
+                }
+            }
+            this.gameScreen.game.console.log("seticealphagamma: " + gamma);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("seticealphagamma failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Set minimum ice alpha inside ice biome", paramDescriptions={"minAlpha"})
+    public void seticealphamin(float minAlpha) {
+        try {
+            com.cairn4.moonbase.tiles.GroundTile.ICE_ALPHA_MIN_ICE = MathUtils.clamp(minAlpha, 0f, 1f);
+            if (this.gameScreen != null && this.gameScreen.world != null) {
+                for (com.cairn4.moonbase.Chunk c : this.gameScreen.world.worldChunks.values()) {
+                    for (com.cairn4.moonbase.tiles.GroundTile gt : c.groundTiles.values()) {
+                        if (gt != null) {
+                            gt.createDrawables();
+                        }
+                    }
+                }
+            }
+            this.gameScreen.game.console.log("seticealphamin: " + minAlpha);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("seticealphamin failed: " + e);
+        }
+    }
+
     @ConsoleDoc(description="Scan nearby tiles for ice next to volcanic", paramDescriptions={"radiusTiles"})
     public void biomecheck(int radiusTiles) {
         int r = Math.max(1, radiusTiles);
@@ -237,6 +362,69 @@ extends CommandExecutor {
     public void movePlayer(int tileX, int tileY) {
         this.world.player.moveToTile(tileX, tileY);
         this.gameScreen.game.console.log("Moving player to " + tileX + ", " + tileY);
+    }
+
+    @ConsoleDoc(description="Teleport to a player by nick or id (multiplayer)", paramDescriptions={"nickOrId"})
+    public void tp(String target) {
+        if (!MoonBase.isMultiplayer) {
+            this.gameScreen.game.console.log("tp: only available in multiplayer");
+            return;
+        }
+        try {
+            String enc = URLEncoder.encode(target == null ? "" : target, "UTF-8");
+            com.cairn4.moonbase.NetworkHelper.sendPayload(this.gameScreen, "TP_REQ:" + enc);
+            this.gameScreen.game.console.log("tp: request sent to server for " + target);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("tp: failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Teleport a player to you by nick or id (multiplayer)", paramDescriptions={"nickOrId"})
+    public void tphere(String target) {
+        if (!MoonBase.isMultiplayer) {
+            this.gameScreen.game.console.log("tphere: only available in multiplayer");
+            return;
+        }
+        try {
+            String enc = URLEncoder.encode(target == null ? "" : target, "UTF-8");
+            com.cairn4.moonbase.NetworkHelper.sendPayload(this.gameScreen, "TP_HERE_REQ:" + enc);
+            this.gameScreen.game.console.log("tphere: request sent to server for " + target);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("tphere: failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Transfer an item to a player by nick or id (multiplayer)", paramDescriptions={"nickOrId","itemId","amount"})
+    public void transfer(String target, String itemId, int amount) {
+        if (!MoonBase.isMultiplayer) {
+            this.gameScreen.game.console.log("transfer: only available in multiplayer");
+            return;
+        }
+        try {
+            String encTarget = URLEncoder.encode(target == null ? "" : target, "UTF-8");
+            String encItem = URLEncoder.encode(itemId == null ? "" : itemId, "UTF-8");
+            if (amount <= 0) amount = 1;
+            com.cairn4.moonbase.NetworkHelper.sendPayload(this.gameScreen, "XFER_REQ:" + encTarget + ":" + encItem + ":" + amount);
+            this.gameScreen.game.console.log("transfer: request sent to server -> " + target + " item=" + itemId + " amt=" + amount);
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("transfer: failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Transfer one item to a player (multiplayer)", paramDescriptions={"nickOrId","itemId"})
+    public void transfer(String target, String itemId) {
+        this.transfer(target, itemId, 1);
+    }
+
+    @ConsoleDoc(description="Show multiplayer command help", paramDescriptions={})
+    public void multiplayerhelp() {
+        try {
+            this.gameScreen.game.console.log("Multiplayer commands:");
+            this.gameScreen.game.console.log("  tp <nickOrId>         - teleport to player (server.properties allowTp)");
+            this.gameScreen.game.console.log("  tphere <nickOrId>     - bring player to you (server.properties allowTphere)");
+            this.gameScreen.game.console.log("  transfer <nickOrId> <itemId> [amount] - send items (server.properties allowTransfer)");
+            this.gameScreen.game.console.log("Settings: saves/<save>/server.properties (allowTp, allowTphere, allowTransfer)");
+        } catch (Exception ignored) {}
     }
 
     public void die() {

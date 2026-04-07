@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import com.cairn4.moonbase.net.ProtocolV2;
+import com.cairn4.moonbase.tiles.Tile;
 //sdawd
 public class Server {
     // active server reference for in-process access
@@ -65,6 +66,9 @@ public class Server {
     private volatile boolean pvpEnabled = false;
     private volatile boolean pvpMeleeEnabled = false;
     private volatile boolean pvpVehicleEnabled = false;
+    private volatile boolean allowTp = true;
+    private volatile boolean allowTphere = true;
+    private volatile boolean allowTransfer = true;
     private String serverPropsPath = null;
 
     public Server(int port) {
@@ -297,6 +301,21 @@ public class Server {
         return this.pvpEnabled && this.pvpVehicleEnabled;
     }
 
+    public boolean isAllowTp() {
+        ensureServerPropertiesLoaded();
+        return this.allowTp;
+    }
+
+    public boolean isAllowTphere() {
+        ensureServerPropertiesLoaded();
+        return this.allowTphere;
+    }
+
+    public boolean isAllowTransfer() {
+        ensureServerPropertiesLoaded();
+        return this.allowTransfer;
+    }
+
     public void applyPvpDamage(int targetId, float amount, int attackerId, String kind) {
         if (!isPvpEnabled()) return;
         float dmg = amount;
@@ -314,6 +333,143 @@ public class Server {
             if (ch != null) {
                 String k = (kind == null ? "" : kind);
                 ch.sendMessage("0:PVP_DAMAGE:" + targetId + ":" + dmg + ":" + attackerId + ":" + k);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private int resolveClientId(String token) {
+        if (token == null) return -1;
+        String t = token.trim();
+        if (t.length() == 0) return -1;
+        try {
+            return Integer.parseInt(t);
+        } catch (Exception ignored) {}
+        // match host nick
+        try {
+            String hostNick = com.cairn4.moonbase.MoonBase.multiplayerNick != null ? com.cairn4.moonbase.MoonBase.multiplayerNick : "";
+            if (hostNick != null && hostNick.length() > 0 && hostNick.equalsIgnoreCase(t)) return 0;
+        } catch (Exception ignored) {}
+        // match client nick
+        try {
+            for (ClientHandler ch : clients.values()) {
+                if (ch == null || ch.appearanceData == null) continue;
+                String[] ps = ch.appearanceData.split("\\|");
+                if (ps.length > 2) {
+                    String decNick = java.net.URLDecoder.decode(ps[2], "UTF-8");
+                    if (decNick != null && decNick.trim().equalsIgnoreCase(t)) return ch.clientId;
+                }
+            }
+        } catch (Exception ignored) {}
+        return -1;
+    }
+
+    private Player getPlayerById(int id) {
+        try {
+            if (this.gameScreen == null || this.gameScreen.world == null) return null;
+            if (id == 0) return this.gameScreen.world.player;
+            return this.gameScreen.getRemotePlayer(id);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private GridPoint2 getPlayerTile(Player p) {
+        if (p == null) return null;
+        try {
+            int tx = (int)(p.getXPos() / Tile.TILE_SIZE);
+            int ty = (int)(p.getYPos() / Tile.TILE_SIZE);
+            return new GridPoint2(tx, ty);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void safeExitVehicle(Player p) {
+        try {
+            if (p != null && p.getVehicle() != null) {
+                p.exitVehicleRemote();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void teleportPlayerById(int playerId, int tileX, int tileY) {
+        try {
+            if (this.gameScreen == null || this.gameScreen.world == null) return;
+            if (playerId == 0) {
+                Player host = this.gameScreen.world.player;
+                if (host != null) {
+                    safeExitVehicle(host);
+                    host.moveToTile(tileX, tileY);
+                    host.forcePositionUpdate();
+                }
+            } else {
+                // update host-side puppet immediately
+                try {
+                    Player rp = this.gameScreen.getRemotePlayer(playerId);
+                    if (rp != null) {
+                        safeExitVehicle(rp);
+                        rp.moveToTile(tileX, tileY);
+                        rp.forcePositionUpdate();
+                    }
+                } catch (Exception ignored) {}
+                // instruct client to teleport itself
+                ClientHandler ch = this.clients.get(Integer.valueOf(playerId));
+                if (ch != null) {
+                    ch.sendMessage("0:TP:" + tileX + ":" + tileY);
+                }
+            }
+            // broadcast position update to other clients
+            try {
+                float wx = tileX * Tile.TILE_SIZE;
+                float wy = tileY * Tile.TILE_SIZE;
+                String pos = "POS:PLAYER:" + playerId + ":" + wx + ":" + wy + ":0:0";
+                this.broadcast("0:" + pos, null);
+            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+    }
+
+    private void handleTpRequest(int senderId, String targetToken, boolean bringTarget) {
+        if (bringTarget && !isAllowTphere()) return;
+        if (!bringTarget && !isAllowTp()) return;
+        if (this.gameScreen == null || this.gameScreen.world == null) return;
+        int targetId = resolveClientId(targetToken);
+        if (targetId < 0) return;
+        if (bringTarget) {
+            Player sender = getPlayerById(senderId);
+            GridPoint2 dest = getPlayerTile(sender);
+            if (dest == null) return;
+            teleportPlayerById(targetId, dest.x, dest.y);
+        } else {
+            Player target = getPlayerById(targetId);
+            GridPoint2 dest = getPlayerTile(target);
+            if (dest == null) return;
+            teleportPlayerById(senderId, dest.x, dest.y);
+        }
+    }
+
+    private void handleTransferRequest(int senderId, String targetToken, String itemId, int amount) {
+        if (!isAllowTransfer()) return;
+        if (itemId == null || itemId.trim().length() == 0) return;
+        int targetId = resolveClientId(targetToken);
+        if (targetId < 0) return;
+        if (amount <= 0) amount = 1;
+        String safeItem = itemId.trim();
+        // sender take
+        try {
+            if (senderId == 0 && this.gameScreen != null && this.gameScreen.world != null && this.gameScreen.world.player != null) {
+                this.gameScreen.world.player.playerInventory.removeAmountOfItemId(amount, safeItem);
+                this.gameScreen.world.player.inventoryUpdate();
+            } else {
+                ClientHandler ch = this.clients.get(Integer.valueOf(senderId));
+                if (ch != null) ch.sendMessage("0:XFER_TAKE:" + URLEncoder.encode(safeItem, "UTF-8") + ":" + amount);
+            }
+        } catch (Exception ignored) {}
+        // target give
+        try {
+            if (targetId == 0 && this.gameScreen != null && this.gameScreen.world != null && this.gameScreen.world.player != null) {
+                this.gameScreen.world.player.playerInventory.add(new ItemStack(safeItem, amount), true);
+                this.gameScreen.world.player.inventoryUpdate();
+            } else {
+                ClientHandler ch = this.clients.get(Integer.valueOf(targetId));
+                if (ch != null) ch.sendMessage("0:XFER_GIVE:" + URLEncoder.encode(safeItem, "UTF-8") + ":" + amount);
             }
         } catch (Exception ignored) {}
     }
@@ -344,9 +500,15 @@ public class Server {
                     serverProperties.setProperty("pvp", "false");
                     serverProperties.setProperty("pvpMelee", "false");
                     serverProperties.setProperty("pvpVehicle", "false");
+                    serverProperties.setProperty("allowTp", "true");
+                    serverProperties.setProperty("allowTphere", "true");
+                    serverProperties.setProperty("allowTransfer", "true");
                     pvpEnabled = false;
                     pvpMeleeEnabled = false;
                     pvpVehicleEnabled = false;
+                    allowTp = true;
+                    allowTphere = true;
+                    allowTransfer = true;
                     try {
                         try { fh.parent().mkdirs(); } catch (Exception ignored) {}
                         Writer writer = fh.writer(false, "UTF-8");
@@ -367,6 +529,12 @@ public class Server {
                     pvpMeleeEnabled = "true".equalsIgnoreCase(pvpMelee.trim());
                     String pvpVehicle = serverProperties.getProperty("pvpVehicle", "false");
                     pvpVehicleEnabled = "true".equalsIgnoreCase(pvpVehicle.trim());
+                    String allowTpProp = serverProperties.getProperty("allowTp", "true");
+                    allowTp = "true".equalsIgnoreCase(allowTpProp.trim());
+                    String allowTphereProp = serverProperties.getProperty("allowTphere", "true");
+                    allowTphere = "true".equalsIgnoreCase(allowTphereProp.trim());
+                    String allowTransferProp = serverProperties.getProperty("allowTransfer", "true");
+                    allowTransfer = "true".equalsIgnoreCase(allowTransferProp.trim());
                 }
             } catch (Exception ignored) {}
         }
@@ -468,6 +636,35 @@ public class Server {
                         if (handleLocalBasePayload(payload)) {
                             return;
                         }
+                    }
+                    if (payload.startsWith("TP_REQ:")) {
+                        try {
+                            String token = payload.substring("TP_REQ:".length());
+                            token = java.net.URLDecoder.decode(token, "UTF-8");
+                            handleTpRequest(0, token, false);
+                        } catch (Exception ignored) {}
+                        return;
+                    }
+                    if (payload.startsWith("TP_HERE_REQ:")) {
+                        try {
+                            String token = payload.substring("TP_HERE_REQ:".length());
+                            token = java.net.URLDecoder.decode(token, "UTF-8");
+                            handleTpRequest(0, token, true);
+                        } catch (Exception ignored) {}
+                        return;
+                    }
+                    if (payload.startsWith("XFER_REQ:")) {
+                        try {
+                            String rest = payload.substring("XFER_REQ:".length());
+                            String[] parts = rest.split(":", 3);
+                            if (parts.length >= 2) {
+                                String token = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                                String item = java.net.URLDecoder.decode(parts[1], "UTF-8");
+                                int amt = (parts.length >= 3) ? safeParseInt(parts[2], 1) : 1;
+                                handleTransferRequest(0, token, item, amt);
+                            }
+                        } catch (Exception ignored) {}
+                        return;
                     }
                 }
             } catch (Exception ignored) {}
@@ -1778,6 +1975,36 @@ public class Server {
                                 Gdx.app.error("Server", "Failed to process ITEM_DROP", e);
                             }
                             // handled
+                            continue;
+                        }
+                        // Teleport/transfer commands from clients
+                        if (message.startsWith("TP_REQ:")) {
+                            try {
+                                String token = message.substring("TP_REQ:".length());
+                                token = java.net.URLDecoder.decode(token, "UTF-8");
+                                server.handleTpRequest(this.clientId, token, false);
+                            } catch (Exception ignored) {}
+                            continue;
+                        }
+                        if (message.startsWith("TP_HERE_REQ:")) {
+                            try {
+                                String token = message.substring("TP_HERE_REQ:".length());
+                                token = java.net.URLDecoder.decode(token, "UTF-8");
+                                server.handleTpRequest(this.clientId, token, true);
+                            } catch (Exception ignored) {}
+                            continue;
+                        }
+                        if (message.startsWith("XFER_REQ:")) {
+                            try {
+                                String rest = message.substring("XFER_REQ:".length());
+                                String[] parts = rest.split(":", 3);
+                                if (parts.length >= 2) {
+                                    String token = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                                    String item = java.net.URLDecoder.decode(parts[1], "UTF-8");
+                                    int amt = (parts.length >= 3) ? safeParseInt(parts[2], 1) : 1;
+                                    server.handleTransferRequest(this.clientId, token, item, amt);
+                                }
+                            } catch (Exception ignored) {}
                             continue;
                         }
                         // Handle client-initiated TILE_REMOVE: let host apply locally when running in-process
