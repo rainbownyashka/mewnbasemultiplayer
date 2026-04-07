@@ -90,6 +90,34 @@ public class HudNotification {
         }
     }
 
+    public void setInstant(String iconName, String text, Color color) {
+        this.bg = new Image(this.hud.gameScreen.skin.getDrawable("itempickup-bg"));
+        this.bg.setPosition(0.0f, 0.0f, 8);
+        this.bg.setColor(0.7f, 0.7f, 0.7f, 0.5f);
+        this.innerGroup.addActor(this.bg);
+        com.badlogic.gdx.scenes.scene2d.ui.Label lbl = new com.badlogic.gdx.scenes.scene2d.ui.Label(text, this.hud.labelStyle);
+        lbl.setFontScale(0.4f);
+        lbl.setAlignment(8, 8);
+        lbl.setWidth(600.0f);
+        lbl.setColor(color);
+        lbl.setPosition(67.0f, 0.0f, 8);
+        this.innerGroup.addActor(lbl);
+        if (iconName != null) {
+            try {
+                this.icon = new Image(this.hud.gameScreen.skin.getDrawable(iconName));
+            }
+            catch (GdxRuntimeException e) {
+                Gdx.app.error("MewnBase", "HudNotification icon is missing");
+                this.icon = new Image(this.hud.gameScreen.skin.getDrawable("missing"));
+            }
+            this.icon.setSize(40.0f, 40.0f);
+            this.icon.setPosition(15.0f, 0.0f, 8);
+            this.innerGroup.addActor(this.icon);
+        } else {
+            lbl.setX(20.0f);
+        }
+    }
+
     /**
      * Set a chat-style notification where the nick is shown in nickColor and the message in msgColor on the same row.
      */
@@ -133,6 +161,37 @@ public class HudNotification {
             this.label.setPosition(120.0f, 0.0f, 8);
         }
         this.innerGroup.addActor(this.label);
+    }
+
+    /**
+     * Chat message without typewriter animation (instant text).
+     */
+    public void setChatInstant(String nick, String text, Color nickColor, Color msgColor) {
+        this.bg = new Image(this.hud.gameScreen.skin.getDrawable("itempickup-bg"));
+        this.bg.setPosition(0.0f, 0.0f, 8);
+        this.bg.setColor(0.7f, 0.7f, 0.7f, 0.5f);
+        this.innerGroup.addActor(this.bg);
+        this.applyFade(4.0f);
+        // Nick label
+        com.badlogic.gdx.scenes.scene2d.ui.Label nickLabel = new com.badlogic.gdx.scenes.scene2d.ui.Label(nick + ": ", this.hud.labelStyle);
+        nickLabel.setFontScale(0.4f);
+        nickLabel.setAlignment(8, 8);
+        nickLabel.setColor(nickColor);
+        nickLabel.setPosition(20.0f, 0.0f, 8);
+        this.innerGroup.addActor(nickLabel);
+        // Message label
+        com.badlogic.gdx.scenes.scene2d.ui.Label msgLabel = new com.badlogic.gdx.scenes.scene2d.ui.Label(text == null ? "" : text, this.hud.labelStyle);
+        msgLabel.setFontScale(0.4f);
+        msgLabel.setAlignment(8, 8);
+        msgLabel.setColor(msgColor);
+        try {
+            float nickWidth = nickLabel.getPrefWidth();
+            float pad = 8.0f;
+            msgLabel.setPosition(20.0f + nickWidth + pad, 0.0f, 8);
+        } catch (Exception ignored) {
+            msgLabel.setPosition(120.0f, 0.0f, 8);
+        }
+        this.innerGroup.addActor(msgLabel);
     }
 
     public void updateText(String text) {

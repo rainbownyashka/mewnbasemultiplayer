@@ -362,6 +362,47 @@ public class MultiplayerNetworkHelper {
     }
 
     /**
+     * Handles raw chat messages (CHATRAW) without typewriter animation.
+     */
+    public static boolean handleChatRaw(GameScreen gameScreen, String message, int srcId) {
+        try {
+            if (!message.startsWith("CHATRAW:")) {
+                return false;
+            }
+            String rest = message.substring("CHATRAW:".length());
+            int idx = rest.indexOf(":");
+            final String encNick = (idx >= 0) ? rest.substring(0, idx) : "";
+            final String encText = (idx >= 0) ? rest.substring(idx + 1) : rest;
+
+            final String nick = URLDecoder.decode((encNick == null) ? "" : encNick, "UTF-8");
+            final String text = URLDecoder.decode((encText == null) ? "" : encText, "UTF-8");
+
+            if (gameScreen != null && gameScreen.game != null && gameScreen.game.console != null) {
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        gameScreen.game.console.log("[CHAT] " + nick + ": " + text);
+                    } catch (Exception ignored) {}
+                });
+                final String fnick = (nick == null) ? "" : nick;
+                final String ftext = (text == null) ? "" : text;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        if (fnick == null || fnick.trim().length() == 0) {
+                            gameScreen.hud.hudNotifications.newMessageInstant(ftext);
+                        } else {
+                            gameScreen.hud.hudNotifications.newChatMessageInstant(fnick, ftext);
+                        }
+                    } catch (Exception ignored) {}
+                });
+                return true;
+            }
+        } catch (Exception e) {
+            Gdx.app.error("NetworkHelper", "Failed to handle CHATRAW payload", e);
+        }
+        return false;
+    }
+
+    /**
      * Handles vehicle occupancy sync (VEH_OCCUPY:vehId:driverId:passengerId)
      */
     public static boolean handleVehicleOccupy(GameScreen gameScreen, String message, int srcId) {

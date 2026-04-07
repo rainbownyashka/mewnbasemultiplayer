@@ -311,8 +311,18 @@ extends CommandExecutor {
      * you need to preserve multiple internal spaces (e.g., `chatraw Hello   world`).
      */
     public void chatraw(String text) {
-        // Directly delegate to chat; the text here is taken verbatim by the console if provided.
-        this.chat(text);
+        try {
+            String nick = MoonBase.multiplayerNick == null ? "" : MoonBase.multiplayerNick;
+            String encNick = URLEncoder.encode(nick == null ? "" : nick, "UTF-8");
+            String message = text == null ? "" : text;
+            String encText = URLEncoder.encode(message, "UTF-8");
+            String payload = "CHATRAW:" + encNick + ":" + encText;
+            if (this.gameScreen != null) {
+                com.cairn4.moonbase.NetworkHelper.sendPayload(this.gameScreen, payload);
+            }
+        } catch (Exception e) {
+            Gdx.app.error("ConsoleExecutor", "Failed to send chatraw", e);
+        }
     }
 
     public void god() {

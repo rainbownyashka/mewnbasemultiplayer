@@ -672,9 +672,10 @@ public class Server {
             try { Gdx.app.log("Server", "Server-origin broadcast"); } catch (Exception ignored) {}
             // If payload is a chat message and we have a host GameScreen, also post it locally
             try {
-                if (payload != null && payload.startsWith("CHAT:") && this.gameScreen != null && this.gameScreen.hud != null && this.gameScreen.hud.hudNotifications != null) {
+                if (payload != null && (payload.startsWith("CHAT:") || payload.startsWith("CHATRAW:")) && this.gameScreen != null && this.gameScreen.hud != null && this.gameScreen.hud.hudNotifications != null) {
                     try {
-                        String rest = payload.substring("CHAT:".length());
+                        boolean raw = payload.startsWith("CHATRAW:");
+                        String rest = payload.substring(raw ? "CHATRAW:".length() : "CHAT:".length());
                         int idx = rest.indexOf(":");
                         final String encNick = idx >= 0 ? rest.substring(0, idx) : "";
                         final String encText = idx >= 0 ? rest.substring(idx + 1) : rest;
@@ -682,7 +683,10 @@ public class Server {
                         final String text = java.net.URLDecoder.decode(encText == null ? "" : encText, "UTF-8");
                         com.badlogic.gdx.Gdx.app.postRunnable(new Runnable() {
                             @Override public void run() {
-                                try { Server.this.gameScreen.hud.hudNotifications.newChatMessage(nick, text); } catch (Exception ignored) {}
+                                try {
+                                    if (raw) Server.this.gameScreen.hud.hudNotifications.newChatMessageInstant(nick, text);
+                                    else Server.this.gameScreen.hud.hudNotifications.newChatMessage(nick, text);
+                                } catch (Exception ignored) {}
                             }
                         });
                     } catch (Exception ignored) {}
@@ -2646,11 +2650,12 @@ public class Server {
                         }
                         if (message.startsWith("PING:")) {
                             server.broadcast(this.clientId + ":" + message, null);
-                        } else if (message.startsWith("CHAT:")) {
+                        } else if (message.startsWith("CHAT:") || message.startsWith("CHATRAW:")) {
                             // Ensure chat is echoed back to the sender so they see their own messages
                             try {
-                                // message is CHAT:<encNick>:<encText>; replace encNick with server-resolved nick for this.clientId
-                                String rest = message.substring("CHAT:".length());
+                                boolean isRaw = message.startsWith("CHATRAW:");
+                                // message is CHAT/CHATRAW:<encNick>:<encText>; replace encNick with server-resolved nick for this.clientId
+                                String rest = message.substring(isRaw ? "CHATRAW:".length() : "CHAT:".length());
                                 int idx = rest.indexOf(":");
                                 String encNick = idx >= 0 ? rest.substring(0, idx) : "";
                                 String encText = idx >= 0 ? rest.substring(idx + 1) : rest;
@@ -2664,7 +2669,7 @@ public class Server {
                                     }
                                     if (decided != null && decided.length() > 0) serverNick = decided; // already URL-encoded
                                 } catch (Exception ignored) {}
-                                String rebuilt = "CHAT:" + serverNick + ":" + encText;
+                                String rebuilt = (isRaw ? "CHATRAW:" : "CHAT:") + serverNick + ":" + encText;
                                 server.broadcast(this.clientId + ":" + rebuilt, null);
                             } catch (Exception ignored) {
                                 server.broadcast(this.clientId + ":" + message, null);
@@ -2675,7 +2680,8 @@ public class Server {
                             // headless/local this ensures display).
                             try {
                                 if (server.gameScreen != null) {
-                                    final String rest = message.substring("CHAT:".length());
+                                    final boolean isRaw2 = message.startsWith("CHATRAW:");
+                                    final String rest = message.substring(isRaw2 ? "CHATRAW:".length() : "CHAT:".length());
                                     int idx = rest.indexOf(":");
                                     final String encNick = idx >= 0 ? rest.substring(0, idx) : "";
                                     final String encText = idx >= 0 ? rest.substring(idx + 1) : rest;
@@ -2687,7 +2693,8 @@ public class Server {
                                         @Override public void run() {
                                             try {
                                                 if (server.gameScreen != null && server.gameScreen.hud != null && server.gameScreen.hud.hudNotifications != null) {
-                                                    server.gameScreen.hud.hudNotifications.newChatMessage(nick, text);
+                                                    if (isRaw2) server.gameScreen.hud.hudNotifications.newChatMessageInstant(nick, text);
+                                                    else server.gameScreen.hud.hudNotifications.newChatMessage(nick, text);
                                                 }
                                             } catch (Exception ignored) {}
                                         }

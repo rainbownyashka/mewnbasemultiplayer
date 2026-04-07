@@ -160,6 +160,8 @@ Changes
 - Vehicle MP: sync steering angle + current steering in VEH_META so wheel turn anims match on clients.
 - Multiplayer death: drop inventory on death and respawn player (prefer base-adjacent tile, else 500,500) without GameOver menu.
 - Multiplayer: added tp/tphere/transfer commands (console) with server.properties toggles.
+- Multiplayer: blocked planet travel; clicking Leave Planet broadcasts "Mission completed!" chat line.
+- Chat: added CHATRAW and instant HUD messages (no typewriter animation).
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -203,6 +205,7 @@ Verification
 - Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
 - Compiled updated PlayerInventory.java, PlayerStatus.java, Vehicle.java, BaseManager.java, World.java and patched jar (2026-04-07).
 - Compiled updated Server.java, Client.java, ConsoleExecutor.java and patched jar (2026-04-07).
+- Compiled updated LaunchPad.java, LaunchPadListPopup.java, HudNotification(s), MultiplayerNetworkHelper, Server/Client and patched jar (2026-04-07).
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-27).
 - Updated basegame/fulltest.bat (not executed yet).
 - Compiled RuntimeEval.java, Client.java, Server.java, MultiplayerNetworkHelper.java, Vehicle.java, Buggie.java, Tank.java, VehicleTrailer.java with patch_manual.ps1 (2026-03-27).

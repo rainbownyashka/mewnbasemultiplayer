@@ -430,6 +430,10 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              if (!MultiplayerNetworkHelper.handleChat(this.screen, "CHAT:" + payload, srcId)) {
                                  Gdx.app.error("Client", "Failed to handle CHAT payload via helper", null);
                              }
+                        } else if ("CHATRAW".equals(type)) {
+                            if (!MultiplayerNetworkHelper.handleChatRaw(this.screen, "CHATRAW:" + payload, srcId)) {
+                                Gdx.app.error("Client", "Failed to handle CHATRAW payload via helper", null);
+                            }
                         } else if ("APPEARANCE".equals(type)) {
                             try {
                                 MultiplayerNetworkHelper.handleAppearance(this.screen, "APPEARANCE:" + payload, srcId);

@@ -72,6 +72,18 @@ implements Telegraph {
         this.notificationList.add(n);
     }
 
+    /** Message without typewriter animation. */
+    public void newMessageInstant(String icon, String text, Color color) {
+        this.pushMessagesDown();
+        HudNotification n = new HudNotification(this.hud, this.messageLogGroup);
+        n.setInstant(icon, text, color);
+        this.notificationList.add(n);
+    }
+
+    public void newMessageInstant(String text) {
+        this.newMessageInstant(null, text, Color.WHITE);
+    }
+
     public void newPickupMessage(Item item, int count, String prefix) {
         boolean existingMessageForItem = false;
         for (HudNotification hn : this.notificationList) {
@@ -106,6 +118,20 @@ implements Telegraph {
         this.notificationList.add(n);
     }
 
+    /** Chat message without typewriter animation. */
+    public void newChatMessageInstant(String nick, String message) {
+        this.pushMessagesDown();
+        HudNotification n = new HudNotification(this.hud, this.messageLogGroup);
+        try {
+            com.badlogic.gdx.graphics.Color nickColor = com.badlogic.gdx.graphics.Color.valueOf("25addb");
+            com.badlogic.gdx.graphics.Color msgColor = com.badlogic.gdx.graphics.Color.WHITE;
+            n.setChatInstant(nick, message, nickColor, msgColor);
+        } catch (Exception e) {
+            n.set(null, nick + ": " + message, com.badlogic.gdx.graphics.Color.WHITE);
+        }
+        this.notificationList.add(n);
+    }
+
     private void pushMessagesDown() {
         SnapshotArray<Actor> child = this.messageLogGroup.getChildren();
         for (Actor a : child) {
@@ -126,4 +152,3 @@ implements Telegraph {
         return false;
     }
 }
-

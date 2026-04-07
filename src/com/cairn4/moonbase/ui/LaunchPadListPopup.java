@@ -275,6 +275,13 @@ implements Telegraph {
     }
 
     private void setTargetEndGame() {
+        if (MoonBase.isMultiplayer) {
+            try {
+                this.localLaunchPad.notifyMissionComplete(this.gameScreen.world != null ? this.gameScreen.world.player : null);
+            } catch (Exception ignored) {}
+            this.back();
+            return;
+        }
         this.localLaunchPad.setDestinationEndGame();
         if (this.launchPadMenu != null) {
             this.launchPadMenu.updateDestination();
@@ -308,4 +315,3 @@ implements Telegraph {
         return false;
     }
 }
-

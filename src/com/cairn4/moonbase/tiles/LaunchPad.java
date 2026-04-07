@@ -329,13 +329,32 @@ extends BaseModule {
         }
         if (this.leavePlanet) {
             if (MoonBase.isMultiplayer) {
-                try { this.world.gameScreen.hud.hudNotifications.newMessage("Planet travel is disabled in multiplayer (for now)."); } catch (Exception ignored) {}
+                try {
+                    this.notifyMissionComplete(this.world != null ? this.world.player : null);
+                } catch (Exception ignored) {}
                 this.launching = false;
                 try { this.world.getPlayer().setFlyingRocket(false); } catch (Exception ignored) {}
                 return;
             }
             this.world.gameScreen.gameLoader.saveGame(this.world, false);
         }
+    }
+
+    public void notifyMissionComplete(Player player) {
+        try {
+            String nick = "";
+            try {
+                if (player != null && player.name != null && player.name.length() > 0) nick = player.name;
+            } catch (Exception ignored) {}
+            if (nick == null || nick.trim().length() == 0) {
+                try { nick = com.cairn4.moonbase.MoonBase.multiplayerNick; } catch (Exception ignored) {}
+            }
+            if (nick == null || nick.trim().length() == 0) nick = "Player";
+            String msg = "Миссия завершена! (" + nick + ")";
+            String encNick = java.net.URLEncoder.encode("", "UTF-8");
+            String encMsg = java.net.URLEncoder.encode(msg, "UTF-8");
+            com.cairn4.moonbase.NetworkHelper.sendPayload(this.world.gameScreen, "CHATRAW:" + encNick + ":" + encMsg);
+        } catch (Exception ignored) {}
     }
 
     private void setTowerOpen() {
