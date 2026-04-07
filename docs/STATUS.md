@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-03-29
+Last update: 2026-04-07
 
 Changes
 - Restructured workspace to a simpler layout (basegame/, src/, work/, out/, tools/, backups/, old/).
@@ -157,6 +157,8 @@ Changes
 - Biomes: replaced spawn clamp with smooth temperature bias around (500,500) to keep spawn temperate.
 - Biomes: ice now renders as an alpha overlay based on temperature (smooth blending instead of hard switch).
 - Console: added `biomecheck` to scan for ice touching volcanic near the player.
+- Vehicle MP: sync steering angle + current steering in VEH_META so wheel turn anims match on clients.
+- Multiplayer death: drop inventory on death and respawn player (prefer base-adjacent tile, else 500,500) without GameOver menu.
 
 Impact
 - Original game files remain in basegame/ and should not be edited in place.
@@ -198,6 +200,7 @@ Verification
 - Compiled Server.java, Client.java, Player.java, Vehicle.java, MultiplayerNetworkHelper.java, World.java with patch_manual.ps1 (2026-03-27).
 - Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, World.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
 - Compiled Server.java, Client.java, MultiplayerNetworkHelper.java, GarageCrafter.java with patch_manual.ps1 (2026-03-27).
+- Compiled updated PlayerInventory.java, PlayerStatus.java, Vehicle.java, BaseManager.java, World.java and patched jar (2026-04-07).
 - Compiled MultiplayerNetworkHelper.java with patch_manual.ps1 (2026-03-27).
 - Updated basegame/fulltest.bat (not executed yet).
 - Compiled RuntimeEval.java, Client.java, Server.java, MultiplayerNetworkHelper.java, Vehicle.java, Buggie.java, Tank.java, VehicleTrailer.java with patch_manual.ps1 (2026-03-27).

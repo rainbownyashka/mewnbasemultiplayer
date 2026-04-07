@@ -339,6 +339,101 @@ public class PlayerInventory {
         Gdx.app.debug("MewnBase", "PlayerInventory: Space clear, dropping item into a new pile");
     }
 
+    public void dropAllItemsAt(int worldX, int worldY) {
+        if (this.itemList == null || this.itemList.size() == 0) return;
+        try {
+            ArrayList<ItemStack> toDrop = new ArrayList<ItemStack>(this.itemList);
+            this.itemList.clear();
+            this.selectedIndex = 0;
+            this.player.inventoryUpdate();
+            for (ItemStack stack : toDrop) {
+                if (stack == null || stack.getAmount() <= 0) continue;
+                this.dropStackAt(worldX, worldY, stack);
+            }
+            this.player.inventoryUpdate();
+        } catch (Exception ignored) {}
+    }
+
+    private void dropStackAt(int worldX, int worldY, ItemStack stack) {
+        if (stack == null || stack.getAmount() <= 0) return;
+        try {
+            GridPoint2 drop = this.findBestDropTile(worldX, worldY, stack);
+            if (drop == null) drop = new GridPoint2(worldX, worldY);
+            this.placeStackAt(drop.x, drop.y, stack);
+        } catch (Exception ignored) {}
+    }
+
+    private GridPoint2 findBestDropTile(int worldX, int worldY, ItemStack stack) {
+        try {
+            // prefer existing pile with room
+            GridPoint2 best = findPileWithRoom(worldX, worldY, stack);
+            if (best != null) return best;
+            if (this.player.world.isTileEmpty(worldX, worldY)) return new GridPoint2(worldX, worldY);
+            ArrayList<GridPoint2> adjacent = Tile.GET_ADJACENT_COORDS(worldX, worldY, true);
+            for (GridPoint2 gp : adjacent) {
+                if (findPileWithRoom(gp.x, gp.y, stack) != null) return gp;
+            }
+            for (GridPoint2 gp : adjacent) {
+                if (this.player.world.isTileEmpty(gp.x, gp.y)) return gp;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private GridPoint2 findPileWithRoom(int worldX, int worldY, ItemStack stack) {
+        try {
+            Tile tile = this.player.world.getTile(worldX, worldY);
+            if (tile != null && tile.type == Tile.types.pile && stack.item.canStackMultiples()) {
+                ItemPile pile = (ItemPile)tile;
+                if (pile.getItemId().equals(stack.getId())) {
+                    int max = stack.getMaxCarry();
+                    int space = max - pile.getItem().getAmount();
+                    if (space >= stack.getAmount()) return new GridPoint2(worldX, worldY);
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void placeStackAt(int worldX, int worldY, ItemStack stack) {
+        try {
+            String itemId = stack.getId();
+            int itemAmount = stack.getAmount();
+            GridPoint2 localPos = new GridPoint2(0, 0);
+            localPos = World.convertWorldToLocal(localPos, worldX, worldY);
+            if (this.player.world.isTileEmpty(worldX, worldY)) {
+                new ItemPile(this.player.world, this.player.getCurrentChunk(), localPos.x, localPos.y, stack);
+            } else {
+                Tile tile = this.player.world.getTile(worldX, worldY);
+                if (tile != null && tile.type == Tile.types.pile && stack.item.canStackMultiples()) {
+                    ItemPile pile = (ItemPile)tile;
+                    if (pile.getItemId().equals(stack.getId())) {
+                        int max = stack.getMaxCarry();
+                        int space = max - pile.getItem().getAmount();
+                        if (space >= stack.getAmount()) {
+                            pile.addTo(stack);
+                            stack = null;
+                        }
+                    }
+                }
+                if (stack != null && stack.getAmount() > 0) {
+                    // failed to merge, try to place as new pile on adjacent empty tile
+                    GridPoint2 adj = this.findBestDropTile(worldX, worldY, stack);
+                    if (adj != null && this.player.world.isTileEmpty(adj.x, adj.y)) {
+                        GridPoint2 l2 = new GridPoint2(0,0);
+                        l2 = World.convertWorldToLocal(l2, adj.x, adj.y);
+                        new ItemPile(this.player.world, this.player.getCurrentChunk(), l2.x, l2.y, stack);
+                    }
+                }
+            }
+            this.dropItemSoundFx();
+            try {
+                String payload = "ITEM_DROP:" + worldX + ":" + worldY + ":" + itemId + ":" + itemAmount;
+                com.cairn4.moonbase.NetworkHelper.sendPayload(this.player.world.gameScreen, payload);
+            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+    }
+
     private void findAdjacentTileToDrop() {
         ItemStack stack = this.getSelectedItem();
         ArrayList<GridPoint2> adjacentTiles = Tile.GET_ADJACENT_COORDS(this.player.x, this.player.y, false);
@@ -587,4 +682,3 @@ public class PlayerInventory {
         return totalSpace;
     }
 }
-

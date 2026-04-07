@@ -41,6 +41,7 @@ import com.cairn4.moonbase.entities.NpcBonuses;
 import com.cairn4.moonbase.entities.TemperatureDealer;
 import com.cairn4.moonbase.techtree.TechManager;
 import com.cairn4.moonbase.tiles.DecorativeTile;
+import com.cairn4.moonbase.tiles.BaseModule;
 import com.cairn4.moonbase.tiles.GroundTile;
 import com.cairn4.moonbase.tiles.Lander;
 import com.cairn4.moonbase.tiles.Tile;
@@ -104,6 +105,7 @@ public class World {
     private boolean debugIceOnce = false;
     private boolean debugIceOverlayOnce = false;
     private float meteorTimer = 0.0f;
+    private boolean mpRespawnInProgress = false;
 
     public Player getPlayer() {
         if (this.player != null) {
@@ -514,9 +516,89 @@ public class World {
     }
 
     public void gameOver(GameOverReasons.REASONS reason) {
+        if (MoonBase.isMultiplayer) {
+            this.handleMultiplayerDeath(reason);
+            return;
+        }
         this.gameScreen.exitMenu();
         this.gameState = GameStates.gameOver;
         this.gameScreen.hud.gameResult(false, reason);
+    }
+
+    private void handleMultiplayerDeath(GameOverReasons.REASONS reason) {
+        if (this.mpRespawnInProgress) return;
+        this.mpRespawnInProgress = true;
+        try {
+            if (this.player == null) return;
+            try { this.gameScreen.exitMenu(); } catch (Exception ignored) {}
+            try {
+                if (this.player.isDrivingVehicle()) {
+                    this.player.exitVehicleRemote();
+                    try {
+                        this.gameScreen.cameraLag.setZoom(com.cairn4.moonbase.ui.CameraLag.WALKZOOM);
+                        this.gameScreen.cameraLag.toggleBuggie();
+                    } catch (Exception ignored) {}
+                }
+            } catch (Exception ignored) {}
+            try { this.player.playerInventory.dropAllItemsAt(this.player.getX(), this.player.getY()); } catch (Exception ignored) {}
+            GridPoint2 respawn = this.findRespawnTile();
+            if (respawn == null) respawn = new GridPoint2(500, 500);
+            try { this.ensureChunkLoadedForNetwork(respawn.x, respawn.y); } catch (Exception ignored) {}
+            try { this.player.moveToTile(respawn.x, respawn.y); } catch (Exception ignored) {}
+            try { this.player.forcePositionUpdate(); } catch (Exception ignored) {}
+            try { this.player.playerStatus.resetForMultiplayerRespawn(); } catch (Exception ignored) {}
+            try { this.player.playerAnimController.respawnReset(); } catch (Exception ignored) {}
+            try {
+                this.gameState = GameStates.playing;
+            } catch (Exception ignored) {}
+            try {
+                float vx = 0f, vy = 0f;
+                String payload = "POS:PLAYER:" + this.player.ownerId + ":" + this.player.getXPos() + ":" + this.player.getYPos() + ":" + vx + ":" + vy;
+                com.cairn4.moonbase.NetworkHelper.sendPayload(this.gameScreen, payload);
+            } catch (Exception ignored) {}
+        } finally {
+            this.mpRespawnInProgress = false;
+        }
+    }
+
+    private GridPoint2 findRespawnTile() {
+        try {
+            int fallbackX = 500;
+            int fallbackY = 500;
+            int px = this.player != null ? this.player.getX() : fallbackX;
+            int py = this.player != null ? this.player.getY() : fallbackY;
+            try { this.baseManager.updateBases(this); } catch (Exception ignored) {}
+            ArrayList<BaseGroup> groups = null;
+            try { groups = this.baseManager.getBaseGroupList(); } catch (Exception ignored) {}
+            if (groups != null && groups.size() > 0) {
+                BaseModule closest = null;
+                float best = Float.MAX_VALUE;
+                for (BaseGroup bg : groups) {
+                    if (bg == null || bg.baseModuleList == null) continue;
+                    for (BaseModule bm : bg.baseModuleList) {
+                        if (bm == null) continue;
+                        float dx = bm.worldX - px;
+                        float dy = bm.worldY - py;
+                        float dist = dx * dx + dy * dy;
+                        if (dist < best) {
+                            best = dist;
+                            closest = bm;
+                        }
+                    }
+                }
+                if (closest != null) {
+                    int bx = closest.worldX;
+                    int by = closest.worldY;
+                    if (this.isTileEmpty(bx, by)) return new GridPoint2(bx, by);
+                    ArrayList<GridPoint2> adjacent = Tile.GET_ADJACENT_COORDS(bx, by, true);
+                    for (GridPoint2 gp : adjacent) {
+                        if (this.isTileEmpty(gp.x, gp.y)) return gp;
+                    }
+                }
+            }
+            return new GridPoint2(fallbackX, fallbackY);
+        } catch (Exception ignored) {}
+        return new GridPoint2(500, 500);
     }
 
     public boolean isTileEmpty(int x, int y) {

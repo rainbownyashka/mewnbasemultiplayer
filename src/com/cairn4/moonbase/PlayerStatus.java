@@ -198,6 +198,36 @@ public class PlayerStatus {
         this.setHealth(currentSuit.maxHealth);
     }
 
+    public void resetForMultiplayerRespawn() {
+        try {
+            this.setMaxValues();
+            this.healthChange = "";
+            this.healthChanging = 0;
+            this.oldHealth = this.health;
+            this.temperature = 0.0f;
+            this.tempUpdateTimer = 0.0f;
+            this.flashlight = false;
+            if (this.player != null) {
+                try {
+                    this.player.playerAnimController.setOnFire(false);
+                } catch (Exception ignored) {}
+                try {
+                    this.player.playerAnimController.suffocateAnim(false);
+                } catch (Exception ignored) {}
+                try {
+                    this.player.light.setActive(false);
+                    this.player.flashlightGlow.setActive(false);
+                } catch (Exception ignored) {}
+            }
+            if (this.statusEffects != null && this.statusEffects.size() > 0) {
+                this.statusEffects.clear();
+                if (this.player != null) {
+                    this.player.notifyUpdate("removeStatusEffects");
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     public void newStatusEffect(PlayerStatusEffect statusEffect) {
         this.statusEffects.add(statusEffect);
         this.player.notifyUpdate("addStatusEffects");
@@ -624,4 +654,3 @@ public class PlayerStatus {
 
     }
 }
-

@@ -544,6 +544,17 @@ public class PlayerAnimController {
         this.state.setAnimation(0, "death", false);
     }
 
+    public void respawnReset() {
+        try {
+            this.skeleton.setScaleX(1.0f);
+            this.skeleton.setBonesToSetupPose();
+            this.state.clearTracks();
+            this.state.clearListeners();
+            this.state.setAnimation(0, "idle", true);
+            this.addFootstepSfxListener();
+        } catch (Exception ignored) {}
+    }
+
     public void testAnim(String name, boolean loop) {
         this.skeleton.setScaleX(1.0f);
         this.skeleton.setBonesToSetupPose();

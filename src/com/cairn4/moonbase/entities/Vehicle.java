@@ -532,6 +532,8 @@ DamageTaker {
         s.put("enginePowerAvailable", Boolean.valueOf(this.enginePowerAvailable));
         if (this.currentState != null) s.put("state", this.currentState.toString());
         s.put("specialAbility", Boolean.valueOf(this.specialAbility));
+        s.put("steeringAngle", Float.valueOf(this.steeringAngle));
+        if (this.currentSteering != null) s.put("currentSteering", this.currentSteering.toString());
         return s;
     }
 
@@ -568,6 +570,24 @@ DamageTaker {
             if (s.containsKey("specialAbility")) {
                 boolean b = safeBool(s.get("specialAbility"), this.specialAbility);
                 if (b != this.specialAbility) this.setSpecialAbility(b);
+            }
+            if (s.containsKey("currentSteering")) {
+                try {
+                    String cs = String.valueOf(s.get("currentSteering"));
+                    if (cs != null && cs.length() > 0) {
+                        steering ns = steering.valueOf(cs);
+                        this.currentSteering = ns;
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (s.containsKey("steeringAngle")) {
+                float a = safeFloat(s.get("steeringAngle"), this.steeringAngle);
+                this.steeringAngle = a;
+                try {
+                    for (Wheel w : this.wheels) {
+                        w.setAngle(this.steeringAngle);
+                    }
+                } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
     }
