@@ -40,6 +40,8 @@ implements Pool.Poolable {
     public AltitudeTypes altitudeType;
     public WetnessTypes wetnessType;
     private String spriteName;
+    public boolean iceOverlayAdded = false;
+    public float lastIceAlpha = 0.0f;
     protected String walkSoundFx;
     public static float[] altThresholds = new float[]{0.15f, 0.3f, 0.45f, 0.7f, 0.82f, 0.92f};
     public static float[] wetThresholds = new float[]{0.2f, 0.5f, 0.75f, 0.9f};
@@ -48,6 +50,13 @@ implements Pool.Poolable {
     public static float ICE_TINT_R = 1.0f;
     public static float ICE_TINT_G = 1.0f;
     public static float ICE_TINT_B = 1.0f;
+    // Ice overlay alpha tuning (higher scale = softer fade, bias shifts threshold)
+    public static float ICE_ALPHA_BIAS = 0.0f;
+    public static float ICE_ALPHA_SCALE = 0.15f;
+    public static float ICE_ALPHA_GAMMA = 0.25f;
+    public static float ICE_ALPHA_MIN_ICE = 0.85f;
+    // Debug override: if >=0, force this alpha for ice overlay
+    public static float ICE_ALPHA_OVERRIDE = -1.0f;
     private static int[] rockTileAlternates = new int[]{0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2};
     boolean resources = false;
     boolean discovered;
@@ -229,6 +238,8 @@ implements Pool.Poolable {
         this.image.setSize(Tile.TILE_SIZE + 0.02f, Tile.TILE_SIZE + 0.02f);
         this.image.setPosition(-0.01f, -0.01f);
         float iceAlpha = getIceOverlayAlpha();
+        this.lastIceAlpha = iceAlpha;
+        this.iceOverlayAdded = false;
         boolean useIceOverlay = iceAlpha > 0.05f;
         if (this.getBiome() == Biomes.ice && !useIceOverlay) {
             this.image.setName("iceBase");
@@ -250,6 +261,7 @@ implements Pool.Poolable {
                 iceImg.getColor().a = iceAlpha;
                 iceImg.setName("iceOverlay");
                 this.group.addActor(iceImg);
+                this.iceOverlayAdded = true;
             } catch (Exception ignored) {}
         }
     }
@@ -341,8 +353,13 @@ implements Pool.Poolable {
     }
 
     public void autoTile() {
+        Actor iceOverlayActor = null;
         for (Actor a : this.group.getChildren()) {
             if (a == this.image) continue;
+            if (a != null && "iceOverlay".equals(a.getName())) {
+                iceOverlayActor = a;
+                continue;
+            }
             a.remove();
         }
         if (this.autoTileGroup == null) {
@@ -391,6 +408,12 @@ implements Pool.Poolable {
             this.autoTileLayer(Biomes.ice);
         } else {
             this.image.toFront();
+        }
+        if (iceOverlayActor != null) {
+            if (iceOverlayActor.getParent() == null) {
+                this.group.addActor(iceOverlayActor);
+            }
+            iceOverlayActor.toFront();
         }
     }
 
@@ -470,8 +493,35 @@ implements Pool.Poolable {
     }
 
     private float getIceOverlayAlpha() {
-        float coldness = (-this.temperature - 0.05f) / 0.6f;
-        return MathUtils.clamp(coldness, 0.0f, 1.0f);
+        if (ICE_ALPHA_OVERRIDE >= 0.0f) {
+            return MathUtils.clamp(ICE_ALPHA_OVERRIDE, 0.0f, 1.0f);
+        }
+        float coldness = (-this.temperature - ICE_ALPHA_BIAS) / ICE_ALPHA_SCALE;
+        float base = MathUtils.clamp(coldness, 0.0f, 1.0f);
+        if (ICE_ALPHA_GAMMA != 1.0f) {
+            base = (float)Math.pow(base, ICE_ALPHA_GAMMA);
+        }
+        if (this.getBiome() == Biomes.ice) {
+            if (base < ICE_ALPHA_MIN_ICE) base = ICE_ALPHA_MIN_ICE;
+        }
+        return base;
+    }
+
+    public float computeIceOverlayAlpha() {
+        return getIceOverlayAlpha();
+    }
+
+    public static void setIceAlphaParams(float bias, float scale) {
+        ICE_ALPHA_BIAS = bias;
+        ICE_ALPHA_SCALE = Math.max(0.0001f, scale);
+    }
+
+    public static void setIceAlphaGamma(float gamma) {
+        ICE_ALPHA_GAMMA = Math.max(0.01f, gamma);
+    }
+
+    public static void setIceAlphaOverride(float alpha) {
+        ICE_ALPHA_OVERRIDE = alpha;
     }
 
     private String pickIceOverlaySprite() {
@@ -618,6 +668,7 @@ implements Pool.Poolable {
         this.biome = biome;
     }
 
+
     public Biomes getBiome() {
         if (this.biome == null) {
             this.biome = Biomes.ground;
@@ -674,7 +725,7 @@ implements Pool.Poolable {
     }
 
     public float getTemperature() {
-        return 0.0f;
+        return this.temperature;
     }
 
     public static enum WetnessTypes {

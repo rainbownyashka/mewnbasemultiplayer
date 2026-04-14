@@ -96,6 +96,12 @@ public class Chunk {
             GroundTile gt = TileFactory.getInstance().createGroundTile(this, gtd);
             this.setGroundTile(gt, gt.x, gt.y);
         }
+        // Ensure ice/volcanic separation for loaded chunks too
+        try {
+            if (this.world != null && this.world.terrainGen != null) {
+                this.world.terrainGen.resolveIceVolcanicAdjacency(this);
+            }
+        } catch (Exception ignored) {}
     }
 
     public void parseFloorTileData(ChunkData cd) {
@@ -482,4 +488,3 @@ public class Chunk {
         }
     }
 }
-

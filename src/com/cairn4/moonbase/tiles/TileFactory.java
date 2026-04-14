@@ -92,6 +92,24 @@ public class TileFactory {
         } 
         gt1.setBiome(groundTileData.biome);
         gt1.setDiscovered(groundTileData.disovered);
+        // Ensure temperature is restored (for ice overlay) even on old saves
+        try {
+            float temp;
+            if (groundTileData.hasTemperature) {
+                temp = groundTileData.temperature;
+            } else if ("ice".equalsIgnoreCase(groundTileData.biome)) {
+                // Old saves: ensure ice tiles actually render as cold
+                temp = -0.9f;
+            } else if (chunk.world != null && chunk.world.getTerrainGen() != null) {
+                int worldX = chunk.chunkX * 10 + groundTileData.x;
+                int worldY = chunk.chunkY * 10 + groundTileData.y;
+                temp = chunk.world.getTerrainGen().getTemperatureAt(worldX, worldY);
+            } else {
+                temp = 0.0f;
+            }
+            gt1.temperature = temp;
+            gt1.tempIndex = GroundTile.toTempIndex((temp + 1.0f) / 2.0f);
+        } catch (Exception ignored) {}
         gt1.createDrawables();
         return gt1;
     }

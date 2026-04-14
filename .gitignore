@@ -1,6 +1,8 @@
 # Build/output
 out/
 work/
+out_patch/
+dist/
 
 # Game binaries and data
 basegame/
@@ -14,6 +16,8 @@ repos/
 *.log
 *.txt
 !docs/STRUCTURE_CHECK.txt
+autocompile.*
+compile_errors.json
 
 # Python
 __pycache__/
@@ -22,6 +26,7 @@ __pycache__/
 # JARs and zips
 *.jar
 *.zip
+META-INF/
 
 # IDE
 .vscode/
