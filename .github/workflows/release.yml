@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Release Assets (Source Only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          # Tracked files only (no basegame/, no local dist/). This is the only thing
+          # we can reliably produce in CI without the proprietary game jar/assets.
+          git archive --format=zip --output "dist/mewnbasemultiplayer-${TAG}-src.zip" HEAD
+
+          # Optional: if a maintainer committed any prebuilt zips (e.g. portable build),
+          # include them too.
+          if ls release-assets/*.zip >/dev/null 2>&1; then
+            cp -v release-assets/*.zip dist/ || true
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+          generate_release_notes: true
+
