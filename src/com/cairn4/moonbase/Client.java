@@ -75,6 +75,26 @@ import com.cairn4.moonbase.net.ProtocolV2;
          this.screen = screen;
      }
 
+    private void failInitialSync(String reason) {
+        try { Gdx.app.error("Client", "Initial sync failed: " + reason, null); } catch (Exception ignored) {}
+        try {
+            if (this.screen != null) {
+                final String msg = reason;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
+                            Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
+                        }
+                    } catch (Exception ignored) {}
+                    try {
+                        Client.this.screen.errorReturnToMainMenu(com.cairn4.moonbase.LoadingErrors.loadingWorldData);
+                    } catch (Exception ignored) {}
+                });
+            }
+        } catch (Exception ignored) {}
+        try { disconnect(); } catch (Exception ignored) {}
+    }
+
     public void connect() {
         if (this.running) {
             return;
@@ -93,6 +113,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 this.socket = new Socket();
                 this.socket.connect(new InetSocketAddress(this.host, this.port), 5000);
                  this.socket.setTcpNoDelay(true);
+                 try { this.socket.setSoTimeout(15000); } catch (Exception ignored) {} // avoid black-screen hangs during blob sync
                  this.in = new DataInputStream(this.socket.getInputStream());
                  this.out = new DataOutputStream(this.socket.getOutputStream());
                  try {
@@ -142,8 +163,13 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
                              try { Gdx.app.log("Client", "Set currentSaveFolder to: " + com.cairn4.moonbase.MoonBase.currentSaveFolder); } catch (Exception ignored) {}
                          }
+                     } catch (java.net.SocketTimeoutException ste) {
+                         failInitialSync("Timed out receiving gameSave.json from server.");
+                         return;
                      } catch (Exception e) {
-                         Gdx.app.error("Client", "Failed reading initial gameSave blob (continuing)", e);
+                         Gdx.app.error("Client", "Failed reading initial gameSave blob", e);
+                         failInitialSync("Failed receiving gameSave.json from server.");
+                         return;
                      }
                      try {
                          int worldDataLen = this.in.readInt();
@@ -159,9 +185,17 @@ import com.cairn4.moonbase.net.ProtocolV2;
                             try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").writeString("ok", false); } catch (Exception ignored) {}
                             try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
                             gotWorldData = true;
+                        } else {
+                            failInitialSync("Server did not provide worldData.json (len=0).");
+                            return;
                         }
+                    } catch (java.net.SocketTimeoutException ste) {
+                        failInitialSync("Timed out receiving worldData.json from server.");
+                        return;
                     } catch (Exception e) {
-                        Gdx.app.error("Client", "Failed reading initial worldData blob (continuing)", e);
+                        Gdx.app.error("Client", "Failed reading initial worldData blob", e);
+                        failInitialSync("Failed receiving worldData.json from server.");
+                        return;
                     }
                     if (gotGameSave && gotWorldData) {
                         try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = true; } catch (Exception ignored) {}
@@ -188,6 +222,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                          try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
                      }
                  } catch (Exception ignored) {}
+                 try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
 
                  try { System.out.println("[Client] connect: initializing reader thread"); } catch (Exception ignored) {}
                  this.readerThread = new Thread(() -> {

@@ -2793,6 +2793,9 @@ public class Server {
         }
 
         private void sendInitialWorldData() {
+            boolean wroteClientId = false;
+            boolean wroteGameSaveLen = false;
+            boolean wroteWorldDataLen = false;
             try {
                 // If hosting in-process and a GameScreen is attached, synchronously save the world on the render thread
                 try {
@@ -2814,14 +2817,17 @@ public class Server {
                 } catch (Exception ignored) {}
 
                 out.writeInt(this.clientId);
+                wroteClientId = true;
 
                 com.badlogic.gdx.files.FileHandle gameSaveFile = com.badlogic.gdx.Gdx.files.local("saves/" + com.cairn4.moonbase.MoonBase.currentSaveFolder + "/gameSave.json");
                 if (gameSaveFile.exists()) {
                     byte[] gameSaveBytes = gameSaveFile.readBytes();
                     out.writeInt(gameSaveBytes.length);
+                    wroteGameSaveLen = true;
                     out.write(gameSaveBytes);
                 } else {
                     out.writeInt(0);
+                    wroteGameSaveLen = true;
                 }
 
                 int pid = com.cairn4.moonbase.GameLoader.getCurrentPlanetIdSafe();
@@ -2832,14 +2838,23 @@ public class Server {
                 if (worldDataFile.exists()) {
                     byte[] worldDataBytes = worldDataFile.readBytes();
                     out.writeInt(worldDataBytes.length);
+                    wroteWorldDataLen = true;
                     out.write(worldDataBytes);
                 } else {
                     out.writeInt(0);
+                    wroteWorldDataLen = true;
                 }
                 out.flush();
                 Gdx.app.log("ClientHandler", "Initial world data sent to client " + this.clientId);
-            } catch (IOException e) {
-                Gdx.app.error("ClientHandler", "Failed to send world data to client " + this.clientId, e);
+            } catch (Throwable e) {
+                Gdx.app.error("ClientHandler", "Failed to send initial world data to client " + this.clientId, e);
+                // Best-effort: ensure the client doesn't hang waiting for ints.
+                try {
+                    if (!wroteClientId) out.writeInt(this.clientId);
+                    if (!wroteGameSaveLen) out.writeInt(0);
+                    if (!wroteWorldDataLen) out.writeInt(0);
+                    out.flush();
+                } catch (Exception ignored) {}
             }
         }
 
