@@ -31,3 +31,4 @@ META-INF/
 # IDE
 .vscode/
 *.code-workspace
+test_script.ps1
