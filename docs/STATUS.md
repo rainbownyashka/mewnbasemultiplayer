@@ -1,8 +1,11 @@
 # Status
 
-Last update: 2026-04-07
+Last update: 2026-05-24
 
 Changes
+- Docs: added beginner guide docs/PLAY_WITH_FRIENDS.md (install, LAN, Radmin VPN, troubleshooting).
+- README: Russian quick start for players + link to PLAY_WITH_FRIENDS.md.
+
 - Restructured workspace to a simpler layout (basegame/, src/, work/, out/, tools/, backups/, old/).
 - Updated autocompile script paths to new layout and moved it under tools/.
 - Root run script now calls tools/mewnbase_autoupdate.py.
