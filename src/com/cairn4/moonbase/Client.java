@@ -75,6 +75,15 @@ import com.cairn4.moonbase.net.ProtocolV2;
          this.screen = screen;
      }
 
+    private static int blobReadTimeoutMs(int byteLen) {
+        int base = 20000;
+        if (byteLen <= 0) {
+            return base;
+        }
+        int extra = (byteLen / (256 * 1024)) * 15000;
+        return Math.min(300000, base + extra);
+    }
+
     private void failInitialSync(String reason) {
         try { Gdx.app.error("Client", "Initial sync failed: " + reason, null); } catch (Exception ignored) {}
         try {
@@ -144,62 +153,67 @@ import com.cairn4.moonbase.net.ProtocolV2;
                      boolean gotWorldData = false;
                      try {
                          int gameSaveLen = this.in.readInt();
-                        if (gameSaveLen > 0) {
-                            // Ensure multiplayer_received directory exists
-                            String saveDir = "saves/multiplayer_received/";
-                            com.badlogic.gdx.Gdx.files.local(saveDir).mkdirs();
-                            try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").delete(); } catch (Exception ignored) {}
-                             
-                             byte[] gameSaveBytes = new byte[gameSaveLen];
-                             this.in.readFully(gameSaveBytes);
-                             
-                             com.badlogic.gdx.files.FileHandle receivedGameSave = com.badlogic.gdx.Gdx.files.local(saveDir + "gameSave.json");
-                             receivedGameSave.writeBytes(gameSaveBytes, false);
-                             Gdx.app.log("Client", "gameSave.json received (" + gameSaveLen + " bytes).");
-                             try { System.out.println("[Client] connect: wrote gameSave.json, len=" + gameSaveLen); } catch (Exception ignored) {}
-                             gotGameSave = true;
-                             
-                             // Set current save folder to multiplayer_received for loading
-                             try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
-                             try { Gdx.app.log("Client", "Set currentSaveFolder to: " + com.cairn4.moonbase.MoonBase.currentSaveFolder); } catch (Exception ignored) {}
-                         }
+                        if (gameSaveLen <= 0) {
+                            failInitialSync("Host sent empty save (no gameSave). Host: save world, then Create Server again.");
+                            return;
+                        }
+                        try { this.socket.setSoTimeout(blobReadTimeoutMs(gameSaveLen)); } catch (Exception ignored) {}
+                        String saveDir = "saves/multiplayer_received/";
+                        com.badlogic.gdx.Gdx.files.local(saveDir).mkdirs();
+                        try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").delete(); } catch (Exception ignored) {}
+
+                        byte[] gameSaveBytes = new byte[gameSaveLen];
+                        this.in.readFully(gameSaveBytes);
+
+                        com.badlogic.gdx.files.FileHandle receivedGameSave = com.badlogic.gdx.Gdx.files.local(saveDir + "gameSave.json");
+                        receivedGameSave.writeBytes(gameSaveBytes, false);
+                        Gdx.app.log("Client", "gameSave.json received (" + gameSaveLen + " bytes).");
+                        gotGameSave = true;
+                        try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
                      } catch (java.net.SocketTimeoutException ste) {
-                         failInitialSync("Timed out receiving gameSave.json from server.");
+                         failInitialSync("Timed out receiving gameSave (large save / slow link). Try again.");
                          return;
                      } catch (Exception e) {
                          Gdx.app.error("Client", "Failed reading initial gameSave blob", e);
-                         failInitialSync("Failed receiving gameSave.json from server.");
+                         failInitialSync("Failed receiving gameSave from server.");
                          return;
                      }
                      try {
                          int worldDataLen = this.in.readInt();
-                        if (worldDataLen > 0) {
-                            String saveDir = "saves/multiplayer_received/";
-                            byte[] worldDataBytes = new byte[worldDataLen];
-                            this.in.readFully(worldDataBytes);
-
-                            com.badlogic.gdx.files.FileHandle receivedWorldData = com.badlogic.gdx.Gdx.files.local(saveDir + "worldData.json");
-                            receivedWorldData.writeBytes(worldDataBytes, false);
-                            Gdx.app.log("Client", "worldData.json received (" + worldDataLen + " bytes).");
-                            try { System.out.println("[Client] connect: wrote worldData.json, len=" + worldDataLen); } catch (Exception ignored) {}
-                            try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").writeString("ok", false); } catch (Exception ignored) {}
-                            try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
-                            gotWorldData = true;
-                        } else {
-                            failInitialSync("Server did not provide worldData.json (len=0).");
+                        if (worldDataLen <= 0) {
+                            failInitialSync("Host sent empty world (no worldData). Host: enter world, wait load, then host again.");
                             return;
                         }
+                        try { this.socket.setSoTimeout(blobReadTimeoutMs(worldDataLen)); } catch (Exception ignored) {}
+                        String saveDir = "saves/multiplayer_received/";
+                        byte[] worldDataBytes = new byte[worldDataLen];
+                        this.in.readFully(worldDataBytes);
+
+                        int planetId = 0;
+                        try { planetId = com.cairn4.moonbase.GameLoader.readPlanetIdFromSaveFolder("multiplayer_received"); } catch (Exception ignored) {}
+                        String planetFile = com.cairn4.moonbase.GameLoader.getWorldDataFilename(planetId);
+                        com.badlogic.gdx.Gdx.files.local(saveDir + planetFile).writeBytes(worldDataBytes, false);
+                        if (planetId == 0) {
+                            com.badlogic.gdx.Gdx.files.local(saveDir + "worldData.json").writeBytes(worldDataBytes, false);
+                        }
+                        Gdx.app.log("Client", planetFile + " received (" + worldDataLen + " bytes).");
+                        try { com.badlogic.gdx.Gdx.files.local(saveDir + ".sync_done").writeString("ok", false); } catch (Exception ignored) {}
+                        try { com.cairn4.moonbase.MoonBase.currentSaveFolder = "multiplayer_received"; } catch (Exception ignored) {}
+                        gotWorldData = true;
                     } catch (java.net.SocketTimeoutException ste) {
-                        failInitialSync("Timed out receiving worldData.json from server.");
+                        failInitialSync("Timed out receiving world (large world / slow link). Try again.");
                         return;
                     } catch (Exception e) {
                         Gdx.app.error("Client", "Failed reading initial worldData blob", e);
-                        failInitialSync("Failed receiving worldData.json from server.");
+                        failInitialSync("Failed receiving world from server.");
                         return;
                     }
                     if (gotGameSave && gotWorldData) {
                         try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = true; } catch (Exception ignored) {}
                         Gdx.app.log("Client", "Initial sync complete (gameSave + worldData).");
+                    } else {
+                        failInitialSync("Incomplete sync from server.");
+                        return;
                     }
                  } catch (Exception ex) {
                      Gdx.app.error("Client", "Error consuming initial server blobs", ex);

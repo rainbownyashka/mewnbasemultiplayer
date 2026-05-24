@@ -1,5 +1,5 @@
 /*
- * Decompiled with CFR 0.152. в
+ * Decompiled with CFR 0.152.
  */
 package com.cairn4.moonbase;
 
@@ -275,6 +275,37 @@ public class GameLoader {
         }
         Gdx.app.error("MewnBase", "GameLoader: can't find save data for folder " + folder);
         return null;
+    }
+
+    /** gameSave.json bytes for MP initial sync (falls back to decoded gameSave.data). */
+    public static byte[] readGameSaveSyncBytes(String folder) {
+        if (folder == null || folder.trim().length() == 0) {
+            return null;
+        }
+        try {
+            FileHandle json = Gdx.files.local("saves/" + folder + "/gameSave.json");
+            if (json.exists()) {
+                return json.readBytes();
+            }
+            FileHandle data = Gdx.files.local("saves/" + folder + "/gameSave.data");
+            if (data.exists()) {
+                String fileText = data.readString(SAVEFILE_CHARSET);
+                return Base64.getDecoder().decode(fileText);
+            }
+        } catch (Exception e) {
+            Gdx.app.error("MewnBase", "GameLoader: readGameSaveSyncBytes failed for " + folder, e);
+        }
+        return null;
+    }
+
+    public static int readPlanetIdFromSaveFolder(String folder) {
+        try {
+            GameSaveData gsd = GameLoader.getGameSaveData(folder);
+            if (gsd != null) {
+                return gsd.currentPlanetId;
+            }
+        } catch (Exception ignored) {}
+        return 0;
     }
 
     public void loadGame(World world) {

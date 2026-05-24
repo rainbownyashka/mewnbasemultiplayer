@@ -202,17 +202,27 @@ public class World {
         try {
             com.badlogic.gdx.files.FileHandle g = Gdx.files.local("saves/multiplayer_received/gameSave.json");
             com.badlogic.gdx.files.FileHandle d = Gdx.files.local("saves/multiplayer_received/gameSave.data");
-            com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/worldData.json");
-            return w.exists() && (g.exists() || d.exists());
+            if (!g.exists() && !d.exists()) {
+                return false;
+            }
+            int pid = 0;
+            try { pid = com.cairn4.moonbase.GameLoader.readPlanetIdFromSaveFolder("multiplayer_received"); } catch (Exception ignored) {}
+            com.badlogic.gdx.files.FileHandle w = Gdx.files.local("saves/multiplayer_received/" + com.cairn4.moonbase.GameLoader.getWorldDataFilename(pid));
+            if (w.exists()) {
+                return true;
+            }
+            return Gdx.files.local("saves/multiplayer_received/worldData.json").exists();
         } catch (Exception ignored) {}
         return false;
     }
 
     private void tryDeferredMultiplayerLoad() {
         if (!this.pendingMpLoad) return;
-        if (!com.cairn4.moonbase.MoonBase.multiplayerSyncReady) {
-            // Still waiting on client sync
-        } else if (this.multiplayerReceivedFilesReady()) {
+        boolean filesReady = this.multiplayerReceivedFilesReady();
+        if (!com.cairn4.moonbase.MoonBase.multiplayerSyncReady && !filesReady) {
+            return;
+        }
+        if (filesReady) {
             try {
                 this.gameScreen.gameLoader.loadGame(this);
                 this.gameState = GameStates.playing;

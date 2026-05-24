@@ -210,6 +210,14 @@ java -Dmewnbase.mp.host=26.12.34.56 -Dmewnbase.mp.port=7777 -Dmewnbase.mp.nick=P
 
 ---
 
+## Список серверов онлайн (зеркало на VPS)
+
+Игра **не** ставится на VPS целиком — на сервере только **зеркало** (список «кто хостит»). Хост по-прежнему на своём ПК + Radmin VPN.
+
+- Подробно: **[SERVER_BROWSER.md](SERVER_BROWSER.md)** (VPS 300 MB хватает, RAM зеркала ~20–50 MB).
+- Хост: `-Dmewnbase.mp.registry=http://VPS:8080` и `-Dmewnbase.mp.advertiseHost=<Radmin IP>`.
+- Гость: тот же `registry` → в игре **Browse online list**.
+
 ## Для разработчиков
 
 - Техническая документация: [`src/MULTIPLAYER_FULL.md`](../src/MULTIPLAYER_FULL.md)

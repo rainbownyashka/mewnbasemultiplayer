@@ -108,6 +108,7 @@ public class Server {
                 // mark that the server socket is bound and listening
                 listening = true;
                 Gdx.app.log("Server", "Server started on port " + port);
+                try { MpServerRegistry.startHeartbeatIfConfigured(Server.this); } catch (Exception ignored) {}
 
                 while (running) {
                     try {
@@ -264,7 +265,20 @@ public class Server {
         return listening;
     }
 
+    public boolean isRunning() {
+        return this.running;
+    }
+
+    public int getPort() {
+        return this.port;
+    }
+
+    public int getClientCount() {
+        return this.clients.size();
+    }
+
     public void stop() {
+        try { MpServerRegistry.stopHeartbeat(); } catch (Exception ignored) {}
         running = false;
         try {
             for (ClientHandler client : clients.values()) {
@@ -2810,8 +2824,7 @@ public class Server {
                             }
                         }});
                         try {
-                            // Wait up to 5 seconds for save to complete; proceed even if timeout
-                            latch.await(5, TimeUnit.SECONDS);
+                            latch.await(15, TimeUnit.SECONDS);
                         } catch (InterruptedException ignored) {}
                     }
                 } catch (Exception ignored) {}
@@ -2819,13 +2832,13 @@ public class Server {
                 out.writeInt(this.clientId);
                 wroteClientId = true;
 
-                com.badlogic.gdx.files.FileHandle gameSaveFile = com.badlogic.gdx.Gdx.files.local("saves/" + com.cairn4.moonbase.MoonBase.currentSaveFolder + "/gameSave.json");
-                if (gameSaveFile.exists()) {
-                    byte[] gameSaveBytes = gameSaveFile.readBytes();
+                byte[] gameSaveBytes = com.cairn4.moonbase.GameLoader.readGameSaveSyncBytes(com.cairn4.moonbase.MoonBase.currentSaveFolder);
+                if (gameSaveBytes != null && gameSaveBytes.length > 0) {
                     out.writeInt(gameSaveBytes.length);
                     wroteGameSaveLen = true;
                     out.write(gameSaveBytes);
                 } else {
+                    Gdx.app.error("ClientHandler", "No gameSave for folder " + com.cairn4.moonbase.MoonBase.currentSaveFolder + " — client will fail sync");
                     out.writeInt(0);
                     wroteGameSaveLen = true;
                 }

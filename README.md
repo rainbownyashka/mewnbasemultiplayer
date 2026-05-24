@@ -29,6 +29,7 @@
 ## Документация
 
 - **[Игра с друзьями — для новичков](docs/PLAY_WITH_FRIENDS.md)**
+- **[Зеркало списка серверов (VPS ~300 MB)](docs/SERVER_BROWSER.md)**
 - [Статус разработки](docs/STATUS.md)
 - [Задачи](docs/TODO.md)
 - [Мультиплеер (техн.)](src/MULTIPLAYER_FULL.md)

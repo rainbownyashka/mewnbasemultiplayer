@@ -107,7 +107,28 @@ public class MultiplayerConfigMenu extends Menu {
             }
         });
         table.row();
-        table.add(createServerButton).pad(20.0f);
+        table.add(createServerButton).colspan(2).pad(20.0f);
+        table.row();
+        TextButton browseButton = new TextButton("Browse online list", buttonStyle);
+        browseButton.addListener(new ClickListener(){
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
+                String reg = com.cairn4.moonbase.MpServerRegistry.getRegistryBaseUrl();
+                if (reg == null || reg.length() == 0) {
+                    Gdx.app.log("MewnBase", "Set -Dmewnbase.mp.registry=http://your-vps:8080");
+                }
+                MultiplayerConfigMenu.this.baseScreen.showMenu(new MultiplayerServerListMenu(MultiplayerConfigMenu.this.baseScreen, MultiplayerConfigMenu.this));
+            }
+        });
+        table.add(browseButton).colspan(2).pad(10.0f);
+    }
+
+    public void applyServer(String host, int port) {
+        if (host != null) {
+            this.ipField.setText(host.trim());
+        }
+        this.portField.setText(Integer.toString(port));
     }
 
     @Override

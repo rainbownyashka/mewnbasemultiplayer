@@ -3,6 +3,9 @@
 Last update: 2026-05-24
 
 Changes
+- MP: lightweight registry mirror (tools/mp_registry_server.py, MpServerRegistry, Browse online list UI).
+- MP sync: fix hang when gameSave len=0 or worldData planet file mismatch; send gameSave.data; longer blob timeouts.
+- Docs: SERVER_BROWSER.md (VPS 300 MB mirror, not game host).
 - Docs: added beginner guide docs/PLAY_WITH_FRIENDS.md (install, LAN, Radmin VPN, troubleshooting).
 - README: Russian quick start for players + link to PLAY_WITH_FRIENDS.md.
 
