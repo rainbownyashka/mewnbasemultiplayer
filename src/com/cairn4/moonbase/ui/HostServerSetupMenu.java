@@ -41,7 +41,7 @@ public class HostServerSetupMenu extends Menu {
 
         Table root = new Table();
         root.setFillParent(true);
-        root.pad(34.0f, 78.0f, 26.0f, 78.0f);
+        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
         this.menuGroup.addActor(root);
 
         NinePatchDrawable altNpdUp = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
@@ -72,11 +72,11 @@ public class HostServerSetupMenu extends Menu {
 
         Table content = new Table();
         content.top().left();
-        content.defaults().pad(3.0f).left();
-        content.setWidth(560.0f);
+        content.defaults().pad(4.0f).left();
+        content.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        content.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
+        content.setWidth(680.0f);
 
-        content.add(new Label("Network mode", labelStyle)).left().padBottom(4.0f);
-        content.row();
         Table modeRow = new Table();
         this.lanButton = new TextButton("LAN", buttonStyle);
         this.onlineButton = new TextButton("Online", buttonStyle);
@@ -92,12 +92,12 @@ public class HostServerSetupMenu extends Menu {
                 HostServerSetupMenu.this.setNetworkMode(MoonBase.PendingHostServerOptions.NetworkMode.ONLINE);
             }
         });
-        modeRow.add(this.lanButton).width(175.0f).height(42.0f).padRight(10.0f);
-        modeRow.add(this.onlineButton).width(200.0f).height(42.0f);
-        content.add(modeRow).left().width(500.0f);
+        modeRow.add(this.lanButton).width(155.0f).height(38.0f).padRight(8.0f);
+        modeRow.add(this.onlineButton).width(155.0f).height(38.0f);
+        content.add(modeRow).colspan(2).center().padBottom(8.0f);
         content.row();
 
-        content.add(new Label("Server flags", labelStyle)).left().padTop(8.0f);
+        content.add(new Label("Server options", labelStyle)).left().padTop(8.0f);
         content.row();
 
         this.syncTechRow = new CheckboxRow(this, "Sync tech tree", getOption().syncTech);
@@ -186,7 +186,7 @@ public class HostServerSetupMenu extends Menu {
 
         Label note = new Label("LAN uses a direct local/network connection. Online publishes the save for public listing.", labelStyle);
         note.setWrap(true);
-        content.add(note).width(560.0f).padTop(8.0f);
+        content.add(note).width(620.0f).padTop(8.0f);
         content.row();
 
         TextButton chooseSave = new TextButton("Continue", buttonStyle);
@@ -218,7 +218,7 @@ public class HostServerSetupMenu extends Menu {
         scroll.setScrollingDisabled(true, false);
         scroll.setFadeScrollBars(false);
         scroll.setOverscroll(false, false);
-        root.add(scroll).expand().fill().padTop(6.0f);
+        root.add(scroll).width(730.0f).expandY().fillY().center().padTop(6.0f);
         root.row();
         root.add(footer).bottom().center().padTop(16.0f);
         this.syncUiFromOptions();

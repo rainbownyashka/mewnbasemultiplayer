@@ -46,7 +46,7 @@ public class MultiplayerConfigMenu extends Menu {
         this.menuGroup.setSize(this.stage.getWidth(), this.stage.getHeight());
         Table root = new Table();
         root.setFillParent(true);
-        root.pad(26.0f, 56.0f, 18.0f, 56.0f);
+        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
         this.menuGroup.addActor(root);
 
         NinePatchDrawable altNpdUp = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
@@ -81,16 +81,16 @@ public class MultiplayerConfigMenu extends Menu {
 
         Table content = new Table();
         content.top().left();
-        content.defaults().pad(8.0f).fillX();
-        content.setWidth(560.0f);
+        content.defaults().pad(6.0f).fillX();
+        content.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        content.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
+        content.setWidth(680.0f);
 
         Label title = new Label("Multiplayer", this.headingStyle);
         title.setFontScale(0.80f);
-        content.add(title).colspan(2).center().padBottom(18.0f);
+        content.add(title).colspan(2).center().padBottom(12.0f);
         content.row();
 
-        content.add(new Label("Network mode", labelStyle)).left().padBottom(2.0f);
-        content.row();
         Table modeRow = new Table();
         this.lanButton = new TextButton("LAN", buttonStyle);
         this.onlineButton = new TextButton("Online", buttonStyle);
@@ -108,9 +108,9 @@ public class MultiplayerConfigMenu extends Menu {
                 MultiplayerConfigMenu.this.setOnlineMode(true);
             }
         });
-        modeRow.add(this.lanButton).width(170.0f).height(42.0f).padRight(10.0f);
-        modeRow.add(this.onlineButton).width(170.0f).height(42.0f);
-        content.add(modeRow).left().width(500.0f);
+        modeRow.add(this.lanButton).width(155.0f).height(38.0f).padRight(8.0f);
+        modeRow.add(this.onlineButton).width(155.0f).height(38.0f);
+        content.add(modeRow).colspan(2).center().padBottom(8.0f);
         content.row();
 
         content.add(new Label("Nickname:", labelStyle)).right();
@@ -122,27 +122,19 @@ public class MultiplayerConfigMenu extends Menu {
         content.row();
 
         this.lanSection = new Table();
-        this.lanSection.defaults().pad(8.0f).fillX();
-        this.lanSection.add(new Label("LAN / direct connect", labelStyle)).colspan(2).left().padBottom(4.0f);
-        this.lanSection.row();
+        this.lanSection.defaults().pad(6.0f).fillX();
         this.lanSection.add(new Label("LAN IP / Host:", labelStyle)).right();
         this.lanSection.add(this.ipField).width(260.0f).left();
         this.lanSection.row();
         this.lanSection.add(new Label("LAN Port:", labelStyle)).right();
         this.lanSection.add(this.portField).width(260.0f).left();
         this.lanSection.row();
-        Label lanNote = new Label("Use this for local network or a direct IP.", labelStyle);
-        lanNote.setWrap(true);
-        this.lanSection.add(lanNote).colspan(2).width(480.0f).left().padTop(4.0f);
-        this.lanSection.row();
-        content.add(this.lanSection).colspan(2).left().width(520.0f);
+        content.add(this.lanSection).colspan(2).left().width(620.0f).padTop(4.0f);
         content.row();
 
         this.onlineSection = new Table();
-        this.onlineSection.defaults().pad(8.0f).fillX();
+        this.onlineSection.defaults().pad(6.0f).fillX();
         this.targetLabel = new Label(this.getOnlineTargetText(), labelStyle);
-        this.onlineSection.add(new Label("Online relay", labelStyle)).colspan(2).left().padBottom(4.0f);
-        this.onlineSection.row();
         this.onlineSection.add(this.targetLabel).colspan(2).left();
         this.onlineSection.row();
         this.browseButton = new TextButton("Browse online list", buttonStyle);
@@ -169,13 +161,9 @@ public class MultiplayerConfigMenu extends Menu {
         Table onlineActions = new Table();
         onlineActions.defaults().pad(6.0f);
         onlineActions.add(this.browseButton).width(240.0f).height(44.0f);
-        this.onlineSection.add(onlineActions).colspan(2).center().padTop(8.0f);
+        this.onlineSection.add(onlineActions).colspan(2).center().padTop(6.0f);
         this.onlineSection.row();
-        Label onlineNote = new Label("Choose an online relay session from the list, then connect.", labelStyle);
-        onlineNote.setWrap(true);
-        this.onlineSection.add(onlineNote).colspan(2).width(480.0f).left().padTop(4.0f);
-        this.onlineSection.row();
-        content.add(this.onlineSection).colspan(2).left().width(520.0f);
+        content.add(this.onlineSection).colspan(2).left().width(620.0f).padTop(4.0f);
         content.row();
 
         ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle();
@@ -185,7 +173,7 @@ public class MultiplayerConfigMenu extends Menu {
         this.scroller.setScrollingDisabled(true, false);
         this.scroller.setFadeScrollBars(false);
         this.scroller.setOverscroll(false, false);
-        root.add(this.scroller).expand().fill().padTop(6.0f);
+        root.add(this.scroller).width(730.0f).expandY().fillY().center().padTop(6.0f);
         root.row();
 
         this.connectButton = new TextButton("Connect LAN", buttonStyle);
@@ -222,11 +210,11 @@ public class MultiplayerConfigMenu extends Menu {
         });
 
         Table footer = new Table();
-        footer.defaults().pad(8.0f);
-        footer.add(this.connectButton).width(240.0f).height(48.0f);
-        footer.add(exitButton).width(240.0f).height(48.0f);
-        footer.add(this.createServerButton).width(240.0f).height(48.0f);
-        root.add(footer).padTop(12.0f).padBottom(8.0f);
+        footer.defaults().pad(5.0f);
+        footer.add(this.connectButton).width(210.0f).height(46.0f);
+        footer.add(this.createServerButton).width(220.0f).height(46.0f);
+        footer.add(exitButton).width(150.0f).height(46.0f);
+        root.add(footer).center().padTop(8.0f).padBottom(4.0f);
         root.row();
 
         this.setOnlineMode(false);

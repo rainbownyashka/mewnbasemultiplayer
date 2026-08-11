@@ -32,6 +32,7 @@ public class MultiplayerServerListMenu extends Menu {
         this.menuGroup.setSize(this.stage.getWidth(), this.stage.getHeight());
         Table root = new Table();
         root.setFillParent(true);
+        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
         this.menuGroup.addActor(root);
 
         NinePatchDrawable alt_npd_up = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
@@ -46,17 +47,23 @@ public class MultiplayerServerListMenu extends Menu {
 
         Label title = new Label("Online servers (relay)", this.headingStyle);
         title.setFontScale(0.70f);
-        root.add(title).pad(10.0f);
+        Table panel = new Table();
+        panel.top().left();
+        panel.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        panel.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
+        root.add(panel).width(700.0f).expandY().fillY().center();
+        panel.add(title).center().padBottom(8.0f);
+        panel.row();
         root.row();
         this.statusLabel = new Label("Loading...", labelStyle);
-        root.add(this.statusLabel).pad(6.0f);
-        root.row();
+        panel.add(this.statusLabel).center().pad(4.0f);
+        panel.row();
 
         this.listTable = new Table();
         ScrollPane scroll = new ScrollPane(this.listTable);
         scroll.setFadeScrollBars(false);
-        root.add(scroll).width(420.0f).height(220.0f).pad(8.0f);
-        root.row();
+        panel.add(scroll).width(620.0f).height(300.0f).pad(8.0f);
+        panel.row();
 
         TextButton refreshButton = new TextButton("Refresh", buttonStyle);
         refreshButton.addListener(new ClickListener() {
@@ -74,8 +81,8 @@ public class MultiplayerServerListMenu extends Menu {
                 MultiplayerServerListMenu.this.back();
             }
         });
-        root.add(refreshButton).pad(12.0f);
-        root.add(backButton).pad(12.0f);
+        panel.add(refreshButton).width(180.0f).height(44.0f).pad(6.0f);
+        panel.add(backButton).width(150.0f).height(44.0f).pad(6.0f);
     }
 
     private void refreshList() {
