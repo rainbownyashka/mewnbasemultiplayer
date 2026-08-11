@@ -54,8 +54,9 @@ This project uses LibGDX texture atlases. Ground tiles and many world sprites co
    - `src/com/cairn4/moonbase/ui/GameScreen.java` must `skin.addRegions(moddedAtlas)` to register the regions.
 5. Compile + patch jar if code changed:
    ```powershell
-   powershell -ExecutionPolicy Bypass -File tools\patch_manual.ps1 -SourceList "src\com\cairn4\moonbase\MoonBase.java,src\com\cairn4\moonbase\ui\GameScreen.java"
+   powershell -ExecutionPolicy Bypass -File tools\patch_manual.ps1 -SourceList "src\com\cairn4\moonbase\MoonBase.java,src\com\cairn4\moonbase\ui\GameScreen.java" -UseChangedList 0
    ```
+   Always use the repository patch script for targeted Java changes and pass an explicit source list with `-UseChangedList 0`.
 
 ## Common errors and fixes
 

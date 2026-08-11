@@ -1,12 +1,39 @@
 # Status
 
-Last update: 2026-05-24
+Last update: 2026-05-25
+
+Current verification (2026-08-11)
+- Multiplayer UI now reuses the game's loaded `smallfont1.fnt` for buttons, labels, and text fields with local UI scaling instead of creating default `BitmapFont` instances, so its typography and size match the rest of the game without changing the global font.
+- Targeted compilation of `MultiplayerConfigMenu.java`, `MultiplayerServerListMenu.java`, and `HostServerSetupMenu.java` succeeded with Java 8 bytecode compatibility; the resulting classes were written to `basegame/game/desktop-1.0.jar`.
+- Runtime visual smoke test after the font-scale adjustment is still pending.
 
 Changes
-- MP: lightweight registry mirror (tools/mp_registry_server.py, MpServerRegistry, Browse online list UI).
+- Freeze fix: the watchdog dump confirmed a runtime stall in `Server.broadcast` while the host-pos sender thread held the server lock and blocked on socket writes; broadcasts now snapshot targets without a global server lock and client sends go through a queued writer thread so render/update no longer blocks on `writeUTF`.
+- Worldgen resources: reverted the bad per-chunk cap idea and moved rare minerals/stone to sparse peak-based placement with short same-family spacing, plus narrowed random planetgen bias ranges so new planets stay closer to vanilla density instead of generating long ore/crystal strips.
+- Worldgen: reduced ice-biome frequency, added a larger no-ice safe radius around spawn, forced a wider rock buffer between ice and volcanic terrain, and added limited ice growth so cold zones stay chunky without taking over the map.
+- Freeze diagnostics: added a render-heartbeat watchdog in `MoonBase` that writes a full thread dump to `logs/thread_dump_*.log` when the game window stalls for too long without throwing a normal crash.
+- Build packaging: added `tools/build_portable.ps1` with an explicit portable include-list so runtime trash such as logs, saves, crash dumps, `Redist`, `.lwjgl`, temp jars, and local settings are excluded from the release zip by default.
+- MP runtime disconnect: if the host dies or the live session drops after a successful join, the client now returns to the multiplayer error/menu flow instead of silently disconnecting in-world.
+- MP connect UI: `Connect` in Online mode now opens the server list when no target is selected instead of erroring out.
+- MP connect UI: moved `Create Server` to the shared footer so it appears in both LAN and Online modes next to Exit.
+- Logging: application logger now always writes a full session log under `logs/` by default and creates the folder automatically.
+- MP connect UI: added a scrollable menu with separate LAN and Online modes so IP/port fields no longer get mixed with relay selection.
+- MP LAN UI: restored and relabeled direct-connect IP/port fields separately from the online relay target label.
+- Ice biome render fix: tile visibility now refreshes every frame and uses a larger cull margin to reduce chunk-edge popping/patch disappearance.
+- MP access control: host can now set an optional password before publishing a save, guests can enter that password in the multiplayer UI, and hosts can kick connected players from the console with `kick <nickOrId> [reason]`.
+- MP join UX: wrong password / kicked / connection-failed cases now return to the main menu with an explicit error popup instead of a black-screen hang.
+- MP session cleanup: host `dispose()` now stops the in-process server, and the VPS registry expires stale sessions automatically if the host crashes or disappears.
+- MP join failure: connection timeouts now surface a visible error popup and return to the main menu instead of leaving a black screen.
+- MP online flow: added hidden host-side relay bridge plus VPS relay/listing session creation; guests now use relay endpoints instead of host IPs.
+- MP host flow: host-setup menu keeps only LAN/Online and save-level flags; player-facing VPS/IP/port fields are hidden.
+- MP guest flow: multiplayer list now targets relay endpoints from the registry instead of direct home IPs.
+- MP host flow: tightened host-setup layout with scrollable body and fixed footer so `Continue` stays visible.
+- Docs: aligned multiplayer guides with relay/listing flow and removed player-facing tunnel/IP instructions.
+- MP: added `tools/mp_relay_server.py` for VPS relay/listing and `MpRelayBridge` inside the game client path.
+- Deploy: updated `mewnbase-mp-registry.service` on `cnt` to the new relay/listing server and verified `/health`, `/sessions`, and `/servers`.
 - MP sync: fix hang when gameSave len=0 or worldData planet file mismatch; send gameSave.data; longer blob timeouts.
-- Docs: SERVER_BROWSER.md (VPS 300 MB mirror, not game host).
-- Docs: added beginner guide docs/PLAY_WITH_FRIENDS.md (install, LAN, Radmin VPN, troubleshooting).
+- Docs: SERVER_BROWSER.md now describes the relay/listing service operator flow.
+- Docs: added beginner guide docs/PLAY_WITH_FRIENDS.md (install, LAN, online relay, troubleshooting).
 - README: Russian quick start for players + link to PLAY_WITH_FRIENDS.md.
 
 - Restructured workspace to a simpler layout (basegame/, src/, work/, out/, tools/, backups/, old/).
@@ -174,6 +201,8 @@ Impact
 - Scripts now assume src/ for sources, out/ for compiled classes, work/ for packaging.
 
 Verification
+- Restarted `mewnbase-mp-registry.service` on `cnt` with `--ttl 45`; `/health` is OK and `/sessions` responds.
+- Recompiled LoadingErrors.java, MoonBase.java, Server.java, Client.java, ConsoleExecutor.java, HostServerSetupMenu.java, HostServerSaveMenu.java, MultiplayerConfigMenu.java, ErrorLoadingPopup.java, and GameScreen.java with javac --release 8 and updated basegame/game/desktop-1.0.jar.
 - Compiled MultiplayerConfigMenu.java and Server.java with javac --release 8 (classpath basegame jar, sourcepath src/com).
 - Compiled MoonBase.java, debug/RuntimeEval.java, and debug/UiTestServer.java with javac --release 8.
 - Compiled updated UiTestServer.java with javac --release 8 and patched jar.
