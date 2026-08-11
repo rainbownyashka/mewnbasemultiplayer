@@ -52,6 +52,8 @@ import com.cairn4.moonbase.net.ProtocolV2;
     private Thread senderThread;
     private Thread readerThread;
     private volatile boolean running = false;
+    private volatile boolean sessionActive = false;
+    private volatile boolean disconnectNotified = false;
     private final java.util.concurrent.ConcurrentHashMap<Integer, PendingReliable> pendingReliable = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger reliableSeq = new java.util.concurrent.atomic.AtomicInteger(1);
     private long lastReliableSweep = 0L;
@@ -104,6 +106,74 @@ import com.cairn4.moonbase.net.ProtocolV2;
         try { disconnect(); } catch (Exception ignored) {}
     }
 
+    private void failConnect(String reason, Throwable cause) {
+        try { Gdx.app.error("Client", "Connection failed: " + reason, cause); } catch (Exception ignored) {}
+        try {
+            if (this.screen != null) {
+                final String msg = reason;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
+                            Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
+                        }
+                    } catch (Exception ignored) {}
+                    try {
+                        Client.this.screen.errorReturnToMainMenu(com.cairn4.moonbase.LoadingErrors.multiplayerConnectionFailed);
+                    } catch (Exception ignored) {}
+                });
+            }
+        } catch (Exception ignored) {}
+        try { disconnect(); } catch (Exception ignored) {}
+    }
+
+    private void failRuntimeDisconnect(String reason, Throwable cause) {
+        if (!this.running || !this.sessionActive || this.disconnectNotified) {
+            return;
+        }
+        this.disconnectNotified = true;
+        failConnect(reason, cause);
+    }
+
+    private void failAuth(String reason) {
+        try { Gdx.app.error("Client", "Authentication failed: " + reason, null); } catch (Exception ignored) {}
+        try {
+            if (this.screen != null) {
+                final String msg = reason;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
+                            Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
+                        }
+                    } catch (Exception ignored) {}
+                    try {
+                        Client.this.screen.errorReturnToMainMenu(com.cairn4.moonbase.LoadingErrors.multiplayerAuthFailed);
+                    } catch (Exception ignored) {}
+                });
+            }
+        } catch (Exception ignored) {}
+        try { disconnect(); } catch (Exception ignored) {}
+    }
+
+    private void failKicked(String reason) {
+        try { Gdx.app.error("Client", "Kicked from server: " + reason, null); } catch (Exception ignored) {}
+        try {
+            if (this.screen != null) {
+                final String msg = reason;
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
+                            Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
+                        }
+                    } catch (Exception ignored) {}
+                    try {
+                        Client.this.screen.errorReturnToMainMenu(com.cairn4.moonbase.LoadingErrors.multiplayerKicked);
+                    } catch (Exception ignored) {}
+                });
+            }
+        } catch (Exception ignored) {}
+        try { disconnect(); } catch (Exception ignored) {}
+    }
+
     public void connect() {
         if (this.running) {
             return;
@@ -117,6 +187,8 @@ import com.cairn4.moonbase.net.ProtocolV2;
             try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = false; } catch (Exception ignored) {}
         } catch (Exception ignored) {}
         this.running = true;
+        this.sessionActive = false;
+        this.disconnectNotified = false;
         new Thread(() -> {
             try {
                 this.socket = new Socket();
@@ -126,10 +198,35 @@ import com.cairn4.moonbase.net.ProtocolV2;
                  this.in = new DataInputStream(this.socket.getInputStream());
                  this.out = new DataOutputStream(this.socket.getOutputStream());
                  try {
+                     String mpPass = com.cairn4.moonbase.MoonBase.multiplayerPassword;
+                     if (mpPass != null && mpPass.length() > 0) {
+                         String authFrame = ProtocolV2.encode(0, "AUTH", mpPass);
+                         if (authFrame != null) {
+                             sendFrame(authFrame);
+                         }
+                     }
+                 } catch (Exception e) {
+                     Gdx.app.error("Client", "Failed to send AUTH frame", e);
+                     failConnect("Could not authenticate to the multiplayer session.", e);
+                     return;
+                 }
+                 try {
                      try {
                          this.clientId = this.in.readInt();
                          Gdx.app.log("Client", "Assigned clientId from server: " + this.clientId);
                          try { System.out.println("[Client] connect: received clientId=" + this.clientId); } catch (Exception ignored) {}
+                         if (this.clientId < 0) {
+                             String authReason = "Authentication failed.";
+                             try {
+                                 String raw = this.in.readUTF();
+                                 ProtocolV2.Decoded fail = ProtocolV2.decode(raw);
+                                 if (fail != null && fail.payload != null && fail.payload.trim().length() > 0) {
+                                     authReason = fail.payload.trim();
+                                 }
+                             } catch (Exception ignored) {}
+                             failAuth(authReason);
+                             return;
+                         }
                          // Server will send existing appearances during connect; no need to request here
                          // Align local player's ownerId with assigned clientId and set local display name
                          try {
@@ -251,8 +348,13 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                  handleMessage(msg);
                              } catch (java.io.EOFException eof) {
                                  System.out.println("[Client] Reader EOF");
+                                 failRuntimeDisconnect("The multiplayer session ended. The host closed the game or lost connection.", eof);
                                  break;
                              } catch (Exception e) {
+                                 if (this.running && this.sessionActive) {
+                                     failRuntimeDisconnect("Lost connection to the multiplayer session.", e);
+                                     break;
+                                 }
                                  Gdx.app.error("Client", "Reader thread error", e);
                                  try {
                                      Thread.sleep(100);
@@ -273,10 +375,12 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 try { System.out.println("[Client] connect: reader thread started (connector)"); } catch (Exception ignored) {}
                 // Inform server we are ready to receive initial live messages
                 try { System.out.println("[Client] connect: sending READY"); sendFrame(ProtocolV2.encode(this.clientId, "READY", ProtocolV2.VERSION)); } catch (Exception ignored) {}
+                this.sessionActive = true;
                 startSender();
             } catch (Exception e) {
                 Gdx.app.error("Client", "Failed to connect to " + this.host + ":" + this.port, e);
                 this.running = false;
+                failConnect("Could not connect to the multiplayer session. The relay or host is unreachable.", e);
             }
          }, "MewnBase-Client-Connector").start();
      }
@@ -374,6 +478,14 @@ import com.cairn4.moonbase.net.ProtocolV2;
                     });
                 try { knownNicks.remove(id); } catch (Exception ignored) {}
                 try { pendingConnectNotify.remove(id); } catch (Exception ignored) {}
+                return;
+            }
+            if ("AUTH_FAIL".equals(type)) {
+                failAuth(payload != null && payload.trim().length() > 0 ? payload.trim() : "Authentication failed.");
+                return;
+            }
+            if ("KICK".equals(type)) {
+                failKicked(payload != null && payload.trim().length() > 0 ? payload.trim() : "You were kicked by the host.");
                 return;
             }
              //
@@ -1511,6 +1623,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
 
     public void disconnect() {
         this.running = false;
+        this.sessionActive = false;
         try { this.pendingReliable.clear(); } catch (Exception ignored) {}
         try {
             if (this.socket != null)

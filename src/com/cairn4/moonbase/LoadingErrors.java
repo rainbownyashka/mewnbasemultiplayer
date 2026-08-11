@@ -6,7 +6,9 @@ package com.cairn4.moonbase;
 public enum LoadingErrors {
     parsingGameSave,
     upgradingSaveData,
-    loadingWorldData;
+    loadingWorldData,
+    multiplayerConnectionFailed,
+    multiplayerAuthFailed,
+    multiplayerKicked;
 
 }
-

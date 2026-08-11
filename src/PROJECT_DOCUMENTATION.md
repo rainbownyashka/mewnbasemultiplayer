@@ -1,6 +1,11 @@
 # MewnBase — Полная документация проекта
 
-Этот документ представляет собой развёрнутую документацию по проекту MewnBase (decompiled). Она предназначена для разработчиков, которые будут поддерживать, рефакторить или расширять проект. Включены описания архитектуры, основных модулей, паттернов, точек расширения, а также инструкции по сборке, тестированию и отладке.
+Этот документ описывает текущую структуру репозитория и runtime-поток запуска MewnBase Multiplayer. Он полезен для поддержки, рефакторинга и проверки того, как исходники в `src/com/cairn4/moonbase` связаны с `basegame/`, `work/` и `tools/`.
+
+Важно:
+- часть дерева `src/` состоит из вендорнутых библиотек и декомпилированных зависимостей;
+- если что-то конфликтует с кодом, актуальнее смотреть текущие исходники и `docs/STATUS.md`;
+- старые пути вида `decompiled/...` в этом документе больше не используются.
 
 ---
 
@@ -38,29 +43,34 @@ MewnBase — игра с поддержкой одиночной и мульти
 ---
 
 ## Структура репозитория и важные директории
-- `decompiled/com/cairn4/moonbase/` — исходные файлы Java после decompilation. Основная логика приложения.
-- `decompiled/com/cairn4/moonbase/ui/` — UI-классы (меню, экраны, HUD)
-- `game/` — собранный JAR и запускаемые ресурсы (в distrib)
-- `saves/` — папка с сохранениями во время запуска (runtime)
-- `MULTIPLAYER_FULL.md` — подробная мультиплеер-документация (сгенерирована ранее)
+- `src/com/cairn4/moonbase/` — основная игровая логика, мультиплеер, мир, сущности, сохранения.
+- `src/com/cairn4/moonbase/ui/` — UI-классы: меню, экраны, HUD, попапы.
+- `src/com/cairn4/moonbase/worlddata/` — сериализуемые модели мира, сейвов и сетевых данных.
+- `src/com/cairn4/moonbase/entities/` — игровые сущности, транспорт, NPC, AI и pathfinding.
+- `basegame/` — локальная копия дистрибутива игры и патченый jar для запуска.
+- `work/` — распакованный jar, который пересобирается автоскриптом.
+- `out/` — временный каталог для `.class` после `javac`.
+- `tools/` — автокомпиляция, ручной патч, служебные скрипты.
+- `docs/` — пользовательские и операционные инструкции.
+- `repos/MewnbaseModded/` — отдельный patch/loader-проект, не основной runtime.
 
 ---
 
 ## Архитектура приложения (high-level)
-1) DesktopLauncher -> инициализация платформы и `MoonBase`.
-2) `MoonBase` инициализирует `Settings`, `AssetManagerSingleton` и загружает ресурсы фронтенда.
-3) Показывается `MainMenu` -> оттуда пользователь может начать новую игру, загрузить save или открыть `MultiplayerConfigMenu`.
-4) При старте игры: `LoadingScreen` загружает ресурсы, затем `GameScreen` создаётся и инициализирует `World`.
-5) `World` строит мир: `ChunkLoader` грузит чанк-данные (`worldData.json`) и `GameLoader` загружает `gameSave`.
-6) В мультиплеере: `GameScreen` создаёт `Client` (reflection) и подключается к `Server`.
+1) `DesktopLauncher` поднимает LWJGL3-конфиг и создаёт `MoonBase`.
+2) `MoonBase` инициализирует ассеты, настройки, cursors, audio, RPC и проверяет JVM-параметры автозапуска.
+3) Показывается `Splash`, затем `MainMenu`, либо сразу `LoadingScreen`, если включён `INSTANT_RUN`.
+4) `LoadingScreen` готовит ресурсы и создаёт `GameScreen`.
+5) `GameScreen` создаёт `World`, HUD и, если включён мультиплеер, поднимает `Client`; в серверных сценариях может стартовать `Server`.
+6) `World` загружает `GameLoader`, `ChunkLoader` и данные мира из сейвов/чанков.
 
 ---
 
 ## Основные подсистемы и файлы
 
 1) Инициализация
-- `MoonBase.java` — главный класс приложения: хранит глобальные настройки, current mission, флаги мультиплеера (`isMultiplayer`, `multiplayerHost`, ...), управление ресурсами.
-- `DesktopLauncher` — entrypoint с `main(...)`.
+- `MoonBase.java` — главный класс приложения: глобальные настройки, current mission, флаги мультиплеера (`isMultiplayer`, `multiplayerHost`, ...), управление ресурсами.
+- `DesktopLauncher` — entrypoint с `main(...)`, конфиг LWJGL3 и режимы `headless/serverOnly`.
 
 2) UI и экраны
 - `FrontendScreen` — главный меню экран
@@ -75,15 +85,17 @@ MewnBase — игра с поддержкой одиночной и мульти
 - `GameLoader` — чтение/запись save файлов, worldData, функции загрузки и сохранения
 
 4) Сохранения
-- Формат: `saves/<folder>/gameSave.json` (или `.data` — base64), `saves/<folder>/worldData.json`, `screenshot.png`
-- `GameLoader.getSavedGames()` — читает и парсит JSON
-- `LoadGameMenu.loadGame(folder)` — UI-триггер загрузки
+- Формат: `saves/<folder>/gameSave.json` или `gameSave.data`, `worldData.json` и служебные файлы мира.
+- Для мультиплеера используется временная папка `multiplayer_received`, которую клиент заполняет данными от хоста.
+- `GameLoader.getSavedGames()` — читает и парсит JSON.
+- `LoadGameMenu.loadGame(folder)` — UI-триггер загрузки.
 
 5) Мультиплеер
-- `Server.java` — прослушивает порт, управляет `ClientHandler`
-- `ClientHandler` — читает/пишет initial blobs и текстовый протокол
-- `Client.java` — подключается, читает initial blobs и запускает reader/sender
-- Протокол: бинарный handshake + UTF-сообщения для игровых событий
+- `Server.java` — прослушивает порт, управляет `ClientHandler`.
+- `ClientHandler` — читает/пишет initial blobs и текстовый протокол.
+- `Client.java` — подключается, читает initial blobs и запускает reader/sender.
+- `net/ProtocolV2.java` — текущая рамка для части сообщений (`MB2|...`) и READY-handshake.
+- Протокол сочетает бинарный handshake и UTF-сообщения для игровых событий.
 
 6) Игрок и сущности
 - `Player` — управление входом игрока, инвентарь, взаимодействия
@@ -101,26 +113,20 @@ MewnBase — игра с поддержкой одиночной и мульти
 ---
 
 ## Жизненный цикл старта (пошагово)
-1) `DesktopLauncher.main` — инициализация платформы и создание `MoonBase`.
-2) `MoonBase` считывает настройки (`SettingsLoader`), инициализирует `AssetManagerSingleton`.
-3) Показывается `Splash` затем `MainMenu`.
-4) При выборе Load/Continue:
-   - `LoadGameMenu` собирает список `GameSaveData` через `GameLoader.getSavedGames()`.
-   - После выбора `LoadGameMenu.loadGame(saveFolder)` устанавливает `MoonBase.currentSaveFolder` и открывает `LoadingScreen`.
-   - `LoadingScreen.finished()` создаёт `GameScreen(game, false)`.
-5) `GameScreen` конструктор:
-   - инициализирует атласы/сцены
-   - создаёт `World(this, newGame)`
-   - и если `MoonBase.isMultiplayer`, создаёт `Client` (reflection) и вызывает `connect()`.
-6) `World` конструктор:
-   - на newGame — вызывает `makeEmptyWorld()`; на загрузку — вызывает `gameScreen.gameLoader.loadGame(this)` → полная инициализация мира.
+1) `DesktopLauncher.main` создаёт конфиг, выбирает `serverOnly/headless` режимы и запускает `Lwjgl3Application`.
+2) `MoonBase.create()` грузит настройки, ассеты, курсоры и опциональные debug-сервисы.
+3) Если включён `INSTANT_RUN`, игра уходит в `LoadingScreen`, иначе открывает `Splash`.
+4) `LoadGameMenu` собирает список `GameSaveData` через `GameLoader.getSavedGames()`.
+5) После выбора сейва `LoadingScreen.finished()` создаёт `GameScreen(game, false)`.
+6) `GameScreen` создаёт `World(this, newGame)` и, если `MoonBase.isMultiplayer`, подключает `Client`.
+7) `World` либо строит пустой мир, либо вызывает `gameLoader.loadGame(this)` и поднимает полное состояние мира.
 
 ---
 
 ## Протоколы и форматы файлов
-- `gameSave.json` — JSON с `GameSaveData` классом (playerData, list of entities, tech, day cycle и т.д.)
-- `worldData.json` — JSON со структурой чанков
-- Транспорт поверх TCP: комбинированный бинарный handshake и text UTF
+- `gameSave.json` / `gameSave.data` — данные сейва (`GameSaveData`: playerData, entities, tech, day cycle и т.д.).
+- `worldData.json` — JSON со структурой чанков и состояния мира.
+- Для мультиплеера используется TCP-транспорт с handshake, blob-sync и текстовыми событиями; часть событий уже переведена на MB2 framing.
 
 ---
 
@@ -141,24 +147,25 @@ MewnBase — игра с поддержкой одиночной и мульти
 ---
 
 ## Рекомендации по рефакторингу и CI
-1) Добавить Gradle build (рекомендую) — управлять libGDX и LWJGL зависимостями.
-2) Создать smoke-test harness (JUnit/Java) стартующий Server+Client и проверяющий handshake.
-3) Внести четкое разделение responsibilities: Network layer (Client/Server) не должен напрямую читать/писать файлы; вынести persistence в отдельный компонент.
-4) Добавить контракт/интерфейс для message handlers (чтобы легко добавлять новые payloads).
+1) Добавить единый build pipeline, который компилирует в `out/` и пакует jar из `basegame/ + out/`.
+2) Создать smoke-test harness (JUnit/Java), который стартует `Server + Client` и проверяет handshake.
+3) Разделить network layer и persistence: `Client/Server` не должны напрямую отвечать за хранение файлов.
+4) Добавить контракт/интерфейс для message handlers, чтобы проще расширять сетевые payloads.
 
 ---
 
 ## Quick reference (ключевые файлы)
-- `com/cairn4/moonbase/MoonBase.java` — глобальные флаги/параметры
-- `com/cairn4/moonbase/Server.java` — сервер
-- `com/cairn4/moonbase/Client.java` — клиент
-- `com/cairn4/moonbase/GameLoader.java` — загрузчик/сохранение
-- `com/cairn4/moonbase/ui/GameScreen.java` — создает world, client
-- `com/cairn4/moonbase/ui/MultiplayerConfigMenu.java` — UI для подключения
+- `src/com/cairn4/moonbase/MoonBase.java` — глобальные флаги/параметры.
+- `src/com/cairn4/moonbase/desktop/DesktopLauncher.java` — entrypoint.
+- `src/com/cairn4/moonbase/Server.java` — сервер.
+- `src/com/cairn4/moonbase/Client.java` — клиент.
+- `src/com/cairn4/moonbase/GameLoader.java` — загрузчик/сохранение.
+- `src/com/cairn4/moonbase/ui/GameScreen.java` — создаёт world, HUD и сетевой слой.
+- `src/com/cairn4/moonbase/ui/MultiplayerConfigMenu.java` — UI для подключения.
 
 ---
 
-Файл сохранён как `decompiled/PROJECT_DOCUMENTATION.md`. Если хотите, я могу:
+Файл находится в `src/PROJECT_DOCUMENTATION.md`. Если хотите, я могу:
 - Сконвертировать в PDF/HTML.
 - Добавить диаграммы sequence flow (mermaid) прямо в md.
 - Сгенерировать build.gradle и smoke-test.

@@ -1,86 +1,94 @@
-# Зеркало списка серверов (VPS 300 MB)
+# Relay/listing service on VPS
 
-## Идея
+## Idea
 
-На VPS **не** крутится сама игра и мир — только **зеркало**: маленький HTTP-сервис с табличкой «кто сейчас хостит».
+The VPS does **not** run the game world. It only runs a tiny HTTP + TCP relay service:
 
-| Где | Что делает | RAM |
+- HTTP API returns the list of active online sessions.
+- Each session gets its own public relay port.
+- The host's game starts a hidden bridge that connects the local `127.0.0.1:7777` server to that public port.
+- Guests join through **Browse online list** and connect to the relay endpoint, not to the host's home IP.
+
+| Where | What it does | RAM |
 |-----|------------|-----|
-| **VPS (до 300 MB на процесс)** | `tools/mp_registry_server.py` — список IP:порт | ~20–50 MB |
-| **ПК хоста** | MewnBase + Radmin VPN + TCP **7777** | как обычно |
-| **ПК гостя** | Кнопка **Browse online list** → Connect | как обычно |
+| **VPS** | `tools/mp_relay_server.py` — session list + per-session TCP relay | ~20-50 MB |
+| **Host PC** | MewnBase + hidden relay bridge + local server on `7777` | as usual |
+| **Guest PC** | **Browse online list** -> select session -> Connect | as usual |
 
-8 GB на VPS — с запасом; лимит **300 MB** на зеркало более чем достаточен.
-
-## Запуск зеркала на VPS
+## Running the service
 
 ```bash
-# Python 3 уже есть на большинстве VPS
-cd /opt/mewnbasemultiplayer
-python3 tools/mp_registry_server.py --host 0.0.0.0 --port 8080
+python3 tools/mp_relay_server.py --http-host 0.0.0.0 --http-port 8080 --public-host mewnbase.clovergame.org
 ```
 
-Проверка:
+Defaults:
 
-```bash
-curl http://127.0.0.1:8080/health
-curl http://127.0.0.1:8080/servers
-```
+- HTTP/listing: `8080/tcp`
+- relay ports: `12000-12999`
+- public host returned to players: `mewnbase.clovergame.org`
 
-Откройте порт **8080** (или свой) в firewall/security group.
+If you need different ports, pass `--min-port` / `--max-port`.
 
-### systemd (опционально, лимит 300M)
+## systemd example
 
 ```ini
 [Unit]
-Description=MewnBase MP registry mirror
+Description=MewnBase relay/listing service
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/mewnbasemultiplayer
-ExecStart=/usr/bin/python3 tools/mp_registry_server.py --port 8080
-MemoryMax=300M
+ExecStart=/usr/bin/python3 tools/mp_relay_server.py --http-port 8080 --public-host mewnbase.clovergame.org
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-## Настройка у хоста (игра на своём ПК)
+## Host flow
 
-1. Radmin VPN — как в [PLAY_WITH_FRIENDS.md](PLAY_WITH_FRIENDS.md).
-2. В игре: **MULTIPLAYER → Create Server (7777)**.
-3. В ярлыке / `run.bat` добавьте (подставьте свой Radmin IP и URL VPS):
+1. Open **MULTIPLAYER** in the game.
+2. Choose **Create Server (7777)**.
+3. Pick **Online** in host setup and select a save.
+4. The game creates a relay session automatically and starts the hidden bridge.
+
+No manual tunnel command, SSH setup, or host IP sharing is required.
+
+## Guest flow
+
+1. Open **MULTIPLAYER** in the game.
+2. Choose **Browse online list**.
+3. Pick a session and press **Connect**.
+
+The guest connects to the public relay port returned by the service.
+
+## API shape
+
+- `GET /sessions` returns JSON list of active sessions.
+- `POST /sessions` creates a new session and returns its public endpoint.
+- `PUT /sessions/<port>` updates the visible player count/name.
+- `DELETE /sessions/<port>` removes the session.
+
+The game currently uses the default registry URL:
 
 ```text
--Dmewnbase.mp.registry=http://ВАШ_VPS:8080
--Dmewnbase.mp.advertiseHost=26.12.34.56
--Dmewnbase.mp.serverName=Мой мир
+http://mewnbase.clovergame.org:8080
 ```
 
-Игра раз в ~45 с шлёт heartbeat на зеркало: имя, Radmin IP, порт, число игроков.
+You can override it with `-Dmewnbase.mp.registry=<url>`.
 
-## Настройка у гостя
+## Troubleshooting
 
-```text
--Dmewnbase.mp.registry=http://ВАШ_VPS:8080
-```
+If the session does not appear:
 
-В меню: **MULTIPLAYER → Browse online list** → выбрать сервер → **Connect**.
+1. Verify the host fully loaded the save before opening the online list.
+2. Check the host log for relay session creation errors.
+3. Check the VPS service logs for HTTP 5xx or relay port allocation failures.
+4. Make sure the public relay port range is open on the VPS firewall.
 
-## Зависание при загрузке мира
+If connection hangs:
 
-Если гость «висит» на загрузке:
-
-1. **Хост** должен полностью зайти в мир до приглашения (сейв записан).
-2. Большой сейв — подождать 1–3 мин (таймаут увеличен под размер файла).
-3. У хоста есть `gameSave.json` или `gameSave.data` в папке сейва.
-4. У гостя удалить `saves/multiplayer_received` и подключиться снова.
-5. В логе хоста не должно быть `No gameSave for folder`.
-
-Исправления в коде: отправка `.data`-сейва, запись `worldData_p<id>.json`, явная ошибка вместо вечного ожидания.
-
-## Безопасность
-
-Зеркало публичное — любой может зарегистрировать фейковый IP. Для друзей этого обычно хватает; для публичного хаба позже можно добавить пароль/токен в POST.
+1. Confirm the session exists in `GET /sessions`.
+2. Confirm the host bridge is still running.
+3. Restart the session by closing and reopening the host server.

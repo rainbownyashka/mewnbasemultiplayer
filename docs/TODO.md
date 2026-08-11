@@ -2,6 +2,8 @@
 
 - Update compile pipeline to avoid version-mix (compile batch to out/, build jar from basegame + out/).
 - Confirm Java version (8/11/17) and external jars for classpath.
+- Keep `README.md`, `docs/STATUS.md`, and `src/PROJECT_DOCUMENTATION.md` aligned with the current workspace layout and runtime paths.
+- Verify the new relay/listing flow against a real VPS: session creation, bridge pairing, guest join, and cleanup.
 - Review and port multiplayer diffs from old decompiledsafeedit to current src (see old/_diff_list_decompiledsafeedit_vs_src.txt).
 - Phase 1 multiplayer fixes from docs/MP_DRAFT.md (thread safety, pending spawns, protocol, menu timeouts).
 - Clean up duplicate archives in old/ if no longer needed.
@@ -29,7 +31,8 @@
 - Vehicle MP: verify host drill/ability state sync to clients.
 - Vehicle MP: verify remote vehicle interpolation smoothness.
 - Creature MP: verify host aggro targets remote players and clients see creature movement/attacks.
-- Multiplayer: verify Create Server opens save list and hosts selected save.
+- Multiplayer: verify host setup menu fits fullscreen and keeps only player-facing controls visible.
+- Multiplayer: decide whether Online should stay publish-only or become a dedicated-server flow.
 - Shutdown: verify server stops when client/game exits.
 - Crash: verify server no longer crashes on save exit (Box2D native crash in host pos thread).
 - PvP: verify melee hits apply to remote players when pvpMelee=true.

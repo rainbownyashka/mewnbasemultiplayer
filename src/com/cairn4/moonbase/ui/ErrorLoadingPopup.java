@@ -35,9 +35,11 @@ extends Popup {
     private Label desc;
     private Table scrollTable;
     private ScrollPane scroller;
+    private final LoadingErrors error;
 
     public ErrorLoadingPopup(BaseScreen baseScreen, LoadingErrors error) {
         super(baseScreen);
+        this.error = error;
         this.setup();
         this.addScrollContent();
         this.show();
@@ -108,7 +110,18 @@ extends Popup {
 
     private void addScrollContent() {
         this.scrollTable.row();
-        String errorMessage = "Sorry. There was an error while trying to load your game.\n\nIt might be too old to load, or a bug preventing it from loading.\n\nIf you want, zip up your saves folder along with any crashlog files and email it over to [" + Menu.MENU_COLOR_HEX + "]support@cairn4.com[] so we can try and figure out what went wrong. :(";
+        String errorMessage;
+        if (this.error == LoadingErrors.multiplayerConnectionFailed) {
+            errorMessage = "Could not connect to the multiplayer session.\n\nThe relay or host did not answer in time, or the session closed before sync finished.\n\nPlease go back, browse the online list again, and try another session.";
+        } else if (this.error == LoadingErrors.multiplayerAuthFailed) {
+            errorMessage = "Could not join the multiplayer session.\n\nThe password was wrong, or the host closed the session before auth finished.\n\nPlease go back and try again with the correct password.";
+        } else if (this.error == LoadingErrors.multiplayerKicked) {
+            errorMessage = "You were removed from the multiplayer session by the host.\n\nIf this was a mistake, ask the host to invite you again.";
+        } else if (this.error == LoadingErrors.loadingWorldData) {
+            errorMessage = "Sorry. The game could not finish loading multiplayer data from the host.\n\nThe connection may have dropped during sync, or the host may have closed the session.\n\nPlease try again from the multiplayer menu.";
+        } else {
+            errorMessage = "Sorry. There was an error while trying to load your game.\n\nIt might be too old to load, or a bug preventing it from loading.\n\nIf you want, zip up your saves folder along with any crashlog files and email it over to [" + Menu.MENU_COLOR_HEX + "]support@cairn4.com[] so we can try and figure out what went wrong. :(";
+        }
         this.desc = new Label((CharSequence)errorMessage, this.labelStyle);
         this.desc.setFontScale(0.4f);
         this.desc.setAlignment(10);
@@ -145,4 +158,3 @@ extends Popup {
         super.back();
     }
 }
-

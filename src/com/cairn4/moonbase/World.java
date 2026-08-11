@@ -376,8 +376,8 @@ public class World {
                 if (this.player.changedChunks) {
                     this.chunkLoader.changeChunks(this.player.chunkX, this.player.chunkY);
                     this.player.changedChunks = false;
-                    this.updateNearbyTileVisibility();
                 }
+                this.updateNearbyTileVisibility();
                 for (i = 0; i < this.entityList.size(); ++i) {
                     this.entityList.get(i).update(worldDelta);
                 }

@@ -780,6 +780,15 @@ implements Telegraph {
                 Gdx.app.error("GameScreen", "Error disconnecting client", e);
             }
         }
+        try {
+            com.cairn4.moonbase.Server activeServer = com.cairn4.moonbase.Server.getActiveServer();
+            if (activeServer != null && activeServer.isRunning()) {
+                activeServer.stop();
+                Gdx.app.log("GameScreen", "Stopped active host server during dispose");
+            }
+        } catch (Exception e) {
+            Gdx.app.error("GameScreen", "Error stopping active host server during dispose", e);
+        }
         this.game.console.dispose();
         this.worldUIStage.dispose();
         this.hudStage.dispose();

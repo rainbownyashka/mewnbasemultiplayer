@@ -433,8 +433,33 @@ extends CommandExecutor {
             this.gameScreen.game.console.log("  tp <nickOrId>         - teleport to player (server.properties allowTp)");
             this.gameScreen.game.console.log("  tphere <nickOrId>     - bring player to you (server.properties allowTphere)");
             this.gameScreen.game.console.log("  transfer <nickOrId> <itemId> [amount] - send items (server.properties allowTransfer)");
-            this.gameScreen.game.console.log("Settings: saves/<save>/server.properties (allowTp, allowTphere, allowTransfer)");
+            this.gameScreen.game.console.log("  kick <nickOrId> [reason] - remove player from the server");
+            this.gameScreen.game.console.log("Settings: saves/<save>/server.properties (allowTp, allowTphere, allowTransfer, password)");
         } catch (Exception ignored) {}
+    }
+
+    @ConsoleDoc(description="Kick a player from the multiplayer server", paramDescriptions={"nickOrId","reason"})
+    public void kick(String target, String reason) {
+        try {
+            com.cairn4.moonbase.Server server = com.cairn4.moonbase.Server.getActiveServer();
+            if (server == null) {
+                this.gameScreen.game.console.log("kick: no active server");
+                return;
+            }
+            boolean ok = server.kickPlayer(target, reason);
+            if (ok) {
+                this.gameScreen.game.console.log("kick: sent for " + target);
+            } else {
+                this.gameScreen.game.console.log("kick: player not found: " + target);
+            }
+        } catch (Exception e) {
+            this.gameScreen.game.console.log("kick: failed: " + e);
+        }
+    }
+
+    @ConsoleDoc(description="Kick a player from the multiplayer server", paramDescriptions={"nickOrId"})
+    public void kick(String target) {
+        this.kick(target, "You were kicked by the host.");
     }
 
     public void die() {

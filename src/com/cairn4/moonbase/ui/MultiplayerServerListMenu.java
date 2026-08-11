@@ -36,14 +36,17 @@ public class MultiplayerServerListMenu extends Menu {
 
         NinePatchDrawable alt_npd_up = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
         NinePatchDrawable alt_npd_active = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor-pressed"), 16, 16, 16, 16));
+        BitmapFont uiFont = this.createScaledFont(0.45f);
         TextButton.TextButtonStyle buttonStyle = new TextButton.TextButtonStyle();
-        buttonStyle.font = new BitmapFont();
+        buttonStyle.font = uiFont;
         buttonStyle.fontColor = Color.WHITE;
         buttonStyle.up = alt_npd_up;
         buttonStyle.down = alt_npd_active;
-        Label.LabelStyle labelStyle = new Label.LabelStyle(new BitmapFont(), Color.WHITE);
+        Label.LabelStyle labelStyle = new Label.LabelStyle(uiFont, Color.WHITE);
 
-        root.add(new Label("Online servers (mirror)", labelStyle)).pad(10.0f);
+        Label title = new Label("Online servers (relay)", this.headingStyle);
+        title.setFontScale(0.70f);
+        root.add(title).pad(10.0f);
         root.row();
         this.statusLabel = new Label("Loading...", labelStyle);
         root.add(this.statusLabel).pad(6.0f);
@@ -99,18 +102,18 @@ public class MultiplayerServerListMenu extends Menu {
             NinePatchDrawable alt_npd_up = new NinePatchDrawable(new NinePatch(MultiplayerServerListMenu.this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
             NinePatchDrawable alt_npd_active = new NinePatchDrawable(new NinePatch(MultiplayerServerListMenu.this.skin.getRegion("btn-minor-pressed"), 16, 16, 16, 16));
             TextButton.TextButtonStyle buttonStyle = new TextButton.TextButtonStyle();
-            buttonStyle.font = new BitmapFont();
+            buttonStyle.font = MultiplayerServerListMenu.this.createScaledFont(0.40f);
             buttonStyle.fontColor = Color.WHITE;
             buttonStyle.up = alt_npd_up;
             buttonStyle.down = alt_npd_active;
             for (final MpServerRegistry.Entry e : entries) {
-                String label = (e.name.length() > 0 ? e.name : e.host) + "  (" + e.players + ")  " + e.host + ":" + e.port;
+                String label = (e.name.length() > 0 ? e.name : "Online session") + "  (" + e.players + ")  (" + e.port + ")";
                 TextButton row = new TextButton(label, buttonStyle);
                 row.addListener(new ClickListener() {
                     @Override
                     public void clicked(InputEvent event, float x, float y) {
                         MultiplayerServerListMenu.this.baseScreen.menuForwardSound();
-                        MultiplayerServerListMenu.this.parent.applyServer(e.host, e.port);
+                        MultiplayerServerListMenu.this.parent.applyServer(e.name, e.host, e.port);
                         MultiplayerServerListMenu.this.back();
                     }
                 });

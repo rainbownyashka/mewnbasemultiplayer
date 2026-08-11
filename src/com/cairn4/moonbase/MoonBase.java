@@ -37,7 +37,18 @@ import com.cairn4.moonbase.ui.LoadingScreen;
 import com.cairn4.moonbase.ui.Splash;
 import com.cairn4.moonbase.worlddata.GameSaveData;
 import com.strongjoshua.console.Console;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.lang.management.LockInfo;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MonitorInfo;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MoonBase
 extends Game
@@ -76,6 +87,7 @@ implements Telegraph {
     public static int multiplayerPort = 7777;
     // multiplayer nickname (set via menu or console)
     public static String multiplayerNick = System.getProperty("user.name", "Player");
+    public static String multiplayerPassword = "";
     public static String coreFolder = "";
     public static boolean encodedSaves = false;
     public static boolean INSTANT_RUN = false;
@@ -96,6 +108,24 @@ implements Telegraph {
     public static com.cairn4.moonbase.worlddata.PlayerData pendingPlayerTransfer = null;
     public static java.util.ArrayList<String> pendingUnlockedTech = null;
     public static int pendingTechSamples = 0;
+    public static class PendingHostServerOptions {
+        public enum NetworkMode {
+            LAN,
+            ONLINE
+        }
+
+        public NetworkMode networkMode = NetworkMode.LAN;
+        public boolean syncTech = true;
+        public boolean pvp = false;
+        public boolean pvpMelee = false;
+        public boolean pvpVehicle = false;
+        public boolean allowTp = true;
+        public boolean allowTphere = true;
+        public boolean allowTransfer = true;
+        public String password = "";
+        public String registryUrl = "http://mewnbase.clovergame.org:8080";
+    }
+    public static PendingHostServerOptions pendingHostServerOptions = new PendingHostServerOptions();
     public PlatformAdapter platformAdapter;
     public static AchievementAdapter achievementAdapter;
     public Color clearColor = new Color(0.0f, 0.0f, 0.0f, 1.0f);
@@ -109,6 +139,11 @@ implements Telegraph {
     private static Boolean cursorVisible;
     public ArrayList<String> saveFilesWithErrors;
     public ArrayList<String> saveFilesThatMightBeFixable;
+    private volatile long renderHeartbeatMillis = System.currentTimeMillis();
+    private volatile long lastDumpedHeartbeatMillis = -1L;
+    private volatile boolean freezeWatchdogRunning = false;
+    private Thread freezeWatchdogThread;
+    private long freezeWatchdogTimeoutMs = 15000L;
 
     public void setMission(Mission mission) {
         MoonBase.mission = mission;
@@ -125,15 +160,148 @@ implements Telegraph {
         MoonBase.instance = this;
     }
 
+    private void configureFreezeWatchdog() {
+        try {
+            String raw = System.getProperty("mewnbase.freezeWatchdogMs");
+            if (raw != null && !raw.trim().isEmpty()) {
+                this.freezeWatchdogTimeoutMs = Long.parseLong(raw.trim());
+            }
+        } catch (Exception e) {
+            try { Gdx.app.error("FreezeWatchdog", "Invalid mewnbase.freezeWatchdogMs value", e); } catch (Exception ignored) {}
+        }
+    }
+
+    private void startFreezeWatchdog() {
+        if (HEADLESS || this.freezeWatchdogTimeoutMs <= 0L || this.freezeWatchdogRunning) {
+            return;
+        }
+        this.freezeWatchdogRunning = true;
+        this.renderHeartbeatMillis = System.currentTimeMillis();
+        this.lastDumpedHeartbeatMillis = -1L;
+        this.freezeWatchdogThread = new Thread(() -> {
+            while (this.freezeWatchdogRunning) {
+                try {
+                    Thread.sleep(2000L);
+                } catch (InterruptedException ignored) {
+                }
+                if (!this.freezeWatchdogRunning) {
+                    break;
+                }
+                long heartbeat = this.renderHeartbeatMillis;
+                long now = System.currentTimeMillis();
+                if (heartbeat != this.lastDumpedHeartbeatMillis && now - heartbeat >= this.freezeWatchdogTimeoutMs) {
+                    this.lastDumpedHeartbeatMillis = heartbeat;
+                    dumpFreezeDiagnostics(now - heartbeat);
+                } else if (heartbeat > this.lastDumpedHeartbeatMillis) {
+                    this.lastDumpedHeartbeatMillis = -1L;
+                }
+            }
+        }, "MewnBase-FreezeWatchdog");
+        this.freezeWatchdogThread.setDaemon(true);
+        this.freezeWatchdogThread.start();
+        Gdx.app.log("FreezeWatchdog", "Enabled with timeout " + this.freezeWatchdogTimeoutMs + " ms");
+    }
+
+    private void stopFreezeWatchdog() {
+        this.freezeWatchdogRunning = false;
+        try {
+            if (this.freezeWatchdogThread != null) {
+                this.freezeWatchdogThread.interrupt();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void dumpFreezeDiagnostics(long stallMillis) {
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String path = "logs/thread_dump_" + timestamp + ".log";
+        StringBuilder dump = new StringBuilder();
+        dump.append("MewnBase freeze watchdog thread dump\n");
+        dump.append("timestamp=").append(timestamp).append('\n');
+        dump.append("stallMillis=").append(stallMillis).append('\n');
+        dump.append("screen=").append(this.getScreen() != null ? this.getScreen().getClass().getName() : "null").append('\n');
+        dump.append("prevScreen=").append(this.prevScreenClass).append('\n');
+        dump.append("save=").append(currentSaveFolder).append('\n');
+        dump.append("multiplayer=").append(isMultiplayer).append('\n');
+        dump.append("host=").append(multiplayerHost).append(':').append(multiplayerPort).append('\n');
+        dump.append('\n');
+        appendThreadDump(dump);
+        try {
+            File target = new File(path);
+            File parent = target.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(target, false), "UTF-8"));
+            try {
+                out.print(dump.toString());
+                out.flush();
+            } finally {
+                out.close();
+            }
+            Gdx.app.error("FreezeWatchdog", "Render stall detected (" + stallMillis + " ms). Thread dump written to " + target.getPath());
+        } catch (Exception e) {
+            try { Gdx.app.error("FreezeWatchdog", "Render stall detected (" + stallMillis + " ms), but failed to write thread dump", e); } catch (Exception ignored) {}
+        }
+    }
+
+    private void appendThreadDump(StringBuilder dump) {
+        ThreadMXBean threadMxBean = ManagementFactory.getThreadMXBean();
+        ThreadInfo[] infos = threadMxBean.dumpAllThreads(true, true);
+        long[] deadlocked = null;
+        try {
+            deadlocked = threadMxBean.findDeadlockedThreads();
+        } catch (Exception ignored) {}
+        if (deadlocked != null && deadlocked.length > 0) {
+            dump.append("deadlockedThreads=");
+            for (int i = 0; i < deadlocked.length; i++) {
+                if (i > 0) {
+                    dump.append(',');
+                }
+                dump.append(deadlocked[i]);
+            }
+            dump.append("\n\n");
+        }
+        for (ThreadInfo info : infos) {
+            if (info == null) {
+                continue;
+            }
+            dump.append('"').append(info.getThreadName()).append('"');
+            dump.append(" id=").append(info.getThreadId());
+            dump.append(" state=").append(info.getThreadState()).append('\n');
+            if (info.getLockName() != null) {
+                dump.append("    waitingOn=").append(info.getLockName()).append('\n');
+            }
+            if (info.getLockOwnerName() != null) {
+                dump.append("    lockOwner=").append(info.getLockOwnerName()).append(" id=").append(info.getLockOwnerId()).append('\n');
+            }
+            for (MonitorInfo monitorInfo : info.getLockedMonitors()) {
+                dump.append("    lockedMonitor=").append(monitorInfo).append('\n');
+            }
+            for (LockInfo lockInfo : info.getLockedSynchronizers()) {
+                dump.append("    lockedSynchronizer=").append(lockInfo).append('\n');
+            }
+            for (StackTraceElement ste : info.getStackTrace()) {
+                dump.append("        at ").append(ste).append('\n');
+            }
+            dump.append('\n');
+        }
+    }
+
     @Override
     public void create() {
-        // Optional file logger to avoid stdout buffering when redirected.
+        // Always write a full application log to logs/, with an override for custom paths.
         try {
             String logFile = System.getProperty("mewnbase.logfile");
-            if (logFile != null && !logFile.trim().isEmpty()) {
-                Gdx.app.setApplicationLogger(new com.cairn4.moonbase.debug.FileLogger(logFile.trim()));
-                Gdx.app.log("MewnBase", "File logger enabled: " + logFile.trim());
+            if (logFile == null || logFile.trim().isEmpty()) {
+                logFile = "logs/mewnbase_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".log";
             }
+            File logTarget = new File(logFile.trim());
+            File parentDir = logTarget.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            Gdx.app.setApplicationLogger(new com.cairn4.moonbase.debug.FileLogger(logTarget.getPath()));
+            Gdx.app.log("MewnBase", "File logger enabled: " + logTarget.getPath());
         } catch (Throwable t) {
             try { Gdx.app.error("MewnBase", "Failed to enable file logger", t); } catch (Exception ignored) {}
         }
@@ -255,8 +423,9 @@ implements Telegraph {
             } catch (Throwable t) {
                 // Avoid breaking startup if system properties are inaccessible
                 Gdx.app.error("MoonBase", "Error while reading JVM properties for auto-start", t);
-            }
+        }
         this.platformAdapter.packTextures();
+        this.configureFreezeWatchdog();
         Gdx.gl.glClearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearColor.a);
         SettingsLoader.getInstance();
         this.loadDisplaySetings();
@@ -324,6 +493,7 @@ implements Telegraph {
         }
         MessageManager.getInstance().addListener(this, 999);
         MessageManager.getInstance().addListener(this, 1000);
+        this.startFreezeWatchdog();
     }
 
     @Override
@@ -546,11 +716,13 @@ implements Telegraph {
 
     @Override
     public void render() {
+        this.renderHeartbeatMillis = System.currentTimeMillis();
         if (STEAM_VERSION) {
             this.platformAdapter.steamAPIupdate();
         }
         Gdx.gl.glClear(16384);
         super.render();
+        this.renderHeartbeatMillis = System.currentTimeMillis();
     }
 
     private void loadDisplaySetings() {
@@ -667,6 +839,7 @@ implements Telegraph {
 
     @Override
     public void dispose() {
+        this.stopFreezeWatchdog();
         try {
             com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
             if (s != null) {

@@ -69,6 +69,7 @@ public class Server {
     private volatile boolean allowTp = true;
     private volatile boolean allowTphere = true;
     private volatile boolean allowTransfer = true;
+    private volatile String serverPassword = "";
     private String serverPropsPath = null;
 
     public Server(int port) {
@@ -293,6 +294,12 @@ public class Server {
             }
         } catch (IOException e) {
             Gdx.app.error("Server", "Error stopping server", e);
+        } finally {
+            try {
+                if (activeServer == this) {
+                    activeServer = null;
+                }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -328,6 +335,45 @@ public class Server {
     public boolean isAllowTransfer() {
         ensureServerPropertiesLoaded();
         return this.allowTransfer;
+    }
+
+    public boolean hasPassword() {
+        ensureServerPropertiesLoaded();
+        return this.serverPassword != null && this.serverPassword.trim().length() > 0;
+    }
+
+    public String getPassword() {
+        ensureServerPropertiesLoaded();
+        return this.serverPassword != null ? this.serverPassword : "";
+    }
+
+    public boolean kickPlayer(String targetToken, String reason) {
+        int clientId = resolveClientId(targetToken);
+        if (clientId <= 0) {
+            return false;
+        }
+        return kickClient(clientId, reason);
+    }
+
+    public boolean kickClient(int clientId, String reason) {
+        if (clientId <= 0) {
+            return false;
+        }
+        ClientHandler ch = this.clients.get(Integer.valueOf(clientId));
+        if (ch == null) {
+            return false;
+        }
+        String msg = reason != null ? reason.trim() : "";
+        if (msg.length() == 0) {
+            msg = "You were kicked by the host.";
+        }
+        try {
+            ch.sendMessage("0:KICK:" + java.net.URLEncoder.encode(msg, "UTF-8"));
+        } catch (Exception ignored) {}
+        try {
+            ch.close();
+        } catch (Exception ignored) {}
+        return true;
     }
 
     public void applyPvpDamage(int targetId, float amount, int attackerId, String kind) {
@@ -517,12 +563,14 @@ public class Server {
                     serverProperties.setProperty("allowTp", "true");
                     serverProperties.setProperty("allowTphere", "true");
                     serverProperties.setProperty("allowTransfer", "true");
+                    serverProperties.setProperty("password", "");
                     pvpEnabled = false;
                     pvpMeleeEnabled = false;
                     pvpVehicleEnabled = false;
                     allowTp = true;
                     allowTphere = true;
                     allowTransfer = true;
+                    serverPassword = "";
                     try {
                         try { fh.parent().mkdirs(); } catch (Exception ignored) {}
                         Writer writer = fh.writer(false, "UTF-8");
@@ -549,6 +597,8 @@ public class Server {
                     allowTphere = "true".equalsIgnoreCase(allowTphereProp.trim());
                     String allowTransferProp = serverProperties.getProperty("allowTransfer", "true");
                     allowTransfer = "true".equalsIgnoreCase(allowTransferProp.trim());
+                    serverPassword = serverProperties.getProperty("password", "");
+                    if (serverPassword == null) serverPassword = "";
                 }
             } catch (Exception ignored) {}
         }
@@ -579,7 +629,7 @@ public class Server {
         try { this.broadcast("0:TECH_SYNC:" + payload, null); } catch (Exception ignored) {}
     }
 
-    public synchronized void broadcast(String message, ClientHandler exclude) {
+    public void broadcast(String message, ClientHandler exclude) {
         int excludeId = -1;
         try { if (exclude != null) excludeId = exclude.clientId; } catch (Exception ignored) {}
         // Do not print/log messages that contain POS to avoid console spam; still perform broadcast
@@ -600,7 +650,13 @@ public class Server {
             frame = encodeFrame(d);
         }
         if (frame == null) return;
+        java.util.ArrayList<ClientHandler> targets = new java.util.ArrayList<ClientHandler>();
         for (ClientHandler client : clients.values()) {
+            if (client != exclude) {
+                targets.add(client);
+            }
+        }
+        for (ClientHandler client : targets) {
             if (client != exclude) {
                 try {
             // Avoid printing per-client send when message contains POS
@@ -1169,6 +1225,9 @@ public class Server {
         private volatile boolean readyForMessages = false;
         private volatile boolean sentSavedState = false;
         private final Object outLock = new Object(); // Add this line
+        private final java.util.concurrent.LinkedBlockingQueue<String> outboundQueue = new java.util.concurrent.LinkedBlockingQueue<String>();
+        private volatile boolean writerRunning = false;
+        private Thread writerThread;
         // rate-limiting state for POS broadcasts from this client
         private volatile float lastBroadcastPosX = Float.NaN;
         private volatile float lastBroadcastPosY = Float.NaN;
@@ -1228,14 +1287,61 @@ public class Server {
                 if (seq < 0) return;
                 String frame = ProtocolV2.encode(this.clientId, "ACK", Integer.toString(seq));
                 if (frame != null) {
-                    synchronized (this.outLock) {
-                        if (this.out != null) {
+                    this.queueFrame(frame);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        private void startWriterThread() {
+            if (this.writerRunning) {
+                return;
+            }
+            this.writerRunning = true;
+            this.writerThread = new Thread(() -> {
+                while (this.writerRunning && this.server != null && this.server.running) {
+                    try {
+                        String frame = this.outboundQueue.poll(1000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+                        if (frame == null) {
+                            continue;
+                        }
+                        synchronized (this.outLock) {
+                            if (this.out == null) {
+                                continue;
+                            }
                             this.out.writeUTF(frame);
                             this.out.flush();
                         }
+                        try {
+                            long now = System.currentTimeMillis();
+                            if ((now % 1000L) < 50L) {
+                                appendDebugLog("SENT: " + frame);
+                            }
+                        } catch (Exception ignored) {}
+                    } catch (InterruptedException ignored) {
+                    } catch (Exception e) {
+                        Gdx.app.error("ClientHandler", "Failed to send payload", e);
                     }
                 }
+            }, "MewnBase-Client-Writer-" + this.clientId);
+            this.writerThread.setDaemon(true);
+            this.writerThread.start();
+        }
+
+        private void stopWriterThread() {
+            this.writerRunning = false;
+            try {
+                if (this.writerThread != null) {
+                    this.writerThread.interrupt();
+                }
             } catch (Exception ignored) {}
+            this.outboundQueue.clear();
+        }
+
+        private void queueFrame(String frame) {
+            if (frame == null) {
+                return;
+            }
+            this.outboundQueue.offer(frame);
         }
 
         private void startReliableResender() {
@@ -1254,12 +1360,7 @@ public class Server {
                                     } else {
                                         pr.attempts++;
                                         pr.lastSent = now;
-                                        synchronized (outLock) {
-                                            if (out != null) {
-                                                out.writeUTF(pr.frame);
-                                                out.flush();
-                                            }
-                                        }
+                                        queueFrame(pr.frame);
                                     }
                                 }
                             }
@@ -1283,6 +1384,43 @@ public class Server {
             try {
                 out = new DataOutputStream(socket.getOutputStream());
                 in = new DataInputStream(socket.getInputStream());
+
+                String requiredPassword = "";
+                try { requiredPassword = this.server != null ? this.server.getPassword() : ""; } catch (Exception ignored) {}
+                if (requiredPassword != null && requiredPassword.trim().length() > 0) {
+                    try {
+                        try { this.socket.setSoTimeout(10000); } catch (Exception ignored) {}
+                        String first = in.readUTF();
+                        ProtocolV2.Decoded auth = ProtocolV2.decode(first);
+                        if (auth == null || !"AUTH".equals(auth.type) || !requiredPassword.equals(auth.payload)) {
+                            Gdx.app.error("Server", "Client " + this.clientId + " failed password auth");
+                            try {
+                                this.out.writeInt(-1);
+                                this.out.writeUTF(ProtocolV2.encode(0, "AUTH_FAIL", "Wrong password"));
+                                this.out.flush();
+                            } catch (Exception ignored) {}
+                            return;
+                        }
+                    } catch (java.net.SocketTimeoutException ste) {
+                        Gdx.app.error("Server", "Timed out waiting for password auth from client " + this.clientId, ste);
+                        try {
+                            this.out.writeInt(-1);
+                            this.out.writeUTF(ProtocolV2.encode(0, "AUTH_FAIL", "Timed out waiting for password"));
+                            this.out.flush();
+                        } catch (Exception ignored) {}
+                        return;
+                    } catch (Exception e) {
+                        Gdx.app.error("Server", "Error waiting for password auth from client " + this.clientId, e);
+                        try {
+                            this.out.writeInt(-1);
+                            this.out.writeUTF(ProtocolV2.encode(0, "AUTH_FAIL", "Failed to authenticate"));
+                            this.out.flush();
+                        } catch (Exception ignored) {}
+                        return;
+                    } finally {
+                        try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
+                    }
+                }
                 
                 sendInitialWorldData();
                 // Signal end of binary init payload so client can safely start reading UTF messages
@@ -1311,6 +1449,7 @@ public class Server {
 
                 // Now mark ready and add to broadcast list
                 this.readyForMessages = true;
+                this.startWriterThread();
                 try { server.clients.put(this.clientId, this); } catch (Exception ignored) {}
                 try { startReliableResender(); } catch (Exception ignored) {}
 
@@ -2872,45 +3011,32 @@ public class Server {
         }
 
         public void sendMessage(String message) {
-            synchronized (this.outLock) {
-                if (this.out == null) {
-                    return;
-                }
-                String frame = message;
-                ProtocolV2.Decoded d = decodeLegacyOrFrame(message, 0);
-                if (d != null) {
-                    if (isReliableType(d.type) && !"ACK".equals(d.type)) {
-                        int seq = reliableSeq.getAndIncrement();
-                        if (seq <= 0) seq = reliableSeq.getAndIncrement();
-                        String relPayload = "SEQ:" + seq + ":" + (d.payload == null ? "" : d.payload);
-                        frame = ProtocolV2.encode(d.fromId, d.type, relPayload);
-                        if (frame != null) {
-                            pendingReliable.put(seq, new PendingReliable(frame, System.currentTimeMillis()));
-                        }
-                    } else {
-                        frame = encodeFrame(d);
+            if (this.out == null) {
+                return;
+            }
+            String frame = message;
+            ProtocolV2.Decoded d = decodeLegacyOrFrame(message, 0);
+            if (d != null) {
+                if (isReliableType(d.type) && !"ACK".equals(d.type)) {
+                    int seq = reliableSeq.getAndIncrement();
+                    if (seq <= 0) seq = reliableSeq.getAndIncrement();
+                    String relPayload = "SEQ:" + seq + ":" + (d.payload == null ? "" : d.payload);
+                    frame = ProtocolV2.encode(d.fromId, d.type, relPayload);
+                    if (frame != null) {
+                        pendingReliable.put(seq, new PendingReliable(frame, System.currentTimeMillis()));
                     }
-                }
-                if (frame == null) return;
-                try {
-                    long now = System.currentTimeMillis();
-                    if ((now % 1000L) < 50L) {
-                        System.out.println("ClientHandler.sendMessage: clientId=" + this.clientId + " message=" + frame);
-                    }
-                } catch (Exception ignored) {}
-                try {
-                    this.out.writeUTF(frame);
-                    this.out.flush();
-                    try {
-                        long now2 = System.currentTimeMillis();
-                        if ((now2 % 1000L) < 50L) {
-                            appendDebugLog("SENT: " + frame);
-                        }
-                    } catch (Exception ignored) {}
-                } catch (Exception e) {
-                    Gdx.app.error("ClientHandler", "Failed to send payload", e);
+                } else {
+                    frame = encodeFrame(d);
                 }
             }
+            if (frame == null) return;
+            try {
+                long now = System.currentTimeMillis();
+                if ((now % 1000L) < 50L) {
+                    System.out.println("ClientHandler.sendMessage: clientId=" + this.clientId + " message=" + frame);
+                }
+            } catch (Exception ignored) {}
+            this.queueFrame(frame);
         }
 
         private void appendDebugLog(String line) {
@@ -2921,6 +3047,7 @@ public class Server {
 
         public void close() {
             try {
+                this.stopWriterThread();
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
                 }
