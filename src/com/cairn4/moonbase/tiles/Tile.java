@@ -251,7 +251,8 @@ public class Tile {
     public void canPlayerSee() {
         this.cameraPos.set(this.world.gameScreen.camera.position.x, this.world.gameScreen.camera.position.y);
         this.tileWorldPos.set(this.getWorldXPos(), this.getWorldYPos());
-        if (this.tileWorldPos.dst(this.cameraPos) < MoonBase.DRAW_DISTANCE) {
+        float drawDistance = MoonBase.DRAW_DISTANCE + TILE_SIZE * 1.5f;
+        if (this.tileWorldPos.dst(this.cameraPos) < drawDistance) {
             this.setVisible(true);
         } else {
             this.setVisible(false);

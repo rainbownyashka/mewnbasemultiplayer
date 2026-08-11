@@ -59,6 +59,14 @@ public class Menu {
         this.stage.addActor(this.menuGroup);
     }
 
+    protected BitmapFont createScaledFont(float scale) {
+        BitmapFont scaled = new BitmapFont(this.font.getData().fontFile, this.font.getRegion(), false);
+        scaled.setFixedWidthGlyphs("0123456789");
+        scaled.getData().markupEnabled = true;
+        scaled.getData().setScale(scale);
+        return scaled;
+    }
+
     public void addAutoScaleText(AutoScalingText button) {
         MoonBase.debug("adding button to autoscale");
         this.textToAutoScale.add(button);
@@ -185,4 +193,3 @@ public class Menu {
 
     }
 }
-

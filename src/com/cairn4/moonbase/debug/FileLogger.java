@@ -1,6 +1,7 @@
 package com.cairn4.moonbase.debug;
 
 import com.badlogic.gdx.ApplicationLogger;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -13,7 +14,12 @@ public class FileLogger implements ApplicationLogger {
     private final SimpleDateFormat ts = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     public FileLogger(String path) throws Exception {
-        this.out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(path, true), StandardCharsets.UTF_8), true);
+        File file = new File(path);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        this.out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8), true);
         this.out.println("---- log start " + ts.format(new Date()) + " ----");
     }
 

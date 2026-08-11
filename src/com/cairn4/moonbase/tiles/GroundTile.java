@@ -132,7 +132,8 @@ implements Pool.Poolable {
     public void canPlayerSee() {
         this.cameraPos.set(this.world.gameScreen.camera.position.x, this.world.gameScreen.camera.position.y);
         this.tileWorldPos.set(this.getWorldXPos(), this.getWorldYPos());
-        if (this.tileWorldPos.dst(this.cameraPos) < MoonBase.DRAW_DISTANCE) {
+        float drawDistance = MoonBase.DRAW_DISTANCE + Tile.TILE_SIZE * 1.5f;
+        if (this.tileWorldPos.dst(this.cameraPos) < drawDistance) {
             this.setVisible(true);
         } else {
             this.setVisible(false);
@@ -604,11 +605,8 @@ implements Pool.Poolable {
         this.wetIndex = GroundTile.toWetIndex(fixedWet);
         float fixedTemp = (temp + 1.0f) / 2.0f;
         this.tempIndex = GroundTile.toTempIndex(fixedTemp);
-        Biomes base = biomeTable[this.altIndex][this.wetIndex];
-        if (this.tempIndex <= 2 && base == Biomes.volcanic) {
-            base = Biomes.rock;
-        }
-        if (this.tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
+        Biomes base = resolveBaseBiome(this.altIndex, this.wetIndex, this.tempIndex);
+        if (shouldForceIceBiome(base, this.tempIndex)) {
             this.biome = Biomes.ice;
         } else {
             this.biome = base;
@@ -626,14 +624,33 @@ implements Pool.Poolable {
         int wetIndex = GroundTile.toWetIndex(fixedWet);
         float fixedTemp = (temp + 1.0f) / 2.0f;
         int tempIndex = GroundTile.toTempIndex(fixedTemp);
-        Biomes base = biomeTable[altIndex][wetIndex];
-        if (tempIndex <= 2 && base == Biomes.volcanic) {
-            base = Biomes.rock;
-        }
-        if (tempIndex <= 1 && base != Biomes.water && base != Biomes.volcanic) {
+        Biomes base = resolveBaseBiome(altIndex, wetIndex, tempIndex);
+        if (shouldForceIceBiome(base, tempIndex)) {
             return Biomes.ice;
         }
         return base;
+    }
+
+    public static Biomes calcBaseBiomeTest(float alt, float wet, float temp) {
+        float fixedAlt = (alt + 1.0f) / 2.0f;
+        int altIndex = GroundTile.toAltIndex(fixedAlt);
+        float fixedWet = (wet + 1.0f) / 2.0f;
+        int wetIndex = GroundTile.toWetIndex(fixedWet);
+        float fixedTemp = (temp + 1.0f) / 2.0f;
+        int tempIndex = GroundTile.toTempIndex(fixedTemp);
+        return resolveBaseBiome(altIndex, wetIndex, tempIndex);
+    }
+
+    private static Biomes resolveBaseBiome(int altIndex, int wetIndex, int tempIndex) {
+        Biomes base = biomeTable[altIndex][wetIndex];
+        if (tempIndex <= 2 && base == Biomes.volcanic) {
+            return Biomes.rock;
+        }
+        return base;
+    }
+
+    private static boolean shouldForceIceBiome(Biomes base, int tempIndex) {
+        return tempIndex == 0 && base != Biomes.water && base != Biomes.volcanic;
     }
 
     public static int toTempIndex(float t) {

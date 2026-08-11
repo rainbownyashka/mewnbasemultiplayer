@@ -32,6 +32,9 @@ import za.co.luma.geom.Vector2DDouble;
 import za.co.luma.math.sampling.UniformPoissonDiskSampler;
 
 public class TerrainGen {
+    private static final float ICE_SPAWN_SAFE_RADIUS = 360.0f;
+    private static final int ICE_VOLCANIC_BUFFER_TILES = 4;
+    private static final int ICE_GROWTH_NEIGHBOR_THRESHOLD = 2;
     private SimplexNoise simplexNoiseAlt;
     private SimplexNoise simplexNoiseWet;
     private SimplexNoise simplexNoiseTemp;
@@ -402,6 +405,7 @@ public class TerrainGen {
                 chunk.gtDiscoveryArray[y * 10 + x] = false;
             }
         }
+        this.refineIceBiome(chunk);
         // Enforce separation between ice and volcanic after initial paint
         this.resolveIceVolcanicAdjacency(chunk);
     }
@@ -435,7 +439,7 @@ public class TerrainGen {
         float endValue = value;
         float distFromCenter = Vector2.dst(x, y, 500.0f, 500.0f);
         // Smoothly bias temperature towards neutral around spawn to avoid lava/ice there
-        float radius = 260.0f;
+        float radius = 360.0f;
         if (distFromCenter < radius) {
             float t = 1.0f - (distFromCenter / radius);
             // ease curve for softer falloff
@@ -443,6 +447,228 @@ public class TerrainGen {
             endValue = endValue * (1.0f - t);
         }
         return endValue;
+    }
+
+    private void refineIceBiome(Chunk chunk) {
+        java.util.ArrayList<GridPoint2> toIce = new java.util.ArrayList<>();
+        java.util.ArrayList<GridPoint2> toBase = new java.util.ArrayList<>();
+        for (int x = 0; x < 10; ++x) {
+            for (int y = 0; y < 10; ++y) {
+                GroundTile gt = chunk.getGroundTile(x, y);
+                if (gt == null) continue;
+                int worldX = chunk.chunkX * 10 + x;
+                int worldY = chunk.chunkY * 10 + y;
+                if (gt.getBiome() == GroundTile.Biomes.ice) {
+                    if (!this.isIceAllowedAt(worldX, worldY, gt)) {
+                        toBase.add(new GridPoint2(x, y));
+                    }
+                    continue;
+                }
+                if (this.canGrowIceAt(worldX, worldY, gt) && this.countIceNeighbors(worldX, worldY) >= ICE_GROWTH_NEIGHBOR_THRESHOLD) {
+                    toIce.add(new GridPoint2(x, y));
+                }
+            }
+        }
+        boolean changedAny = false;
+        for (GridPoint2 gp : toBase) {
+            GroundTile gt = chunk.getGroundTile(gp.x, gp.y);
+            if (gt == null) continue;
+            GroundTile.Biomes baseBiome = GroundTile.calcBaseBiomeTest(gt.altitude, gt.wetness, gt.temperature);
+            if (baseBiome != gt.getBiome()) {
+                gt.setBiome(baseBiome);
+                gt.createDrawables();
+                chunk.gtBiomeArray[gp.y * 10 + gp.x] = gt.getBiome();
+                changedAny = true;
+            }
+        }
+        for (GridPoint2 gp : toIce) {
+            GroundTile gt = chunk.getGroundTile(gp.x, gp.y);
+            if (gt == null || gt.getBiome() == GroundTile.Biomes.ice) continue;
+            gt.setBiome(GroundTile.Biomes.ice);
+            gt.createDrawables();
+            chunk.gtBiomeArray[gp.y * 10 + gp.x] = gt.getBiome();
+            changedAny = true;
+        }
+        if (changedAny) {
+            try { chunk.updateAutoTile(); } catch (Exception ignored) {}
+            try { chunk.setMapDirty(true); } catch (Exception ignored) {}
+        }
+    }
+
+    private boolean canGrowIceAt(int worldX, int worldY, GroundTile gt) {
+        if (gt == null || gt.getBiome() == GroundTile.Biomes.ice) {
+            return false;
+        }
+        if (!this.isIceAllowedAt(worldX, worldY, gt)) {
+            return false;
+        }
+        return gt.tempIndex <= 1;
+    }
+
+    private boolean isIceAllowedAt(int worldX, int worldY, GroundTile gt) {
+        if (gt == null) {
+            return false;
+        }
+        if (Vector2.dst(worldX, worldY, 500.0f, 500.0f) < ICE_SPAWN_SAFE_RADIUS) {
+            return false;
+        }
+        GroundTile.Biomes baseBiome = GroundTile.calcBaseBiomeTest(gt.altitude, gt.wetness, gt.temperature);
+        if (baseBiome == GroundTile.Biomes.water || baseBiome == GroundTile.Biomes.volcanic) {
+            return false;
+        }
+        return !this.isBiomeWithinRadius(worldX, worldY, GroundTile.Biomes.volcanic, ICE_VOLCANIC_BUFFER_TILES);
+    }
+
+    private int countIceNeighbors(int worldX, int worldY) {
+        int count = 0;
+        if (this.isBiomeAt(worldX + 1, worldY, GroundTile.Biomes.ice)) ++count;
+        if (this.isBiomeAt(worldX - 1, worldY, GroundTile.Biomes.ice)) ++count;
+        if (this.isBiomeAt(worldX, worldY + 1, GroundTile.Biomes.ice)) ++count;
+        if (this.isBiomeAt(worldX, worldY - 1, GroundTile.Biomes.ice)) ++count;
+        return count;
+    }
+
+    private boolean isBiomeWithinRadius(int worldX, int worldY, GroundTile.Biomes biome, int radius) {
+        for (int ox = -radius; ox <= radius; ++ox) {
+            for (int oy = -radius; oy <= radius; ++oy) {
+                if (Math.abs(ox) + Math.abs(oy) > radius) continue;
+                if (this.isBiomeAt(worldX + ox, worldY + oy, biome)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isBiomeAt(int worldX, int worldY, GroundTile.Biomes biome) {
+        GroundTile gt = this.world.getGroundTile(worldX, worldY);
+        return gt != null && gt.getBiome() == biome;
+    }
+
+    private boolean usesSparsePeakPlacement(String id) {
+        if (id == null) {
+            return false;
+        }
+        String lower = id.toLowerCase();
+        return lower.equals("ore")
+                || lower.equals("ore-big")
+                || lower.equals("crystal")
+                || lower.equals("special-ore")
+                || lower.equals("rubble")
+                || lower.equals("rock")
+                || lower.equals("rock_volcanic")
+                || lower.equals("rock-rad")
+                || lower.equals("rock-sp");
+    }
+
+    private int getSparsePeakRadius(String id) {
+        if (id == null) {
+            return 1;
+        }
+        String lower = id.toLowerCase();
+        if (lower.startsWith("rock")) {
+            return 2;
+        }
+        return 1;
+    }
+
+    private int getSparseSpacingRadius(String id) {
+        if (id == null) {
+            return 2;
+        }
+        String lower = id.toLowerCase();
+        if (lower.equals("crystal") || lower.equals("special-ore") || lower.equals("rock_volcanic")) {
+            return 3;
+        }
+        if (lower.startsWith("rock")) {
+            return 2;
+        }
+        return 2;
+    }
+
+    private boolean isSameSparseResourceFamily(String idA, String idB) {
+        if (idA == null || idB == null) {
+            return false;
+        }
+        String a = idA.toLowerCase();
+        String b = idB.toLowerCase();
+        if (a.startsWith("ore") && b.startsWith("ore")) {
+            return true;
+        }
+        if (a.startsWith("rock") && b.startsWith("rock")) {
+            return true;
+        }
+        return a.equals(b);
+    }
+
+    private float sampleDropperNoise(ItemDropperData idd, int worldX, int worldY) {
+        float layerF = idd.noiseFeature;
+        float weight = idd.noiseSmooth;
+        float value = 0.0f;
+        for (int i = 0; i < 3; ++i) {
+            value += (float)SimplexNoise.noise((float)worldX * layerF, (float)worldY * layerF) * weight;
+            value = MathUtils.clamp(value + this.altitudeBias, -1.0f, 1.0f);
+            layerF *= 3.5f;
+            weight *= 0.5f;
+        }
+        return value;
+    }
+
+    private float sparseNoiseScore(ItemDropperData idd, int worldX, int worldY) {
+        long hash = (long)worldX * 73428767L ^ (long)worldY * 912931L ^ (long)this.seed * 31L;
+        float jitter = (float)(hash & 1023L) / 1023.0f * 0.0005f;
+        return this.sampleDropperNoise(idd, worldX, worldY) + jitter;
+    }
+
+    private boolean isSparsePeak(ItemDropperData idd, int worldX, int worldY) {
+        int radius = this.getSparsePeakRadius(idd.id);
+        float score = this.sparseNoiseScore(idd, worldX, worldY);
+        for (int ox = -radius; ox <= radius; ++ox) {
+            for (int oy = -radius; oy <= radius; ++oy) {
+                if (ox == 0 && oy == 0) {
+                    continue;
+                }
+                if (Math.max(Math.abs(ox), Math.abs(oy)) > radius) {
+                    continue;
+                }
+                if (this.sparseNoiseScore(idd, worldX + ox, worldY + oy) >= score) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean hasNearbySparseResourceFamily(int worldX, int worldY, String id) {
+        int radius = this.getSparseSpacingRadius(id);
+        for (int ox = -radius; ox <= radius; ++ox) {
+            for (int oy = -radius; oy <= radius; ++oy) {
+                if (ox == 0 && oy == 0) {
+                    continue;
+                }
+                if (Math.abs(ox) + Math.abs(oy) > radius) {
+                    continue;
+                }
+                Tile tile = this.world.getTile(worldX + ox, worldY + oy);
+                if (!(tile instanceof com.cairn4.moonbase.tiles.ItemDropper)) {
+                    continue;
+                }
+                com.cairn4.moonbase.tiles.ItemDropper dropper = (com.cairn4.moonbase.tiles.ItemDropper)tile;
+                if (dropper.rdData != null && this.isSameSparseResourceFamily(id, dropper.rdData.id)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean shouldPlaceSparseResource(Chunk chunk, int localX, int localY, ItemDropperData idd) {
+        if (idd == null || !this.usesSparsePeakPlacement(idd.id)) {
+            return true;
+        }
+        int worldX = chunk.chunkX * 10 + localX;
+        int worldY = chunk.chunkY * 10 + localY;
+        return this.isSparsePeak(idd, worldX, worldY) && !this.hasNearbySparseResourceFamily(worldX, worldY, idd.id);
     }
 
     private void placeItemDropper(Chunk chunk, ItemDropperData idd) {
@@ -461,6 +687,7 @@ public class TerrainGen {
             for (ItemDropperSpawnBiome biome : idd.spawnBiomes) {
                 GroundTile.Biomes b = GroundTile.Biomes.valueOf(biome.biome);
                 if (gt.getBiome() != b || !(this.noise[x][y] > biome.threshold)) continue;
+                if (!this.shouldPlaceSparseResource(chunk, x, y, idd)) continue;
                 if (numInChunk <= limit) {
                     boolean usingVariation = false;
                     if (idd.dropperVariations.size() > 0) {
@@ -478,7 +705,6 @@ public class TerrainGen {
                     ++numInChunk;
                     continue;
                 }
-                MoonBase.debug("TerrainGen: Reached chunk limit for " + idd.id + " (" + limit + ")");
                 continue block0;
             }
         }
@@ -510,7 +736,6 @@ public class TerrainGen {
                     ++numInChunk;
                     continue;
                 }
-                System.out.println("Reached chunk limit for " + idd.id + "(" + limit + ")");
                 continue block0;
             }
         }
@@ -643,11 +868,22 @@ public class TerrainGen {
             for (int y = 0; y < 10; ++y) {
                 GroundTile gt = chunk.getGroundTile(x, y);
                 if (gt == null) continue;
+                int worldX = chunk.chunkX * 10 + x;
+                int worldY = chunk.chunkY * 10 + y;
                 GroundTile.Biomes b = gt.getBiome();
                 if (b == GroundTile.Biomes.ice) {
+                    if (this.isBiomeWithinRadius(worldX, worldY, GroundTile.Biomes.volcanic, ICE_VOLCANIC_BUFFER_TILES)) {
+                        GroundTile.Biomes baseBiome = GroundTile.calcBaseBiomeTest(gt.altitude, gt.wetness, gt.temperature);
+                        gt.setBiome(baseBiome);
+                        gt.createDrawables();
+                        chunk.gtBiomeArray[y * 10 + x] = gt.getBiome();
+                        changed.add(chunk);
+                        changedAny = true;
+                        continue;
+                    }
                     changedAny |= convertNeighborVolcanicToRock(chunk, x, y, changed);
                 } else if (b == GroundTile.Biomes.volcanic) {
-                    if (isNeighborIce(chunk, x, y)) {
+                    if (isNeighborIce(chunk, x, y) || this.isBiomeWithinRadius(worldX, worldY, GroundTile.Biomes.ice, ICE_VOLCANIC_BUFFER_TILES)) {
                         gt.setBiome(GroundTile.Biomes.rock);
                         gt.createDrawables();
                         chunk.gtBiomeArray[y * 10 + x] = gt.getBiome();

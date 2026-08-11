@@ -43,18 +43,18 @@ public class PlanetGenConfig {
         c.weatherMode = pickWeatherMode();
         c.missionDayLength = MathUtils.random(25, 40);
 
-        c.altitudeNoise = MathUtils.random(0.009f, 0.02f);
-        c.altitudeSmoothing = MathUtils.random(0.8f, 1.8f);
-        c.wetnessNoise = MathUtils.random(0.01f, 0.03f);
-        c.wetnessSmoothing = MathUtils.random(0.6f, 1.6f);
-        c.temperatureNoise = MathUtils.random(0.007f, 0.02f);
-        c.temperatureSmoothing = MathUtils.random(0.6f, 1.6f);
-        c.altitudeBias = MathUtils.random(-0.35f, 0.35f);
-        c.wetnessBias = MathUtils.random(-0.45f, 0.45f);
-        c.temperatureBias = MathUtils.random(-0.45f, 0.45f);
+        c.altitudeNoise = MathUtils.random(0.012f, 0.018f);
+        c.altitudeSmoothing = MathUtils.random(1.0f, 1.45f);
+        c.wetnessNoise = MathUtils.random(0.015f, 0.026f);
+        c.wetnessSmoothing = MathUtils.random(0.9f, 1.4f);
+        c.temperatureNoise = MathUtils.random(0.008f, 0.015f);
+        c.temperatureSmoothing = MathUtils.random(0.8f, 1.3f);
+        c.altitudeBias = MathUtils.random(-0.18f, 0.18f);
+        c.wetnessBias = MathUtils.random(-0.25f, 0.25f);
+        c.temperatureBias = MathUtils.random(-0.22f, 0.22f);
 
-        c.enableVolcanos = MathUtils.randomBoolean(0.8f);
-        c.enableSamples = MathUtils.randomBoolean(0.9f);
+        c.enableVolcanos = MathUtils.randomBoolean(0.7f);
+        c.enableSamples = MathUtils.randomBoolean(0.8f);
         c.enableNpcs = MathUtils.randomBoolean(0.7f);
         c.tempDayNightAmplitude = MathUtils.random(0.1f, 0.45f);
         c.weatherTempInfluence = MathUtils.random(0.2f, 0.6f);

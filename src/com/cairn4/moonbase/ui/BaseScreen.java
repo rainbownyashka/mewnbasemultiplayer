@@ -28,6 +28,8 @@ import com.cairn4.moonbase.LoadingErrors;
 import com.cairn4.moonbase.MoonBase;
 import com.cairn4.moonbase.PlayerInputProcessor;
 import com.cairn4.moonbase.ui.DestroyableUI;
+import com.cairn4.moonbase.ui.ErrorLoadingPopup;
+import com.cairn4.moonbase.ui.FrontendScreen;
 import com.cairn4.moonbase.ui.Menu;
 import java.util.ArrayList;
 
@@ -269,6 +271,28 @@ implements Screen {
     }
 
     public void errorReturnToMainMenu(LoadingErrors e) {
+        if (this.game == null) {
+            return;
+        }
+        Gdx.app.postRunnable(() -> {
+            try {
+                MoonBase.multiplayerSyncReady = false;
+            } catch (Exception ignored) {}
+            try {
+                if (MoonBase.isMultiplayer) {
+                    MoonBase.isMultiplayer = false;
+                    MoonBase.multiplayerHost = "127.0.0.1";
+                    MoonBase.multiplayerPort = 7777;
+                    MoonBase.currentSaveFolder = null;
+                }
+            } catch (Exception ignored) {}
+            try {
+                FrontendScreen frontendScreen = new FrontendScreen(this.game);
+                this.game.setScreen(frontendScreen);
+                frontendScreen.showMenu(new ErrorLoadingPopup(frontendScreen, e));
+            } catch (Exception ex) {
+                Gdx.app.error("BaseScreen", "Failed to return to main menu after loading error", ex);
+            }
+        });
     }
 }
-
