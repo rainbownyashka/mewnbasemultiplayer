@@ -132,9 +132,6 @@ public class MultiplayerConfigMenu extends Menu {
         this.lanSection.add(new Label("LAN Port:", labelStyle)).right();
         this.lanSection.add(this.portField).width(260.0f).left();
         this.lanSection.row();
-        this.lanSection.add(new Label("Server password (if set by host):", labelStyle)).right();
-        this.lanSection.add(this.passwordField).width(260.0f).left();
-        this.lanSection.row();
         content.add(this.lanSection).colspan(2).left().width(860.0f).padTop(4.0f);
         content.row();
 
@@ -161,6 +158,13 @@ public class MultiplayerConfigMenu extends Menu {
         this.onlineSection.add(onlineActions).colspan(2).center().padTop(6.0f);
         this.onlineSection.row();
         content.add(this.onlineSection).colspan(2).left().width(860.0f).padTop(4.0f);
+        content.row();
+
+        Table passwordSection = new Table();
+        passwordSection.defaults().pad(6.0f).fillX();
+        passwordSection.add(new Label("Server password (if set by host):", labelStyle)).right();
+        passwordSection.add(this.passwordField).width(260.0f).left();
+        content.add(passwordSection).colspan(2).left().width(860.0f).padTop(2.0f);
         content.row();
 
         ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle();

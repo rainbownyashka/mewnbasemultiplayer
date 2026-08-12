@@ -3,6 +3,7 @@
 Last update: 2026-05-25
 
 Current verification (2026-08-11)
+- Fixed Online join password visibility: the shared server-password field is now outside the LAN-only section, so it remains visible after switching to Online and selecting a relay server.
 - Join form: moved the password input directly below LAN port and relabeled it `Server password (if set by host):`.
 - Multiplayer join flow redesign: the first screen now offers only large `Join server` and `Create server` actions; connection fields and guest password are shown only after entering Join, while host password remains in host setup.
 - Multiplayer UI redesign: removed duplicate mode/section labels, centered LAN/Online forms inside compact panels, and reorganized footer actions so Connect, Create Server, and Exit no longer compete for the same visual space.
