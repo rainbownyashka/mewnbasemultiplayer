@@ -124,10 +124,6 @@ public class MultiplayerConfigMenu extends Menu {
         content.add(this.nickField).width(260.0f).left();
         content.row();
 
-        content.add(new Label("Password:", labelStyle)).right();
-        content.add(this.passwordField).width(260.0f).left();
-        content.row();
-
         this.lanSection = new Table();
         this.lanSection.defaults().pad(6.0f).fillX();
         this.lanSection.add(new Label("LAN IP / Host:", labelStyle)).right();
@@ -135,6 +131,9 @@ public class MultiplayerConfigMenu extends Menu {
         this.lanSection.row();
         this.lanSection.add(new Label("LAN Port:", labelStyle)).right();
         this.lanSection.add(this.portField).width(260.0f).left();
+        this.lanSection.row();
+        this.lanSection.add(new Label("Server password (if set by host):", labelStyle)).right();
+        this.lanSection.add(this.passwordField).width(260.0f).left();
         this.lanSection.row();
         content.add(this.lanSection).colspan(2).left().width(860.0f).padTop(4.0f);
         content.row();
