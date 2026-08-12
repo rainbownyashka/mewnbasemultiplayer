@@ -69,6 +69,7 @@ public class Server {
     private volatile boolean allowTp = true;
     private volatile boolean allowTphere = true;
     private volatile boolean allowTransfer = true;
+    private volatile boolean disableIce = false;
     private volatile String serverPassword = "";
     private String serverPropsPath = null;
 
@@ -305,6 +306,11 @@ public class Server {
 
     public boolean isTechSyncEnabled() {
         return this.techSyncEnabled;
+    }
+
+    public boolean isIceBiomeDisabled() {
+        ensureServerPropertiesLoaded();
+        return this.disableIce;
     }
 
     public boolean isPvpEnabled() {
@@ -563,6 +569,7 @@ public class Server {
                     serverProperties.setProperty("allowTp", "true");
                     serverProperties.setProperty("allowTphere", "true");
                     serverProperties.setProperty("allowTransfer", "true");
+                    serverProperties.setProperty("disableIce", "false");
                     serverProperties.setProperty("password", "");
                     pvpEnabled = false;
                     pvpMeleeEnabled = false;
@@ -570,6 +577,7 @@ public class Server {
                     allowTp = true;
                     allowTphere = true;
                     allowTransfer = true;
+                    disableIce = false;
                     serverPassword = "";
                     try {
                         try { fh.parent().mkdirs(); } catch (Exception ignored) {}
@@ -597,6 +605,8 @@ public class Server {
                     allowTphere = "true".equalsIgnoreCase(allowTphereProp.trim());
                     String allowTransferProp = serverProperties.getProperty("allowTransfer", "true");
                     allowTransfer = "true".equalsIgnoreCase(allowTransferProp.trim());
+                    String disableIceProp = serverProperties.getProperty("disableIce", "false");
+                    disableIce = "true".equalsIgnoreCase(disableIceProp.trim());
                     serverPassword = serverProperties.getProperty("password", "");
                     if (serverPassword == null) serverPassword = "";
                 }
@@ -1426,6 +1436,7 @@ public class Server {
                 // Signal end of binary init payload so client can safely start reading UTF messages
                 try {
                     this.out.writeUTF("INIT_DONE");
+                    this.out.writeUTF("SERVER_SETTINGS:disableIce=" + Boolean.toString(server.isIceBiomeDisabled()));
                     this.out.flush();
                 } catch (Exception ignored) {}
 

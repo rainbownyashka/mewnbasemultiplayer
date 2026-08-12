@@ -66,7 +66,10 @@ public class HostServerSaveMenu extends LoadGameMenu {
         props.setProperty("allowTp", Boolean.toString(opt.allowTp));
         props.setProperty("allowTphere", Boolean.toString(opt.allowTphere));
         props.setProperty("allowTransfer", Boolean.toString(opt.allowTransfer));
+        props.setProperty("disableIce", Boolean.toString(opt.disableIce));
         props.setProperty("password", opt.password == null ? "" : opt.password);
+
+        com.cairn4.moonbase.tiles.GroundTile.setIceBiomeEnabled(!opt.disableIce);
 
         FileHandle propsFile = Gdx.files.local("saves/" + saveFolderFinal + "/server.properties");
         try (OutputStream out = propsFile.write(false)) {

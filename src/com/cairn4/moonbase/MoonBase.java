@@ -122,6 +122,7 @@ implements Telegraph {
         public boolean allowTp = true;
         public boolean allowTphere = true;
         public boolean allowTransfer = true;
+        public boolean disableIce = false;
         public String password = "";
         public String registryUrl = "http://mewnbase.clovergame.org:8080";
     }

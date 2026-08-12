@@ -27,6 +27,7 @@ public class HostServerSetupMenu extends Menu {
     private CheckboxRow allowTpRow;
     private CheckboxRow allowTphereRow;
     private CheckboxRow allowTransferRow;
+    private CheckboxRow disableIceRow;
     private TextField passwordField;
 
     public HostServerSetupMenu(BaseScreen baseScreen) {
@@ -107,6 +108,7 @@ public class HostServerSetupMenu extends Menu {
         this.allowTpRow = new CheckboxRow(this, "Allow tp", getOption().allowTp);
         this.allowTphereRow = new CheckboxRow(this, "Allow tphere", getOption().allowTphere);
         this.allowTransferRow = new CheckboxRow(this, "Allow item transfer", getOption().allowTransfer);
+        this.disableIceRow = new CheckboxRow(this, "Disable ice biome (mod add-on)", getOption().disableIce);
 
         this.pvpRow.addListener(new ClickListener() {
             @Override
@@ -152,6 +154,12 @@ public class HostServerSetupMenu extends Menu {
                 HostServerSetupMenu.this.allowTransferRow.setChecked(!HostServerSetupMenu.this.allowTransferRow.checked);
             }
         });
+        this.disableIceRow.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                HostServerSetupMenu.this.disableIceRow.setChecked(!HostServerSetupMenu.this.disableIceRow.checked);
+            }
+        });
 
         this.syncTechRow.label.setFontScale(0.38f);
         this.pvpRow.label.setFontScale(0.38f);
@@ -160,6 +168,7 @@ public class HostServerSetupMenu extends Menu {
         this.allowTpRow.label.setFontScale(0.38f);
         this.allowTphereRow.label.setFontScale(0.38f);
         this.allowTransferRow.label.setFontScale(0.38f);
+        this.disableIceRow.label.setFontScale(0.38f);
 
         content.add(this.syncTechRow).left().width(520.0f);
         content.row();
@@ -174,6 +183,8 @@ public class HostServerSetupMenu extends Menu {
         content.add(this.allowTphereRow).left().width(520.0f);
         content.row();
         content.add(this.allowTransferRow).left().width(520.0f);
+        content.row();
+        content.add(this.disableIceRow).left().width(720.0f);
         content.row();
 
         content.add(new Label("Password (optional)", labelStyle)).left().padTop(8.0f);
@@ -241,6 +252,7 @@ public class HostServerSetupMenu extends Menu {
         this.allowTpRow.setChecked(opt.allowTp);
         this.allowTphereRow.setChecked(opt.allowTphere);
         this.allowTransferRow.setChecked(opt.allowTransfer);
+        this.disableIceRow.setChecked(opt.disableIce);
         if (this.passwordField != null) {
             this.passwordField.setText(opt.password != null ? opt.password : "");
         }
@@ -278,6 +290,7 @@ public class HostServerSetupMenu extends Menu {
         opt.allowTp = this.allowTpRow.checked;
         opt.allowTphere = this.allowTphereRow.checked;
         opt.allowTransfer = this.allowTransferRow.checked;
+        opt.disableIce = this.disableIceRow.checked;
         opt.password = this.passwordField != null ? this.passwordField.getText() : "";
     }
 

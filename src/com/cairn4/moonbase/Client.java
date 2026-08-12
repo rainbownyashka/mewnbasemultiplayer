@@ -306,7 +306,6 @@ import com.cairn4.moonbase.net.ProtocolV2;
                         return;
                     }
                     if (gotGameSave && gotWorldData) {
-                        try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = true; } catch (Exception ignored) {}
                         Gdx.app.log("Client", "Initial sync complete (gameSave + worldData).");
                     } else {
                         failInitialSync("Incomplete sync from server.");
@@ -333,6 +332,18 @@ import com.cairn4.moonbase.net.ProtocolV2;
                          try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
                      }
                  } catch (Exception ignored) {}
+                 try {
+                     String settings = this.in.readUTF();
+                     if (settings != null && settings.startsWith("SERVER_SETTINGS:")) {
+                         String value = settings.substring("SERVER_SETTINGS:".length());
+                         boolean disableIce = value.toLowerCase().contains("disableice=true");
+                         com.cairn4.moonbase.tiles.GroundTile.setIceBiomeEnabled(!disableIce);
+                         try { com.cairn4.moonbase.MoonBase.multiplayerSyncReady = true; } catch (Exception ignored) {}
+                         Gdx.app.log("Client", "Applied server setting disableIce=" + disableIce);
+                     }
+                 } catch (Exception e) {
+                     Gdx.app.error("Client", "Failed to receive server settings", e);
+                 }
                  try { this.socket.setSoTimeout(0); } catch (Exception ignored) {}
 
                  try { System.out.println("[Client] connect: initializing reader thread"); } catch (Exception ignored) {}

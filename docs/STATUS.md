@@ -1,5 +1,7 @@
 # Status
 
+- Multiplayer: added Create Server option `Disable ice biome (mod add-on)`. The host stores it in `server.properties`, applies it to generated and loaded ground, and sends it during the initial handshake so clients use the same mode before their synced world is released. Default remains enabled; targeted Java compilation completed without errors and `basegame/game/desktop-1.0.jar` was updated. Manual multiplayer smoke test remains pending.
+
 Last update: 2026-05-25
 
 Current verification (2026-08-11)
@@ -319,3 +321,4 @@ Risks
 Risks
 - Any external references/scripts may still point to old paths; update as needed.
 - Multiplayer code likely has protocol and threading risks; see docs/MP_DRAFT.md.
+

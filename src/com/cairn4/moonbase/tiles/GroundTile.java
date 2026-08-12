@@ -57,6 +57,7 @@ implements Pool.Poolable {
     public static float ICE_ALPHA_MIN_ICE = 0.85f;
     // Debug override: if >=0, force this alpha for ice overlay
     public static float ICE_ALPHA_OVERRIDE = -1.0f;
+    private static volatile boolean ICE_BIOME_ENABLED = true;
     private static int[] rockTileAlternates = new int[]{0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2};
     boolean resources = false;
     boolean discovered;
@@ -606,7 +607,7 @@ implements Pool.Poolable {
         float fixedTemp = (temp + 1.0f) / 2.0f;
         this.tempIndex = GroundTile.toTempIndex(fixedTemp);
         Biomes base = resolveBaseBiome(this.altIndex, this.wetIndex, this.tempIndex);
-        if (shouldForceIceBiome(base, this.tempIndex)) {
+        if (ICE_BIOME_ENABLED && shouldForceIceBiome(base, this.tempIndex)) {
             this.biome = Biomes.ice;
         } else {
             this.biome = base;
@@ -625,7 +626,7 @@ implements Pool.Poolable {
         float fixedTemp = (temp + 1.0f) / 2.0f;
         int tempIndex = GroundTile.toTempIndex(fixedTemp);
         Biomes base = resolveBaseBiome(altIndex, wetIndex, tempIndex);
-        if (shouldForceIceBiome(base, tempIndex)) {
+        if (ICE_BIOME_ENABLED && shouldForceIceBiome(base, tempIndex)) {
             return Biomes.ice;
         }
         return base;
@@ -679,10 +680,23 @@ implements Pool.Poolable {
         catch (Exception e) {
             this.biome = Biomes.ground;
         }
+        if (!ICE_BIOME_ENABLED && this.biome == Biomes.ice) {
+            this.biome = calcBaseBiomeTest(this.altitude, this.wetness, this.temperature);
+        }
     }
 
     public void setBiome(Biomes biome) {
-        this.biome = biome;
+        this.biome = (!ICE_BIOME_ENABLED && biome == Biomes.ice)
+                ? calcBaseBiomeTest(this.altitude, this.wetness, this.temperature)
+                : biome;
+    }
+
+    public static void setIceBiomeEnabled(boolean enabled) {
+        ICE_BIOME_ENABLED = enabled;
+    }
+
+    public static boolean isIceBiomeEnabled() {
+        return ICE_BIOME_ENABLED;
     }
 
 
