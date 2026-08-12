@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
@@ -50,10 +51,10 @@ public class MultiplayerConfigMenu extends Menu {
         root.pad(14.0f, 56.0f, 10.0f, 56.0f);
         this.menuGroup.addActor(root);
 
+        Stack pages = new Stack();
+        root.add(pages).expand().fill();
         this.landingSection = new Table();
         this.landingSection.center();
-        root.add(this.landingSection).expand().fill();
-        root.row();
 
         NinePatchDrawable altNpdUp = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
         NinePatchDrawable altNpdActive = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor-pressed"), 16, 16, 16, 16));
@@ -213,8 +214,7 @@ public class MultiplayerConfigMenu extends Menu {
         footer.add(this.connectButton).width(210.0f).height(46.0f);
         footer.add(exitButton).width(150.0f).height(46.0f);
         this.joinSection.add(footer).center().padTop(8.0f).padBottom(4.0f);
-        root.add(this.joinSection).expand().fill();
-        root.row();
+        pages.add(this.joinSection);
 
         Label landingTitle = new Label("Multiplayer", this.headingStyle);
         landingTitle.setFontScale(0.85f);
@@ -223,6 +223,7 @@ public class MultiplayerConfigMenu extends Menu {
         TextButton joinButton = new TextButton("Join server", buttonStyle);
         TextButton landingCreateButton = new TextButton("Create server", buttonStyle);
         TextButton landingExitButton = new TextButton("Exit", buttonStyle);
+        pages.add(this.landingSection);
         this.landingSection.add(landingTitle).center().padBottom(8.0f);
         this.landingSection.row();
         this.landingSection.add(landingNote).center().padBottom(22.0f);

@@ -7,7 +7,7 @@ Current verification (2026-08-11)
 - Multiplayer UI redesign: removed duplicate mode/section labels, centered LAN/Online forms inside compact panels, and reorganized footer actions so Connect, Create Server, and Exit no longer compete for the same visual space.
 - Multiplayer UI now reuses the game's loaded `smallfont1.fnt` for buttons, labels, and text fields with local UI scaling instead of creating default `BitmapFont` instances, so its typography and size match the rest of the game without changing the global font.
 - Targeted compilation of `MultiplayerConfigMenu.java`, `MultiplayerServerListMenu.java`, and `HostServerSetupMenu.java` succeeded with Java 8 bytecode compatibility; the resulting classes were written to `basegame/game/desktop-1.0.jar`.
-- Runtime visual smoke test after the join/create flow redesign is still pending; the follow-up layout pass widened the responsive panels for large windows.
+- Runtime visual smoke test after the join/create flow redesign is still pending; the follow-up layout pass widened the responsive panels and moved landing/join pages into a shared stack so hidden content cannot reserve layout space.
 
 Changes
 - Freeze fix: the watchdog dump confirmed a runtime stall in `Server.broadcast` while the host-pos sender thread held the server lock and blocked on socket writes; broadcasts now snapshot targets without a global server lock and client sends go through a queued writer thread so render/update no longer blocks on `writeUTF`.
