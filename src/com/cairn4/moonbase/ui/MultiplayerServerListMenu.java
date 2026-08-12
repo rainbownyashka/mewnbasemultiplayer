@@ -32,7 +32,7 @@ public class MultiplayerServerListMenu extends Menu {
         this.menuGroup.setSize(this.stage.getWidth(), this.stage.getHeight());
         Table root = new Table();
         root.setFillParent(true);
-        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
+        root.pad(14.0f, 56.0f, 10.0f, 56.0f);
         this.menuGroup.addActor(root);
 
         NinePatchDrawable alt_npd_up = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
@@ -49,9 +49,9 @@ public class MultiplayerServerListMenu extends Menu {
         title.setFontScale(0.70f);
         Table panel = new Table();
         panel.top().left();
-        panel.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        panel.pad(16.0f, 30.0f, 12.0f, 30.0f);
         panel.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
-        root.add(panel).width(700.0f).expandY().fillY().center();
+        root.add(panel).width(940.0f).expandY().fillY().center();
         panel.add(title).center().padBottom(8.0f);
         panel.row();
         root.row();
@@ -62,7 +62,7 @@ public class MultiplayerServerListMenu extends Menu {
         this.listTable = new Table();
         ScrollPane scroll = new ScrollPane(this.listTable);
         scroll.setFadeScrollBars(false);
-        panel.add(scroll).width(620.0f).height(300.0f).pad(8.0f);
+        panel.add(scroll).width(860.0f).height(360.0f).pad(8.0f);
         panel.row();
 
         TextButton refreshButton = new TextButton("Refresh", buttonStyle);

@@ -41,7 +41,7 @@ public class HostServerSetupMenu extends Menu {
 
         Table root = new Table();
         root.setFillParent(true);
-        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
+        root.pad(14.0f, 56.0f, 10.0f, 56.0f);
         this.menuGroup.addActor(root);
 
         NinePatchDrawable altNpdUp = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
@@ -73,9 +73,9 @@ public class HostServerSetupMenu extends Menu {
         Table content = new Table();
         content.top().left();
         content.defaults().pad(4.0f).left();
-        content.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        content.pad(16.0f, 30.0f, 12.0f, 30.0f);
         content.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
-        content.setWidth(680.0f);
+        content.setWidth(940.0f);
 
         Table modeRow = new Table();
         this.lanButton = new TextButton("LAN", buttonStyle);
@@ -186,7 +186,7 @@ public class HostServerSetupMenu extends Menu {
 
         Label note = new Label("LAN uses a direct local/network connection. Online publishes the save for public listing.", labelStyle);
         note.setWrap(true);
-        content.add(note).width(620.0f).padTop(8.0f);
+        content.add(note).width(860.0f).padTop(8.0f);
         content.row();
 
         TextButton chooseSave = new TextButton("Continue", buttonStyle);
@@ -218,7 +218,7 @@ public class HostServerSetupMenu extends Menu {
         scroll.setScrollingDisabled(true, false);
         scroll.setFadeScrollBars(false);
         scroll.setOverscroll(false, false);
-        root.add(scroll).width(730.0f).expandY().fillY().center().padTop(6.0f);
+        root.add(scroll).width(1000.0f).expandY().fillY().center().padTop(6.0f);
         root.row();
         root.add(footer).bottom().center().padTop(16.0f);
         this.syncUiFromOptions();

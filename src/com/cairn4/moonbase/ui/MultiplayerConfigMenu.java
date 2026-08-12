@@ -47,7 +47,7 @@ public class MultiplayerConfigMenu extends Menu {
         this.menuGroup.setSize(this.stage.getWidth(), this.stage.getHeight());
         Table root = new Table();
         root.setFillParent(true);
-        root.pad(18.0f, 120.0f, 14.0f, 120.0f);
+        root.pad(14.0f, 56.0f, 10.0f, 56.0f);
         this.menuGroup.addActor(root);
 
         this.landingSection = new Table();
@@ -88,9 +88,9 @@ public class MultiplayerConfigMenu extends Menu {
         Table content = new Table();
         content.top().left();
         content.defaults().pad(6.0f).fillX();
-        content.pad(18.0f, 24.0f, 14.0f, 24.0f);
+        content.pad(16.0f, 30.0f, 12.0f, 30.0f);
         content.setBackground(new NinePatchDrawable(new NinePatch(this.skin.getRegion("textbox-mini"), 20, 20, 20, 20)));
-        content.setWidth(680.0f);
+        content.setWidth(940.0f);
 
         Label title = new Label("Multiplayer", this.headingStyle);
         title.setFontScale(0.80f);
@@ -135,7 +135,7 @@ public class MultiplayerConfigMenu extends Menu {
         this.lanSection.add(new Label("LAN Port:", labelStyle)).right();
         this.lanSection.add(this.portField).width(260.0f).left();
         this.lanSection.row();
-        content.add(this.lanSection).colspan(2).left().width(620.0f).padTop(4.0f);
+        content.add(this.lanSection).colspan(2).left().width(860.0f).padTop(4.0f);
         content.row();
 
         this.onlineSection = new Table();
@@ -160,7 +160,7 @@ public class MultiplayerConfigMenu extends Menu {
         onlineActions.add(this.browseButton).width(240.0f).height(44.0f);
         this.onlineSection.add(onlineActions).colspan(2).center().padTop(6.0f);
         this.onlineSection.row();
-        content.add(this.onlineSection).colspan(2).left().width(620.0f).padTop(4.0f);
+        content.add(this.onlineSection).colspan(2).left().width(860.0f).padTop(4.0f);
         content.row();
 
         ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle();
@@ -172,7 +172,7 @@ public class MultiplayerConfigMenu extends Menu {
         this.scroller.setOverscroll(false, false);
         this.joinSection = new Table();
         this.joinSection.center();
-        this.joinSection.add(this.scroller).width(730.0f).expandY().fillY().center().padTop(6.0f);
+        this.joinSection.add(this.scroller).width(1000.0f).expandY().fillY().center().padTop(6.0f);
         this.joinSection.row();
 
         this.connectButton = new TextButton("Connect LAN", buttonStyle);
