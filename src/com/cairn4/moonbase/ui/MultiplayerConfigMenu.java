@@ -23,11 +23,12 @@ public class MultiplayerConfigMenu extends Menu {
     private TextField passwordField;
     private TextButton connectButton;
     private TextButton browseButton;
-    private TextButton createServerButton;
     private Label targetLabel;
     private ScrollPane scroller;
     private Table lanSection;
     private Table onlineSection;
+    private Table landingSection;
+    private Table joinSection;
     private boolean onlineMode;
     private boolean onlineSelectionReady;
     private String targetName = "No online server selected";
@@ -48,6 +49,11 @@ public class MultiplayerConfigMenu extends Menu {
         root.setFillParent(true);
         root.pad(18.0f, 120.0f, 14.0f, 120.0f);
         this.menuGroup.addActor(root);
+
+        this.landingSection = new Table();
+        this.landingSection.center();
+        root.add(this.landingSection).expand().fill();
+        root.row();
 
         NinePatchDrawable altNpdUp = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor"), 16, 16, 16, 16));
         NinePatchDrawable altNpdActive = new NinePatchDrawable(new NinePatch(this.skin.getRegion("btn-minor-pressed"), 16, 16, 16, 16));
@@ -149,15 +155,6 @@ public class MultiplayerConfigMenu extends Menu {
                 MultiplayerConfigMenu.this.baseScreen.showMenu(new MultiplayerServerListMenu(MultiplayerConfigMenu.this.baseScreen, MultiplayerConfigMenu.this));
             }
         });
-        this.createServerButton = new TextButton("Create Server (7777)", buttonStyle);
-        this.createServerButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
-                Gdx.app.log("MewnBase", "Open host setup...");
-                MultiplayerConfigMenu.this.baseScreen.showMenu(new HostServerSetupMenu(MultiplayerConfigMenu.this.baseScreen));
-            }
-        });
         Table onlineActions = new Table();
         onlineActions.defaults().pad(6.0f);
         onlineActions.add(this.browseButton).width(240.0f).height(44.0f);
@@ -173,8 +170,10 @@ public class MultiplayerConfigMenu extends Menu {
         this.scroller.setScrollingDisabled(true, false);
         this.scroller.setFadeScrollBars(false);
         this.scroller.setOverscroll(false, false);
-        root.add(this.scroller).width(730.0f).expandY().fillY().center().padTop(6.0f);
-        root.row();
+        this.joinSection = new Table();
+        this.joinSection.center();
+        this.joinSection.add(this.scroller).width(730.0f).expandY().fillY().center().padTop(6.0f);
+        this.joinSection.row();
 
         this.connectButton = new TextButton("Connect LAN", buttonStyle);
         this.connectButton.addListener(new ClickListener() {
@@ -200,8 +199,55 @@ public class MultiplayerConfigMenu extends Menu {
                 MultiplayerConfigMenu.this.connectWithParams(MultiplayerConfigMenu.this.ipField.getText(), port, MultiplayerConfigMenu.this.nickField.getText(), MultiplayerConfigMenu.this.passwordField.getText());
             }
         });
-        TextButton exitButton = new TextButton("Exit", buttonStyle);
+        TextButton exitButton = new TextButton("Back", buttonStyle);
         exitButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                MultiplayerConfigMenu.this.baseScreen.menuBackSound();
+                MultiplayerConfigMenu.this.showLanding();
+            }
+        });
+
+        Table footer = new Table();
+        footer.defaults().pad(5.0f);
+        footer.add(this.connectButton).width(210.0f).height(46.0f);
+        footer.add(exitButton).width(150.0f).height(46.0f);
+        this.joinSection.add(footer).center().padTop(8.0f).padBottom(4.0f);
+        root.add(this.joinSection).expand().fill();
+        root.row();
+
+        Label landingTitle = new Label("Multiplayer", this.headingStyle);
+        landingTitle.setFontScale(0.85f);
+        Label landingNote = new Label("Choose how you want to play", labelStyle);
+        landingNote.setFontScale(0.55f);
+        TextButton joinButton = new TextButton("Join server", buttonStyle);
+        TextButton landingCreateButton = new TextButton("Create server", buttonStyle);
+        TextButton landingExitButton = new TextButton("Exit", buttonStyle);
+        this.landingSection.add(landingTitle).center().padBottom(8.0f);
+        this.landingSection.row();
+        this.landingSection.add(landingNote).center().padBottom(22.0f);
+        this.landingSection.row();
+        this.landingSection.add(joinButton).width(330.0f).height(62.0f).padBottom(10.0f);
+        this.landingSection.row();
+        this.landingSection.add(landingCreateButton).width(330.0f).height(62.0f).padBottom(10.0f);
+        this.landingSection.row();
+        this.landingSection.add(landingExitButton).width(220.0f).height(48.0f).padTop(10.0f);
+
+        joinButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
+                MultiplayerConfigMenu.this.showJoinForm();
+            }
+        });
+        landingCreateButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                MultiplayerConfigMenu.this.baseScreen.menuForwardSound();
+                MultiplayerConfigMenu.this.baseScreen.showMenu(new HostServerSetupMenu(MultiplayerConfigMenu.this.baseScreen));
+            }
+        });
+        landingExitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 MultiplayerConfigMenu.this.baseScreen.menuBackSound();
@@ -209,15 +255,26 @@ public class MultiplayerConfigMenu extends Menu {
             }
         });
 
-        Table footer = new Table();
-        footer.defaults().pad(5.0f);
-        footer.add(this.connectButton).width(210.0f).height(46.0f);
-        footer.add(this.createServerButton).width(220.0f).height(46.0f);
-        footer.add(exitButton).width(150.0f).height(46.0f);
-        root.add(footer).center().padTop(8.0f).padBottom(4.0f);
-        root.row();
-
         this.setOnlineMode(false);
+        this.showLanding();
+    }
+
+    private void showLanding() {
+        if (this.landingSection != null) {
+            this.landingSection.setVisible(true);
+        }
+        if (this.joinSection != null) {
+            this.joinSection.setVisible(false);
+        }
+    }
+
+    private void showJoinForm() {
+        if (this.landingSection != null) {
+            this.landingSection.setVisible(false);
+        }
+        if (this.joinSection != null) {
+            this.joinSection.setVisible(true);
+        }
     }
 
     public void applyServer(String name, String host, int port) {
@@ -321,9 +378,6 @@ public class MultiplayerConfigMenu extends Menu {
         }
         if (this.browseButton != null) {
             this.browseButton.setVisible(online);
-        }
-        if (this.createServerButton != null) {
-            this.createServerButton.setVisible(true);
         }
         if (this.targetLabel != null) {
             this.targetLabel.setText(this.getOnlineTargetText());

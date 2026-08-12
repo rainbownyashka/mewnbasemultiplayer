@@ -44,7 +44,7 @@ if ($UseChangedList -eq 1 -and (Test-Path $changedFile)) {
 $merged = @()
 $merged += $changedList
 $merged += $srcArgs
-$merged = $merged | Where-Object { $_ -and $_.Trim().Length -gt 0 } | ForEach-Object { $_.Trim() } | Sort-Object -Unique
+$merged = @($merged | Where-Object { $_ -and $_.Trim().Length -gt 0 } | ForEach-Object { $_.Trim() } | Sort-Object -Unique)
 
 if ($UseChangedList -eq 1) {
   # Persist merged list for future runs
@@ -55,7 +55,9 @@ if ($UseChangedList -eq 1) {
 
 if ($merged.Count -eq 0) { throw "No source files found to compile." }
 
-javac --release 8 -cp $jar -sourcepath src\\com -d $out @merged
+$javacArgs = @('--release', '8', '-cp', $jar, '-sourcepath', 'src\\com', '-d', $out) + $merged
+& javac @javacArgs
+if ($LASTEXITCODE -ne 0) { throw "javac failed with exit code $LASTEXITCODE" }
 
 $rootOut = (Resolve-Path $out).Path
 $classes = Get-ChildItem -Path $out -Recurse -Filter "*.class"
