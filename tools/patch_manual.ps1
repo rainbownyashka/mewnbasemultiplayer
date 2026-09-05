@@ -2,7 +2,8 @@ param(
   [string[]]$Sources = @(),
   [string]$SourceList = "",
   [int]$Kill = 1,
-  [int]$UseChangedList = 1
+  [int]$UseChangedList = 1,
+  [string]$JarPath = "basegame\\game\\desktop-1.0.jar"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -10,7 +11,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $proj = Resolve-Path (Join-Path $root '..')
 Set-Location $proj
 
-$jar = "basegame\\game\\desktop-1.0.jar"
+$jar = $JarPath
 $out = "out_patch"
 $changedFile = "autocompile.changed.json"
 
@@ -61,10 +62,29 @@ if ($LASTEXITCODE -ne 0) { throw "javac failed with exit code $LASTEXITCODE" }
 
 $rootOut = (Resolve-Path $out).Path
 $classes = Get-ChildItem -Path $out -Recurse -Filter "*.class"
-foreach ($c in $classes) {
-  $rel = $c.FullName.Substring($rootOut.Length + 1)
-  jar uf $jar -C $out $rel
-}
+if ($classes.Count -eq 0) { throw "Compilation produced no classes." }
+# One archive update, with an explicit failure check (PowerShell does not throw
+# automatically when jar.exe fails, for example while the game holds the JAR).
+& jar uf $jar -C $out .
+if ($LASTEXITCODE -ne 0) { throw "jar update failed with exit code $LASTEXITCODE; runtime was not updated." }
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $jar).Path)
+try {
+  foreach ($c in $classes) {
+    $entryName = $c.FullName.Substring($rootOut.Length + 1).Replace('\', '/')
+    $entry = $archive.GetEntry($entryName)
+    if ($null -eq $entry) { throw "Missing class in runtime JAR: $entryName" }
+    $stream = $entry.Open()
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { $actual = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+    finally { $stream.Dispose(); $sha.Dispose() }
+    if ($actual -ne (Get-FileHash -LiteralPath $c.FullName -Algorithm SHA256).Hash) {
+      throw "Runtime class differs from compiler output: $entryName"
+    }
+  }
+} finally { $archive.Dispose() }
+Write-Host "Verified $($classes.Count) class hashes in runtime JAR."
 
 Write-Host "Patched jar: $jar"
 Write-Host "Compiled: $($merged -join ', ')"

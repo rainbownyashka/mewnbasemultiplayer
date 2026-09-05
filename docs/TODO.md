@@ -1,5 +1,8 @@
 # TODO
 
+- Lifecycle patch: rebuild the main `basegame/game/desktop-1.0.jar` after the user closes the active game; isolated runtime integration checks passed (see STATUS).
+- Original map/death slowdown remains open: first diagnostic iteration ruled out slow map texture generation in the incident log (1–3 ms); subsequent isolated tests did not reproduce the prolonged stall. Capture a fresh frame summary + watchdog/JFR during the actual event before attributing it to Bloom, networking, or map generation.
+
 - Update compile pipeline to avoid version-mix (compile batch to out/, build jar from basegame + out/).
 - Confirm Java version (8/11/17) and external jars for classpath.
 - Keep `README.md`, `docs/STATUS.md`, and `src/PROJECT_DOCUMENTATION.md` aligned with the current workspace layout and runtime paths.

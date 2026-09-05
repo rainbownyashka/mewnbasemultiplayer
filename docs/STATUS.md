@@ -1,5 +1,24 @@
 # Status
 
+## Lifecycle / death diagnostics (2026-09-06)
+
+- Implemented session-bound callbacks, idempotent world/screen cleanup, remote-body cleanup before Box2D disposal, and deferred Game Over transitions. This addresses `hs_err_pid40384.log`: delayed `Server -> removePlayer -> Player.dispose -> jniDestroyBody` after the world was freed.
+- Host death now uses the existing multiplayer automatic respawn, without changing the client-mode flag or protocol/save formats. Death is evaluated once per status update; respawn is no longer overwritten by the death animation. Single-player Game Over rejects repeat entry.
+- Host state sampling now runs through a guarded render-thread callback; the sender scheduler stops with its server. The existing writer threads still perform socket output. Maps no longer pause a multiplayer world; pending tablet tasks are canceled on death/dispose, and map resources/listeners are released on forced close as well as Back.
+- Verification: automatic targeted build succeeded in an isolated game copy; 10 host/client cycles passed, followed by another 10 on the updated build including lethal air/heat, death with map open, canceled tablet tasks, both peers respawning, retained connection, delayed player removal, repeated dispose, and thread termination. Single-player map pause, repeated death (one menu / one extra effect), double Continue, and Quit passed in the running game. These are local LAN tests, not a VPS deployment test.
+- Performance: final sampled 120-frame window had median 16.66 ms, p95 20.62 ms; map opening ~4.2 ms. The window includes test transitions (max 390 ms), so it is not a steady-state benchmark. The original prolonged black-screen map stall / 2 FPS death incident was not reproduced and is not claimed fixed.
+- **Main runtime update pending:** the user's active game still holds `basegame/game/desktop-1.0.jar`. Tested artifact is in `%TEMP%/mewnbase-lifecycle-bcfb15725eb54e99a365902f41c77810/game/desktop-1.0.jar`. Close/save the active game, then run the targeted command below. Do not describe the main installed JAR as updated until its build/hash verification passes.
+
+Use the automatic script, not manual class copies:
+
+```powershell
+tools/patch_manual.ps1 -UseChangedList 0 -Kill 0 -SourceList "src/com/cairn4/moonbase/Server.java,src/com/cairn4/moonbase/Client.java,src/com/cairn4/moonbase/World.java,src/com/cairn4/moonbase/Player.java,src/com/cairn4/moonbase/PlayerStatus.java,src/com/cairn4/moonbase/MoonBase.java,src/com/cairn4/moonbase/ui/Menu.java,src/com/cairn4/moonbase/ui/GameScreen.java,src/com/cairn4/moonbase/ui/GameOverMenu.java,src/com/cairn4/moonbase/ui/MiniMap.java,src/com/cairn4/moonbase/debug/FrameDiagnostics.java"
+```
+
+- `patch_manual.ps1` updates the archive once, fails on `jar` errors, and verifies every emitted class against the archive by SHA-256. Optional `-JarPath` supports isolated verification copies; keep `-Kill 0` for those.
+- Opt-in diagnostics: launch with `-Dmewnbase.perf=true -Dmewnbase.freezeWatchdogMs=2000` (before `-jar`). Frame summaries include intervals (median/p95/max), render-stage CPU submission times, menu/effect counts and host output backlog; they are not GPU timer queries. Optional JFR: `-XX:StartFlightRecording=filename=smoke.jfr,settings=profile,dumponexit=true` with JDK 21.
+- `tools/runtime_eval.ps1 -Port 8793 -Code 'return "OK";'` uses UTF-8 without BOM. World/GL operations must be posted to the render thread. `tools/smoke_multiplayer_lifecycle.ps1` requires two already running disposable copies with eval ports 8793/8794, a copied `saves/tesm` on the host, and local server port 18777; never point it at a personal live session.
+
 - Multiplayer: added Create Server option `Disable ice biome (mod add-on)`. The host stores it in `server.properties`, applies it to generated and loaded ground, and sends it during the initial handshake so clients use the same mode before their synced world is released. Default remains enabled; targeted Java compilation completed without errors and `basegame/game/desktop-1.0.jar` was updated. Manual multiplayer smoke test remains pending.
 - Multiplayer: remote players are now spawned only after `APPEARANCE`; incomplete connections no longer create blank AFK silhouettes. Manual reconnect/disconnect smoke test remains pending.
 
