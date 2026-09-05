@@ -1469,34 +1469,7 @@ public class Server {
                 // Also send CONNECTED to the new client so it can send APPEARANCE/SPAWNREMOTE
                 try { sendMessage("0:CONNECTED:" + clientId); } catch (Exception ignored) {}
 
-                // If running with an attached GameScreen, add the new client as a remote player on the render thread
-                try {
-                    if (server.gameScreen != null) {
-                        final int newId = this.clientId;
-                        final float sx = server.gameScreen.world != null && server.gameScreen.world.player != null ? server.gameScreen.world.player.getXPos() : 0f;
-                        final float sy = server.gameScreen.world != null && server.gameScreen.world.player != null ? server.gameScreen.world.player.getYPos() : 0f;
-                        com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
-                            @Override
-                            public void run() {
-                                try {
-                                    // Only add if a remote player with this ID does not already exist
-                                    try {
-                                        if (server.gameScreen.getRemotePlayer(newId) == null) {
-                                            server.gameScreen.addPlayer(newId, sx, sy);
-                                        } else {
-                                            Gdx.app.log("Server", "Remote player " + newId + " already exists on host, skipping addPlayer.");
-                                        }
-                                    } catch (Exception e) {
-                                        // Fallback to attempt add if getRemotePlayer not available
-                                        try { server.gameScreen.addPlayer(newId, sx, sy); } catch (Exception ignored) {}
-                                    }
-                                } catch (Exception e) {
-                                    Gdx.app.error("Server", "Failed to add connected client to host GameScreen", e);
-                                }
-                            }
-                        });
-                    }
-                } catch (Exception ignored) {}
+                // Do not create a remote player yet. The client must announce its appearance first.
 
                 // Inform the new player about existing players
                 for (ClientHandler otherClient : server.clients.values()) {
@@ -2077,6 +2050,10 @@ public class Server {
                         // If this server was started in-process and has a GameScreen, try to apply TILE_BUILD_START locally
                         // Special handling: detect SPAWNREMOTE from a client — mark them announced and relay to others
                         if (message.startsWith("SPAWNREMOTE")) {
+                            if (this.appearanceData == null || this.appearanceData.trim().length() == 0) {
+                                Gdx.app.log("Server", "MP_SPAWN_REJECTED stage=spawn reason=appearance_missing clientId=" + this.clientId + " result=rejected");
+                                continue;
+                            }
                             // Mark this client announced so future disconnects will be broadcast
                             try { this.announced = true; } catch (Exception ignored) {}
                             // Broadcast to others that this client spawned
@@ -2729,6 +2706,7 @@ public class Server {
                                 } catch (Exception ignored) {}
                                      // Always update host GameScreen position if present so host sees movement locally
                                      if (server.gameScreen != null) {
+                                         final boolean appearanceReady = this.appearanceData != null && this.appearanceData.trim().length() > 0;
                                          com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
                                              @Override
                                              public void run() {
@@ -2747,8 +2725,12 @@ public class Server {
                                                          try { remote.body.setLinearVelocity(vx / 256.0f, vy / 256.0f); } catch (Exception ignored) {}
                                                          try { remote.forcePositionUpdate(); } catch (Exception ignored) {}
                                                      } else {
-                                                         // If not yet present, add and then set
-                                                         try { server.gameScreen.addPlayer(pid, px, py); } catch (Exception ignored) {}
+                                                         // Never create a player from POS alone; appearance is the join gate.
+                                                         if (appearanceReady) {
+                                                             try { server.gameScreen.addPlayer(pid, px, py); } catch (Exception ignored) {}
+                                                         } else {
+                                                             Gdx.app.log("Server", "MP_POS_IGNORED stage=position reason=appearance_missing clientId=" + pid + " result=ignored");
+                                                         }
                                                      }
                                                  } catch (Exception e) {
                                                      Gdx.app.error("Server", "Failed to update host player position for client " + pid, e);

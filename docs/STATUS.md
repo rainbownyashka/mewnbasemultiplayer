@@ -1,6 +1,7 @@
 # Status
 
 - Multiplayer: added Create Server option `Disable ice biome (mod add-on)`. The host stores it in `server.properties`, applies it to generated and loaded ground, and sends it during the initial handshake so clients use the same mode before their synced world is released. Default remains enabled; targeted Java compilation completed without errors and `basegame/game/desktop-1.0.jar` was updated. Manual multiplayer smoke test remains pending.
+- Multiplayer: remote players are now spawned only after `APPEARANCE`; incomplete connections no longer create blank AFK silhouettes. Manual reconnect/disconnect smoke test remains pending.
 
 Last update: 2026-05-25
 

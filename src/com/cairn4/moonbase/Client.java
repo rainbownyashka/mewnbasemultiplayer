@@ -512,6 +512,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                 String nick = (ap.length > 2) ? java.net.URLDecoder.decode(ap[2], "UTF-8") : "";
                                 if (pid >= 0) {
                                     try { knownNicks.put(pid, nick); } catch (Exception ignored) {}
+                                    flushPendingSpawns();
                                     if (pendingConnectNotify.remove(pid) && pid != this.clientId) {
                                         final String text = (nick != null && nick.length() > 0) ? (nick + " connected") : ("Player " + pid + " connected");
                                         if (this.screen != null) {
@@ -540,14 +541,21 @@ import com.cairn4.moonbase.net.ProtocolV2;
              }
              // Обработка сообщений от других клиентов (формат: ID:сообщение)
             if ("SPAWNREMOTE".equals(type)) {
-                String spawnPayload = "SPAWNREMOTE:" + (payload == null || payload.length() == 0 ? Integer.toString(srcId) : payload);
-                if (MultiplayerNetworkHelper.handleSpawnRemote(screen, spawnPayload, srcId)) {
+                final int id = (payload == null || payload.trim().length() == 0)
+                        ? srcId : safeParseInt(payload, Integer.MIN_VALUE);
+                if (id == Integer.MIN_VALUE) {
                     return;
                 }
-                final int id = safeParseInt(payload, Integer.MIN_VALUE);
-                if (id != Integer.MIN_VALUE) {
-                    pendingSpawns.add(id);
+                if (id == this.clientId) {
+                    return;
                 }
+                if (!knownNicks.containsKey(id)) {
+                    pendingSpawns.add(id);
+                    Gdx.app.log("Client", "MP_SPAWN_DEFERRED stage=spawn reason=appearance_missing clientId=" + id + " result=queued");
+                    return;
+                }
+                String spawnPayload = "SPAWNREMOTE:" + id;
+                MultiplayerNetworkHelper.handleSpawnRemote(screen, spawnPayload, srcId);
                 return;
             }
 
