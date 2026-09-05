@@ -36,6 +36,12 @@ import com.cairn4.moonbase.net.ProtocolV2;
  import java.util.concurrent.ConcurrentSkipListSet;
 
  public class Client {
+    private void postSessionRunnable(Runnable action) {
+        final GameScreen target = screen;
+        if (target != null) target.postSessionRunnable(() -> {
+            if (screen == target) action.run();
+        });
+    }
      public GameScreen screen;
     private Map<String, Long> recentMessages = new ConcurrentHashMap<>();
     private static final long DUPLICATE_WINDOW_MS = 500L;
@@ -91,7 +97,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
         try {
             if (this.screen != null) {
                 final String msg = reason;
-                Gdx.app.postRunnable(() -> {
+                postSessionRunnable(() -> {
                     try {
                         if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
                             Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
@@ -111,7 +117,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
         try {
             if (this.screen != null) {
                 final String msg = reason;
-                Gdx.app.postRunnable(() -> {
+                postSessionRunnable(() -> {
                     try {
                         if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
                             Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
@@ -139,7 +145,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
         try {
             if (this.screen != null) {
                 final String msg = reason;
-                Gdx.app.postRunnable(() -> {
+                postSessionRunnable(() -> {
                     try {
                         if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
                             Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
@@ -159,7 +165,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
         try {
             if (this.screen != null) {
                 final String msg = reason;
-                Gdx.app.postRunnable(() -> {
+                postSessionRunnable(() -> {
                     try {
                         if (Client.this.screen != null && Client.this.screen.hud != null && Client.this.screen.hud.hudNotifications != null) {
                             Client.this.screen.hud.hudNotifications.newMessageInstant(msg);
@@ -232,7 +238,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                          try {
                              if (this.screen != null && this.screen.world != null && this.screen.world.player != null) {
                                  final int cid = this.clientId;
-                                 com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                                 postSessionRunnable(new Runnable(){ @Override public void run() {
                                      try {
                                          try { Client.this.screen.world.player.ownerId = cid; } catch (Exception ignored) {}
                                          try {
@@ -405,7 +411,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
             }
             if (this.screen != null && this.screen.game != null && this.screen.game.console != null) {
                 final String raw = msg;
-                Gdx.app.postRunnable(() -> {
+                postSessionRunnable(() -> {
                     try {
                         this.screen.game.console.log("[NET] " + raw);
                     } catch (Exception exception) {
@@ -471,7 +477,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
             if ("DISCONNECTED".equals(type)) {
                 final int id = safeParseInt(payload.trim(), -1);
                 if (this.screen != null)
-                    Gdx.app.postRunnable(() -> {
+                    postSessionRunnable(() -> {
                          try {
                              this.screen.removePlayer(id);
                          } catch (Exception e) {
@@ -482,7 +488,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                 try { nick = knownNicks.get(id); } catch (Exception ignored) {}
                 final String text = (nick != null && nick.length() > 0) ? (nick + " disconnected") : ("Player " + id + " disconnected");
                 if (this.screen != null)
-                    Gdx.app.postRunnable(() -> {
+                    postSessionRunnable(() -> {
                         try {
                             this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("e33e46"));
                         } catch (Exception exception) {}
@@ -516,7 +522,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                     if (pendingConnectNotify.remove(pid) && pid != this.clientId) {
                                         final String text = (nick != null && nick.length() > 0) ? (nick + " connected") : ("Player " + pid + " connected");
                                         if (this.screen != null) {
-                                            Gdx.app.postRunnable(() -> {
+                                            postSessionRunnable(() -> {
                                                 try {
                                                     this.screen.hud.hudNotifications.newMessage((String) null, text, Color.valueOf("25addb"));
                                                 } catch (Exception ignored) {}
@@ -586,7 +592,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                             final float fdmg = dmg;
                             final int atk = attackerId;
                             final String k = kind;
-                            Gdx.app.postRunnable(() -> {
+                            postSessionRunnable(() -> {
                                 try {
                                     this.screen.world.player.playerStatus.takeHitDamage(fdmg);
                                     String msg2 = (k != null && k.length() > 0) ? ("Hit by " + k) : "Hit!";
@@ -631,7 +637,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                     final String weatherId = parts[5];
                                     final float weatherTime = safeParseFloat(parts[6], 0.0f);
                                     final float weatherDur = safeParseFloat(parts[7], 0.0f);
-                                    Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             if (this.screen.world != null) {
                                                 try {
@@ -783,7 +789,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                  // Apply to local player if this update is for our clientId
                                  if (this.clientId == srcId && this.screen != null && this.screen.world != null && this.screen.world.player != null) {
                                      final String payloadJson = json;
-                                     com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                     postSessionRunnable(() -> {
                                          try {
                                              com.cairn4.moonbase.Player p = this.screen.world.player;
                                              // Parse simple JSON for fields: air, suitPower, hunger, health, flashlight, suitLevel, inventory
@@ -844,7 +850,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                     final int tx = safeParseInt(parts[0], Integer.MIN_VALUE);
                                     final int ty = safeParseInt(parts[1], Integer.MIN_VALUE);
                                     if (tx != Integer.MIN_VALUE && ty != Integer.MIN_VALUE) {
-                                        Gdx.app.postRunnable(() -> {
+                                        postSessionRunnable(() -> {
                                             try {
                                                 com.cairn4.moonbase.Player p = this.screen.world.player;
                                                 if (p != null) {
@@ -872,7 +878,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                     if (amt <= 0) amt = 1;
                                     final String fitem = item;
                                     final int famt = amt;
-                                    Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             com.cairn4.moonbase.Player p = this.screen.world.player;
                                             if (p != null) {
@@ -892,7 +898,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                     if (amt <= 0) amt = 1;
                                     final String fitem = item;
                                     final int famt = amt;
-                                    Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             com.cairn4.moonbase.Player p = this.screen.world.player;
                                             if (p != null) {
@@ -910,7 +916,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              final int wx = (parts.length > 1) ? safeParseInt(parts[1], Integer.MIN_VALUE) : Integer.MIN_VALUE;
                              final int wy = (parts.length > 2) ? safeParseInt(parts[2], Integer.MIN_VALUE) : Integer.MIN_VALUE;
                              if (this.screen != null && this.screen.world != null)
-                                 Gdx.app.postRunnable(() -> {
+                                 postSessionRunnable(() -> {
                                      try {
                                          for (Entity e : this.screen.world.entityList) {
                                              try {
@@ -958,7 +964,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                      final boolean loop = (parts.length > 3) ? Boolean.parseBoolean(parts[3]) : true;
                                      final float scale = (parts.length > 4) ? safeParseFloat(parts[4], 1.0F) : 1.0F;
                                      if (this.screen != null)
-                                         Gdx.app.postRunnable(() -> {
+                                         postSessionRunnable(() -> {
                                              try {
                                                  if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == owner) {
                                                      return;
@@ -1052,7 +1058,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                      final int owner = safeParseInt(parts[1], Integer.MIN_VALUE);
                                      final float scale = (parts.length > 2) ? safeParseFloat(parts[2], 1.0F) : 1.0F;
                                      if (this.screen != null)
-                                         Gdx.app.postRunnable(() -> {
+                                         postSessionRunnable(() -> {
                                              try {
                                                  if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == owner) {
                                                      return;
@@ -1114,7 +1120,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                      final float scale = (parts.length > 2) ? safeParseFloat(parts[2], 1.0F) : 1.0F;
                                      this.flipOverrides.put(Integer.valueOf(owner), Float.valueOf(scale));
                                      if (this.screen != null)
-                                         Gdx.app.postRunnable(() -> {
+                                         postSessionRunnable(() -> {
                                              try {
                                                  if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == owner) {
                                                      return;
@@ -1185,7 +1191,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                      final int owner = safeParseInt(parts[1], Integer.MIN_VALUE);
                                      this.flipOverrides.remove(Integer.valueOf(owner));
                                      if (this.screen != null)
-                                         Gdx.app.postRunnable(() -> {
+                                         postSessionRunnable(() -> {
                                              try {
                                                  if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == owner) {
                                                      return;
@@ -1240,7 +1246,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                                  if (parts.length >= 2 && "PLAYER".equals(parts[0])) {
                                      final int owner = safeParseInt(parts[1], Integer.MIN_VALUE);
                                      if (this.screen != null)
-                                         Gdx.app.postRunnable(() -> {
+                                         postSessionRunnable(() -> {
                                              try {
                                                  this.screen.setAnimTestMode(owner);
                                              } catch (Exception exception) {
@@ -1254,7 +1260,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              try {
                                  final int id = safeParseInt(payload, Integer.MIN_VALUE);
                                  if (id != Integer.MIN_VALUE && this.screen != null)
-                                     Gdx.app.postRunnable(() -> {
+                                     postSessionRunnable(() -> {
                                          try {
                                              if (this.screen.world != null && this.screen.world.player != null && this.screen.world.player.ownerId == id) {
         int face = 0; String color = ""; String nick = "";
@@ -1298,7 +1304,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
                              try {
                                  if (this.screen != null && this.screen.world != null) {
                                      final String f = type + ":" + payload;
-                                     Gdx.app.postRunnable(() -> {
+                                     postSessionRunnable(() -> {
                                          try {
                                              try {
                                                  Method m = this.screen.world.getClass().getMethod("handleIncomingNetworkEvent", new Class[]{String.class});
@@ -1367,7 +1373,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
             return;
         }
         final String payloadFinal = payload;
-        com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+        postSessionRunnable(() -> {
             try {
                 if (this.screen == null || this.screen.world == null || this.screen.world.techManager == null) {
                     pendingTechSyncPayload = payloadFinal;
@@ -1470,7 +1476,7 @@ import com.cairn4.moonbase.net.ProtocolV2;
      private void appendDebugLog(String line) {
          try {
              if (this.diagnosticMode && this.screen != null && this.screen.game != null && this.screen.game.console != null)
-                 Gdx.app.postRunnable(() -> {
+                 postSessionRunnable(() -> {
                      try {
                          this.screen.game.console.log(line);
                      } catch (Exception exception) {

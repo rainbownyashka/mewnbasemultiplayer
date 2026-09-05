@@ -717,12 +717,20 @@ implements Telegraph {
 
     @Override
     public void render() {
+        com.cairn4.moonbase.debug.FrameDiagnostics.beginFrame();
         this.renderHeartbeatMillis = System.currentTimeMillis();
         if (STEAM_VERSION) {
             this.platformAdapter.steamAPIupdate();
         }
         Gdx.gl.glClear(16384);
         super.render();
+        if (com.cairn4.moonbase.debug.FrameDiagnostics.ENABLED) {
+            String state = "screen=" + getScreen().getClass().getSimpleName();
+            if (getScreen() instanceof com.cairn4.moonbase.ui.GameScreen) {
+                state += " " + ((com.cairn4.moonbase.ui.GameScreen)getScreen()).diagnosticState();
+            }
+            com.cairn4.moonbase.debug.FrameDiagnostics.endFrame(state);
+        }
         this.renderHeartbeatMillis = System.currentTimeMillis();
     }
 

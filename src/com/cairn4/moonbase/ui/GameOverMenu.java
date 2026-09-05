@@ -35,7 +35,8 @@ extends Menu {
     GameScreen gameScreen;
     private GameOverReasons.REASONS gameOverReason;
     private Bloom blur;
-    private static float preBlurTimer = 0.0f;
+    private float preBlurTimer = 0.0f;
+    private boolean transitionPending;
     private static float preBlurLength = 1.0f;
     private static float blurLength = 4.5f;
     private float blurTimer = 0.0f;
@@ -136,6 +137,10 @@ extends Menu {
     }
 
     private void nextMenu(boolean contGame) {
+        if (transitionPending) return;
+        transitionPending = true;
+        this.btnContinue.setTouchable(Touchable.disabled);
+        this.btnExit.setTouchable(Touchable.disabled);
         this.gameScreen.menuForwardSound();
         final boolean continueGame = contGame;
         AssetManagerSingleton.getInstance().load("loading.atlas", TextureAtlas.class);
@@ -144,6 +149,7 @@ extends Menu {
 
             @Override
             public void run() {
+                GameOverMenu.this.gameScreen.postSessionRunnable(() -> {
                 if (continueGame) {
                     GameOverMenu.this.gameScreen.dispose();
                     AssetManagerSingleton.getInstance().finishLoading();
@@ -158,6 +164,7 @@ extends Menu {
                     GameOverMenu.this.gameScreen.game.loadFrontendAssets();
                     GameOverMenu.this.gameScreen.game.setScreen(new FrontendScreen(GameOverMenu.this.gameScreen.game));
                 }
+                });
             }
         })));
         if (contGame) {
@@ -200,5 +207,14 @@ extends Menu {
     @Override
     public void back() {
     }
-}
 
+    @Override
+    public void close() {
+        if (blur != null) {
+            gameScreen.postProcessor.removeEffect(blur);
+            blur = null;
+        }
+        if (fadeOut != null) fadeOut.remove();
+        super.close();
+    }
+}

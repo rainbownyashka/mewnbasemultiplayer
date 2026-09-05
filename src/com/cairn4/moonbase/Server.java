@@ -36,7 +36,7 @@ public class Server {
     private volatile boolean playerStateDirty = false;
     private volatile long lastPlayerStatePersistMs = 0L;
     private static final long PLAYER_STATE_PERSIST_INTERVAL_MS = 5000L;
-    private boolean running = false;
+    private volatile boolean running = false;
     private volatile boolean listening = false;
     private int nextClientId = 1;
     // Rate-limiting for client-origin POS broadcasts to avoid flooding
@@ -46,6 +46,23 @@ public class Server {
     // so the server can apply received world updates (host authoritative installs)
     private GameScreen gameScreen = null;
     private volatile boolean hostPosThreadStarted = false;
+    private Thread hostPosThread;
+    private final java.util.concurrent.atomic.AtomicBoolean hostSamplePending = new java.util.concurrent.atomic.AtomicBoolean();
+
+    public boolean ownsScreen(GameScreen screen) { return running && this.gameScreen == screen; }
+
+    public int queuedFrames() {
+        int size = 0;
+        for (ClientHandler client : clients.values()) size += client.outboundQueue.size();
+        return size;
+    }
+
+    private void postSessionRunnable(Runnable action) {
+        final GameScreen target = this.gameScreen;
+        if (target != null && running) target.postSessionRunnable(() -> {
+            if (running && gameScreen == target) action.run();
+        });
+    }
     private volatile long lastTimeWeatherSyncMs = 0L;
     private static final long TIME_WEATHER_SYNC_INTERVAL_MS = 60000L;
     private int lastTwDay = -1;
@@ -134,13 +151,16 @@ public class Server {
     }
 
     private void startHostPosThreadIfNeeded() {
-        if (hostPosThreadStarted) return;
+        if (hostPosThreadStarted || !running) return;
         hostPosThreadStarted = true;
         try {
-            Thread hostPosThread = new Thread(() -> {
-                while (true) {
+            hostPosThread = new Thread(() -> {
+                while (running) {
                     try {
-                        if (Server.this.running && Server.this.gameScreen != null && Server.this.gameScreen.world != null && Server.this.gameScreen.world.player != null && Server.this.gameScreen.world.player.body != null) {
+                        if (gameScreen != null && hostSamplePending.compareAndSet(false, true)) {
+                            postSessionRunnable(() -> {
+                            try {
+                        if (Server.this.running && Server.this.gameScreen.isSessionActive() && Server.this.gameScreen.world.player != null && Server.this.gameScreen.world.player.body != null) {
                             float x = 0f, y = 0f, vx = 0f, vy = 0f;
                             try { x = Server.this.gameScreen.world.player.getXPos(); } catch (Exception ignored2) {}
                             try { y = Server.this.gameScreen.world.player.getYPos(); } catch (Exception ignored2) {}
@@ -252,8 +272,11 @@ public class Server {
                                 } catch (Exception ignored) {}
                             } catch (Exception ignored2) {}
                         }
+                            } finally { hostSamplePending.set(false); }
+                            });
+                        }
                         try { Server.this.maybePersistPlayerStates(); } catch (Exception ignored2) {}
-                        try { Thread.sleep(100L); } catch (InterruptedException ignored2) {}
+                        try { Thread.sleep(100L); } catch (InterruptedException interrupted) { break; }
                     } catch (Exception ignored2) {}
                 }
             }, "MewnBase-Server-HostPos");
@@ -280,8 +303,10 @@ public class Server {
     }
 
     public void stop() {
-        try { MpServerRegistry.stopHeartbeat(); } catch (Exception ignored) {}
+        if (!running) return;
         running = false;
+        if (hostPosThread != null) hostPosThread.interrupt();
+        try { MpServerRegistry.stopHeartbeat(); } catch (Exception ignored) {}
         try {
             for (ClientHandler client : clients.values()) {
                 client.close();
@@ -761,7 +786,7 @@ public class Server {
                         final String encText = idx >= 0 ? rest.substring(idx + 1) : rest;
                         final String nick = java.net.URLDecoder.decode(encNick == null ? "" : encNick, "UTF-8");
                         final String text = java.net.URLDecoder.decode(encText == null ? "" : encText, "UTF-8");
-                        com.badlogic.gdx.Gdx.app.postRunnable(new Runnable() {
+                        postSessionRunnable(new Runnable() {
                             @Override public void run() {
                                 try {
                                     if (raw) Server.this.gameScreen.hud.hudNotifications.newChatMessageInstant(nick, text);
@@ -945,7 +970,7 @@ public class Server {
             try {
                 if (this.gameScreen != null && this.gameScreen.world != null) {
                     final int rid = clientId;
-                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                    postSessionRunnable(new Runnable(){ @Override public void run() {
                         try {
                             for (com.cairn4.moonbase.entities.Entity e : Server.this.gameScreen.world.entityList) {
                                 if (!(e instanceof com.cairn4.moonbase.entities.Vehicle)) continue;
@@ -969,7 +994,7 @@ public class Server {
             try {
                 if (this.gameScreen != null) {
                     final int rid = clientId;
-                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                    postSessionRunnable(new Runnable(){
                         @Override
                         public void run() {
                             try { Server.this.gameScreen.removePlayer(rid); } catch (Exception ignored) {}
@@ -1219,6 +1244,9 @@ public class Server {
 
 
     private static class ClientHandler implements Runnable {
+        private void postSessionRunnable(Runnable action) {
+            if (server != null) server.postSessionRunnable(action);
+        }
         private Socket socket;
         private Server server;
         private int clientId;
@@ -1589,7 +1617,7 @@ public class Server {
                     if ("TECH_RESEARCH".equals(type) && server.gameScreen != null && server.isTechSyncEnabled()) {
                         final String techId = msgPayload != null ? msgPayload.trim() : "";
                         if (techId.length() > 0) {
-                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                            postSessionRunnable(new Runnable(){
                                 @Override public void run() {
                                     try {
                                         if (server.gameScreen != null && server.gameScreen.world != null && server.gameScreen.world.techManager != null) {
@@ -1608,7 +1636,7 @@ public class Server {
                     if ("TECH_SAMPLES_ADD".equals(type) && server.gameScreen != null && server.isTechSyncEnabled()) {
                         final int amt = safeParseInt(msgPayload, 0);
                         if (amt != 0) {
-                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                            postSessionRunnable(new Runnable(){
                                 @Override public void run() {
                                     try {
                                         if (server.gameScreen != null && server.gameScreen.world != null && server.gameScreen.world.techManager != null) {
@@ -1629,7 +1657,7 @@ public class Server {
                             // Also apply locally on render thread
                             final String animMessage = message;
                             final int origin = this.clientId;
-                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                            postSessionRunnable(new Runnable(){
                                 @Override public void run() {
                                     try {
                                         try {
@@ -1686,7 +1714,7 @@ public class Server {
                                                 }
                                                 if (mode == 3) {
                                                     // delayed
-                                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                                    postSessionRunnable(() -> {
                                                         try {
                                                             java.lang.reflect.Field spineFieldForScale = com.cairn4.moonbase.Player.class.getDeclaredField("spineActor");
                                                             spineFieldForScale.setAccessible(true);
@@ -1750,7 +1778,7 @@ public class Server {
                             server.broadcast(this.clientId + ":" + message, null);
                             try { if (!message.startsWith("0:")) server.relayPlayerAnim(message); } catch (Exception ignored) {}
                             final String flipMessage = message; final int origin = this.clientId;
-                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                            postSessionRunnable(new Runnable(){ @Override public void run() {
                                 try {
                                     try {
                                         String rest = flipMessage.substring("FLIP:".length());
@@ -1816,7 +1844,7 @@ public class Server {
                                 // store override
                                 try { server.flipOverrides.put(owner, scale); } catch (Exception ignored) {}
                                 // Also apply locally on host GameScreen
-                                com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                                postSessionRunnable(new Runnable(){ @Override public void run() {
                                     try {
                                         if (server.gameScreen.world != null && server.gameScreen.world.player != null && server.gameScreen.world.player.ownerId == owner) return;
                                         com.cairn4.moonbase.Player remote = server.gameScreen.getRemotePlayer(owner);
@@ -1870,7 +1898,7 @@ public class Server {
                                 final int owner = safeParseInt(parts[1], Integer.MIN_VALUE);
                                 try { server.flipOverrides.remove(owner); } catch (Exception ignored) {}
                                 // Also apply local reset on host GameScreen
-                                com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                                postSessionRunnable(new Runnable(){ @Override public void run() {
                                     try {
                                         if (server.gameScreen == null) return;
                                         if (server.gameScreen.world != null && server.gameScreen.world.player != null && server.gameScreen.world.player.ownerId == owner) return;
@@ -1924,7 +1952,7 @@ public class Server {
                             try { if (!message.startsWith("0:")) server.relayPlayerAnim(message); } catch (Exception ignored) {}
                             // Schedule local application on render thread
                             final String animMessage = message;
-                            com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                            postSessionRunnable(new Runnable(){
                                 @Override public void run() {
                                     try {
                                         try {
@@ -2002,7 +2030,7 @@ public class Server {
                                 if (decNick != null && decNick.length() > 0) {
                                     this.joinNotified = true;
                                     final String nn = decNick;
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             if (server.gameScreen != null && server.gameScreen.hud != null && server.gameScreen.hud.hudNotifications != null) {
                                                 server.gameScreen.hud.hudNotifications.newMessage((String) null, nn + " connected", com.badlogic.gdx.graphics.Color.valueOf("25addb"));
@@ -2028,7 +2056,7 @@ public class Server {
                             if (server.gameScreen != null && this.appearanceData != null) {
                                 final int aid = this.clientId;
                                 final String ad = this.appearanceData;
-                                com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                                postSessionRunnable(new Runnable(){
                                     @Override
                                     public void run() {
                                         try {
@@ -2065,7 +2093,7 @@ public class Server {
                             // для создания игрока на стороне хоста
                             if (server.gameScreen != null) {
                                 final int cid = this.clientId;
-                                Gdx.app.postRunnable(() -> {
+                                postSessionRunnable(() -> {
                                     try {
                                         MultiplayerNetworkHelper.handleSpawnRemote(server.gameScreen, "SPAWNREMOTE", cid);
                                     } catch (Exception e) {
@@ -2107,7 +2135,7 @@ public class Server {
                                         itemId = encItem; 
                                     }
                                     final String finalItemId = itemId;
-                                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                                    postSessionRunnable(new Runnable(){ @Override public void run() {
                                         try {
                                             com.cairn4.moonbase.Chunk ch = server.gameScreen.world.ensureChunkLoadedForNetwork(wx, wy);
                                             com.badlogic.gdx.math.GridPoint2 local = com.cairn4.moonbase.World.convertWorldToLocal(new com.badlogic.gdx.math.GridPoint2(0,0), wx, wy);
@@ -2159,7 +2187,7 @@ public class Server {
                                 if (parts.length >= 3) {
                                     final int fwx = Integer.parseInt(parts[1]);
                                     final int fwy = Integer.parseInt(parts[2]);
-                                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                                    postSessionRunnable(new Runnable(){
                                         @Override
                                         public void run() {
                                             try {
@@ -2194,7 +2222,7 @@ public class Server {
                                 final String parseMsg = stripSenderPrefix(message, "VEH_ENTER:");
                                 final int vehId = safeParseInt(parseMsg.substring("VEH_ENTER:".length()), -1);
                                 if (vehId >= 0) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, ClientHandler.this.clientId, Float.NaN, Float.NaN);
                                             if (v != null) {
@@ -2227,7 +2255,7 @@ public class Server {
                                 final String parseMsg = stripSenderPrefix(message, "VEH_EXIT:");
                                 final int vehId = safeParseInt(parseMsg.substring("VEH_EXIT:".length()), -1);
                                 if (vehId >= 0) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             com.cairn4.moonbase.entities.Vehicle v = findVehicleForOwnerOrNear(server.gameScreen, vehId, ClientHandler.this.clientId, Float.NaN, Float.NaN);
                                             if (v != null) {
@@ -2298,7 +2326,7 @@ public class Server {
                                 final String relayPayloadFinal = relayPayload;
                                 server.broadcast("0:" + relayPayloadFinal, this);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             String usePayload = relayPayloadFinal;
                                             if (!usePayload.startsWith("VEH_STATE:")) return;
@@ -2368,7 +2396,7 @@ public class Server {
                                 final String relayPayloadFinal = relayPayload;
                                 server.broadcast("0:" + relayPayloadFinal, this);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             String usePayload = relayPayloadFinal;
                                             if (!usePayload.startsWith("VEH_META:")) return;
@@ -2423,7 +2451,7 @@ public class Server {
                                 final String relayPayloadFinal = relayPayload;
                                 server.broadcast("0:" + relayPayloadFinal, null);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             MultiplayerNetworkHelper.handleVehicleInvSync(server.gameScreen, relayPayloadFinal, senderId);
                                         } catch (Exception e2) {
@@ -2524,7 +2552,7 @@ public class Server {
                                 }
                                 server.broadcast("0:" + payload, null);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             MultiplayerNetworkHelper.handleBaseInvSync(server.gameScreen, payload, senderId);
                                         } catch (Exception e2) {
@@ -2613,7 +2641,7 @@ public class Server {
                                 final String payload = message;
                                 server.broadcast("0:" + payload, this);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             MultiplayerNetworkHelper.handleVehicleSpawn(server.gameScreen, payload, this.clientId);
                                         } catch (Exception e2) {
@@ -2631,7 +2659,7 @@ public class Server {
                                 final String payload = message;
                                 server.broadcast("0:" + payload, this);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             MultiplayerNetworkHelper.handleEntitySpawn(server.gameScreen, payload, this.clientId);
                                         } catch (Exception e2) {
@@ -2649,7 +2677,7 @@ public class Server {
                                 final String payload = message;
                                 server.broadcast("0:" + payload, this);
                                 if (server.gameScreen != null) {
-                                    com.badlogic.gdx.Gdx.app.postRunnable(() -> {
+                                    postSessionRunnable(() -> {
                                         try {
                                             MultiplayerNetworkHelper.handleGeneratorFuel(server.gameScreen, payload, this.clientId);
                                         } catch (Exception e2) {
@@ -2707,7 +2735,7 @@ public class Server {
                                      // Always update host GameScreen position if present so host sees movement locally
                                      if (server.gameScreen != null) {
                                          final boolean appearanceReady = this.appearanceData != null && this.appearanceData.trim().length() > 0;
-                                         com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){
+                                         postSessionRunnable(new Runnable(){
                                              @Override
                                              public void run() {
                                                  try {
@@ -2835,7 +2863,7 @@ public class Server {
                                     try { if (this.appearanceData != null) { String[] ps = this.appearanceData.split("\\|"); if (ps.length > 2) resolvedEncNick = ps[2]; } } catch (Exception ignored) {}
                                     final String nick = java.net.URLDecoder.decode(resolvedEncNick == null ? "" : resolvedEncNick, "UTF-8");
                                     final String text = java.net.URLDecoder.decode(encText == null ? "" : encText, "UTF-8");
-                                    com.badlogic.gdx.Gdx.app.postRunnable(new Runnable() {
+                                    postSessionRunnable(new Runnable() {
                                         @Override public void run() {
                                             try {
                                                 if (server.gameScreen != null && server.gameScreen.hud != null && server.gameScreen.hud.hudNotifications != null) {
@@ -2948,7 +2976,7 @@ public class Server {
                     if (this.server != null && this.server.gameScreen != null && this.server.gameScreen.world != null) {
                         final Server serverRef = this.server;
                         final CountDownLatch latch = new CountDownLatch(1);
-                        com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                        postSessionRunnable(new Runnable(){ @Override public void run() {
                             try {
                                 try { if (serverRef.gameScreen != null) serverRef.gameScreen.gameLoader.saveGame(serverRef.gameScreen.world, false); } catch (Exception ignored) {}
                             } finally {
@@ -3081,7 +3109,7 @@ public class Server {
                 try {
                     if (this.server != null && this.server.gameScreen != null) {
                         final int rid = this.clientId;
-                        com.badlogic.gdx.Gdx.app.postRunnable(new Runnable(){ @Override public void run() {
+                        postSessionRunnable(new Runnable(){ @Override public void run() {
                             try { ClientHandler.this.server.gameScreen.removePlayer(rid); } catch (Exception ignored) {}
                         }});
                     }

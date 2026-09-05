@@ -116,6 +116,41 @@ implements Telegraph {
     public GifRecorder gifRecorder;
     public Object client;
     private Map<Integer, com.cairn4.moonbase.Player> remotePlayers = new HashMap<>();
+    private volatile boolean closing;
+    private volatile boolean disposed;
+
+    public boolean isSessionActive() {
+        return !closing && !disposed && world != null && world.isActive();
+    }
+
+    public boolean isMultiplayerSession() {
+        com.cairn4.moonbase.Server server = com.cairn4.moonbase.Server.getActiveServer();
+        return client != null || (server != null && server.ownsScreen(this));
+    }
+
+    public void postSessionRunnable(final Runnable action) {
+        if (!isSessionActive()) return;
+        Gdx.app.postRunnable(() -> {
+            if (isSessionActive()) action.run();
+        });
+    }
+
+    public String diagnosticState() {
+        com.cairn4.moonbase.Server s = com.cairn4.moonbase.Server.getActiveServer();
+        int effectCount = -1;
+        if (postProcessor != null) {
+            try {
+                java.lang.reflect.Field f = postProcessor.getClass().getDeclaredField("effectsManager");
+                f.setAccessible(true);
+                Object effects = f.get(postProcessor);
+                effectCount = ((Number)effects.getClass().getMethod("count").invoke(effects)).intValue();
+            } catch (ReflectiveOperationException ignored) { /* Diagnostic only. */ }
+        }
+        return "world=" + (world == null ? "null" : world.gameState) + " menus=" + menuStack.size()
+                + " effects=" + effectCount
+                + " remotePlayers=" + remotePlayers.size()
+                + " outgoing=" + (s != null && s.ownsScreen(this) ? s.queuedFrames() : 0);
+    }
     // Animation test mode (0=normal, 1=controller-first, 2=skeleton-only, 3=delayed-apply)
     public int animTestMode = 0;
 
@@ -488,6 +523,7 @@ implements Telegraph {
 
     @Override
     public void update(float delta) {
+        if (!isSessionActive()) return;
         super.update(delta);
         MessageManager.getInstance().update();
         // If running as in-process server, periodically broadcast host POS to connected clients
@@ -644,6 +680,8 @@ implements Telegraph {
 
     @Override
     public void render(float delta) {
+        if (!isSessionActive()) return;
+        long phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.heatFx.setTime(delta);
         if (this.world.player != null) {
             float playerX = this.world.player.getXPos();
@@ -665,6 +703,8 @@ implements Telegraph {
         this.postProcessor.capture();
         this.updateCounter.start();
         this.update(delta);
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("update", phase);
+        phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.updateCounter.stop();
         this.worldRenderCounter.start();
         this.spriteBatch.begin();
@@ -676,9 +716,15 @@ implements Telegraph {
         }
         this.spriteBatch.end();
         this.postProcessor.captureEnd();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("worldDraw", phase);
+        phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.postProcessor.render();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("postFx", phase);
+        phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.world.rayHandler.setCombinedMatrix(this.b2dCam);
         this.world.rayHandler.updateAndRender();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("lighting", phase);
+        phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.worldRenderCounter.stop();
         if (MoonBase.DEBUG_INFO) {
             shapeRenderer.setProjectionMatrix(this.camera.combined);
@@ -713,11 +759,14 @@ implements Telegraph {
         this.gifRecorder.update();
         this.game.console.draw();
         this.uiRenderCounter.stop();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("hud", phase);
+        phase = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.physicsCounter.start();
         if (this.world.gameState == World.GameStates.playing && this.physicsUpdate) {
             this.world.doPhysicsStep(delta);
         }
         this.physicsCounter.stop();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("physics", phase);
         this.updateCounter.tick();
         this.worldRenderCounter.tick();
         this.uiRenderCounter.tick();
@@ -742,6 +791,7 @@ implements Telegraph {
 
     @Override
     public void showMenu(Menu menu) {
+        if (!isSessionActive()) { menu.close(); return; }
         PlayerInput.clearAll();
         this.menuStack.add(menu);
         this.inputMode = inputModes.menu;
@@ -754,7 +804,7 @@ implements Telegraph {
     @Override
     public void exitMenu() {
         if (!this.menuStack.isEmpty()) {
-            this.menuStack.remove(this.menuStack.size() - 1);
+            this.menuStack.remove(this.menuStack.size() - 1).close();
         }
         MoonBase.debug("GameScreen: ExitMenu(): menu stack size is now " + this.menuStack.size());
         if (this.menuStack.isEmpty()) {
@@ -768,6 +818,11 @@ implements Telegraph {
 
     @Override
     public void dispose() {
+        if (closing || disposed) return;
+        closing = true;
+        if (world != null && world.player != null) world.player.cancelMapOpen();
+        for (Menu menu : new java.util.ArrayList<Menu>(menuStack)) menu.close();
+        menuStack.clear();
         // If a multiplayer client was created via reflection, try to disconnect it cleanly
         if (this.client != null) {
             try {
@@ -782,13 +837,16 @@ implements Telegraph {
         }
         try {
             com.cairn4.moonbase.Server activeServer = com.cairn4.moonbase.Server.getActiveServer();
-            if (activeServer != null && activeServer.isRunning()) {
+            if (activeServer != null && activeServer.ownsScreen(this)) {
                 activeServer.stop();
                 Gdx.app.log("GameScreen", "Stopped active host server during dispose");
             }
         } catch (Exception e) {
             Gdx.app.error("GameScreen", "Error stopping active host server during dispose", e);
         }
+        for (com.cairn4.moonbase.Player remote : remotePlayers.values()) remote.dispose();
+        remotePlayers.clear();
+        if (world != null && world.player != null) world.player.dispose();
         this.game.console.dispose();
         this.worldUIStage.dispose();
         this.hudStage.dispose();
@@ -796,6 +854,7 @@ implements Telegraph {
         this.world.dispose();
         this.postProcessor.dispose();
         super.dispose();
+        disposed = true;
     }
 
     @Override
@@ -854,6 +913,7 @@ implements Telegraph {
 
     // Remote player management (used by Client message handling)
     public void addPlayer(int clientId, float x, float y) {
+        if (!isSessionActive()) return;
         if (this.world.player != null && this.world.player.ownerId == clientId) return; // Don't add self
         if (remotePlayers.containsKey(clientId)) return; // Already exists
         Gdx.app.log("GameScreen", "Adding remote player " + clientId);
@@ -914,6 +974,7 @@ implements Telegraph {
     }
 
     public void removePlayer(int clientId) {
+        if (!isSessionActive()) return;
         Gdx.app.log("GameScreen", "Removing remote player " + clientId);
         com.cairn4.moonbase.Player remotePlayer = remotePlayers.remove(clientId);
         if (remotePlayer != null) {
@@ -929,6 +990,7 @@ implements Telegraph {
     }
 
     public void updatePlayerPosition(int clientId, float x, float y) {
+        if (!isSessionActive()) return;
         com.cairn4.moonbase.Player remotePlayer = remotePlayers.get(clientId);
         if (remotePlayer != null) {
             try {

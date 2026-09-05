@@ -65,6 +65,11 @@ import com.cairn4.moonbase.tiles.ItemPile;
 import java.net.URLDecoder;
 
 public class World {
+    private volatile boolean closing;
+    private volatile boolean disposed;
+
+    public boolean isActive() { return !closing && !disposed; }
+    public boolean isPhysicsAlive() { return !disposed && b2dWorld != null; }
     private Timepiece timepiece;
     TerrainGen terrainGen;
     public ChunkLoader chunkLoader;
@@ -325,6 +330,7 @@ public class World {
     }
 
     public void update(float delta) {
+        if (!isActive()) return;
         if (this.pendingMpLoad) {
             this.tryDeferredMultiplayerLoad();
         }
@@ -526,12 +532,16 @@ public class World {
     }
 
     public void gameOver(GameOverReasons.REASONS reason) {
-        if (MoonBase.isMultiplayer) {
+        if (!isActive() || this.player == null || this.mpRespawnInProgress
+                || this.gameState == GameStates.gameOver) return;
+        this.player.cancelMapOpen();
+        if (this.gameScreen.isMultiplayerSession()) {
             this.handleMultiplayerDeath(reason);
             return;
         }
         this.gameScreen.exitMenu();
         this.gameState = GameStates.gameOver;
+        this.player.playerAnimController.deathAnim();
         this.gameScreen.hud.gameResult(false, reason);
     }
 
@@ -832,6 +842,9 @@ public class World {
     }
 
     public void dispose() {
+        if (closing || disposed) return;
+        closing = true;
+        if (player != null) { player.cancelMapOpen(); player.dispose(); }
         Iterator<Map.Entry<String, Chunk>> chunkIterator = this.worldChunks.entrySet().iterator();
         while (chunkIterator.hasNext()) {
             Map.Entry<String, Chunk> entry = chunkIterator.next();
@@ -845,6 +858,7 @@ public class World {
         this.ambientWorldSound.stop();
         try { if (this.rayHandler != null) this.rayHandler.dispose(); } catch (Exception ignored) {}
         try { if (this.b2dWorld != null) this.b2dWorld.dispose(); } catch (Exception ignored) {}
+        disposed = true;
     }
 
     public void changeWeather(WeatherData weatherData) {

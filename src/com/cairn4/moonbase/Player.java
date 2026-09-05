@@ -730,13 +730,14 @@ implements Speaker {
     }
 
     public void dispose() {
+        cancelMapOpen();
         try {
             if (this.group != null) this.group.remove();
         } catch (Exception e) {
             // ignore
         }
         try {
-            if (this.body != null && this.body.getWorld() != null) this.body.getWorld().destroyBody(this.body);
+            if (this.body != null && this.world.isPhysicsAlive()) this.body.getWorld().destroyBody(this.body);
         } catch (Exception e) {
             // ignore
         }
@@ -982,17 +983,28 @@ implements Speaker {
         }
     }
 
+    private Timer.Task pendingMapOpen;
+
+    public void cancelMapOpen() {
+        if (pendingMapOpen != null) { pendingMapOpen.cancel(); pendingMapOpen = null; }
+    }
+
     public void openMap() {
-        if (this.world.gameScreen.inputMode != GameScreen.inputModes.menu) {
+        if (pendingMapOpen == null && this.world.gameScreen.isSessionActive()
+                && this.world.gameState == World.GameStates.playing
+                && this.world.gameScreen.inputMode != GameScreen.inputModes.menu) {
             this.playerAnimController.openTablet();
-            Timer timer = new Timer();
-            timer.scheduleTask(new Timer.Task(){
+            pendingMapOpen = new Timer.Task(){
 
                 @Override
                 public void run() {
+                    pendingMapOpen = null;
+                    if (!Player.this.world.gameScreen.isSessionActive()
+                            || Player.this.world.gameState != World.GameStates.playing) return;
                     Player.this.world.gameScreen.showMenu(new MiniMap(Player.this.world.gameScreen));
                 }
-            }, 0.65f);
+            };
+            Timer.schedule(pendingMapOpen, 0.65f);
         }
     }
 

@@ -113,6 +113,8 @@ implements Telegraph {
     private Label pauseLabel;
     private static float PAN_SPEED = 500.0f;
     private Pixmap chunkPixmap;
+    private boolean closed;
+    private boolean pausedByMap;
     private float soundPitch;
     private float soundBasePitch = 1.5f;
     private float soundPitchVar = 0.115f;
@@ -123,8 +125,11 @@ implements Telegraph {
 
     public MiniMap(GameScreen gameScreen) {
         super(gameScreen);
+        long opened = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.gameScreen = gameScreen;
-        gameScreen.world.pauseSimulation(true);
+        pausedByMap = !gameScreen.isMultiplayerSession()
+                && gameScreen.world.gameState == World.GameStates.playing;
+        if (pausedByMap) gameScreen.world.pauseSimulation(true);
         MessageManager.getInstance().addListener(this, 40);
         MessageManager.getInstance().addListener(this, 41);
         super.setup();
@@ -132,6 +137,7 @@ implements Telegraph {
         this.show();
         this.addMapListeners();
         this.finishedShowAnim();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("mapOpen", opened);
     }
 
     private void addMapListeners() {
@@ -675,6 +681,7 @@ implements Telegraph {
         planetName.setPosition(172.0f, MoonBase.SCREEN_HEIGHT - 113, 8);
         widgetGroup.addActor(planetName);
         this.pauseLabel = new Label((CharSequence)("- " + Localization.get("paused") + " -"), this.labelStyle);
+        this.pauseLabel.setVisible(pausedByMap);
         this.pauseLabel.setFontScale(0.5f);
         this.pauseLabel.setAlignment(1);
         this.pauseLabel.setColor(Menu.MENU_COLOR);
@@ -784,6 +791,7 @@ implements Telegraph {
         this.minDragPos.set(this.minMegaChunkX * 100, this.minMegaChunkY * 100);
         this.maxDragPos.set(this.maxMegaChunkX * 100, this.maxMegaChunkY * 100);
         this.generateMap();
+        long iconsStarted = com.cairn4.moonbase.debug.FrameDiagnostics.start();
         this.showMap();
         this.showNavBeacons(this.minChunkX, this.minChunkY, CHUNKS_RADIUS_FROM_CURRENT * 2 + 1, CHUNKS_RADIUS_FROM_CURRENT * 2 + 1);
         this.showLaunchpads(this.minChunkX, this.minChunkY);
@@ -794,6 +802,7 @@ implements Telegraph {
         this.addPlayerMarkers();
         this.centerOnPlayer(false);
         this.updateOffsetOrigin();
+        com.cairn4.moonbase.debug.FrameDiagnostics.record("mapIcons", iconsStarted);
     }
 
     private void showSignIcons(int minChunkX, int minChunkY) {
@@ -876,7 +885,19 @@ implements Telegraph {
 
     @Override
     public void back() {
-        this.gameScreen.world.pauseSimulation(false);
+        if (closed) return;
+        this.gameScreen.world.player.playerAnimController.closeTablet();
+        super.back();
+    }
+
+    @Override
+    public void close() {
+        if (closed) return;
+        closed = true;
+        if (pausedByMap && gameScreen.world.isActive()
+                && gameScreen.world.gameState == World.GameStates.paused) {
+            this.gameScreen.world.pauseSimulation(false);
+        }
         MessageManager.getInstance().removeListener((Telegraph)this, 40);
         MessageManager.getInstance().removeListener((Telegraph)this, 41);
         for (Texture t : this.disposableTextures) {
@@ -885,8 +906,7 @@ implements Telegraph {
         this.disposableTextures.clear();
         this.chunkColorState.clear();
         this.chunkTextures.clear();
-        this.gameScreen.world.player.playerAnimController.closeTablet();
-        super.back();
+        super.close();
     }
 
     @Override

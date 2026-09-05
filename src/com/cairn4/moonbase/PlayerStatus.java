@@ -367,7 +367,6 @@ public class PlayerStatus {
             if (this.air <= 0.0f) {
                 this.air = 0.0f;
                 this.changeHealth(-5.0f * delta);
-                this.updateHealth(delta);
                 if (!this.hasStatusEffectType(SuffocationStatusEffect.class)) {
                     SuffocationStatusEffect s = new SuffocationStatusEffect();
                     s.playerStatus = this;
@@ -413,7 +412,6 @@ public class PlayerStatus {
                 }
                 float d = this.temperature - 2.0f;
                 this.changeHealth(-d * 2.0f * delta);
-                this.updateHealth(delta);
             }
         } else {
             this.player.playerAnimController.setOnFire(false);
@@ -475,7 +473,6 @@ public class PlayerStatus {
         }
         if (this.health <= 0.0f) {
             this.player.world.gameOver(GameOverReasons.REASONS.health);
-            this.player.playerAnimController.deathAnim();
         }
         this.oldHealth = this.health;
     }

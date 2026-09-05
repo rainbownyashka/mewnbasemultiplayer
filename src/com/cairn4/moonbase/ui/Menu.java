@@ -116,6 +116,12 @@ public class Menu {
         this.menuGroup.setVisible(false);
     }
 
+    /** Final removal, including when a world transition closes this menu. */
+    public void close() {
+        this.menuGroup.remove();
+        removeTooltip();
+    }
+
     public void handleInput() {
         if (PlayerInput.isPressed(0)) {
             this.focus(DIRECTIONS.left);
