@@ -1,5 +1,10 @@
 # Status
 
+## Release packaging (2026-09-06)
+
+- v1.0.3 portable prepared with `tools/build_portable.ps1 -Name mewnbasemultiplayer_v1.0.3_portable -RuntimeJar dist/desktop-v1.0.3.jar`. The override JAR was freshly built with the targeted automatic patch script and all 57 emitted class hashes verified. The active local game's locked JAR was not used as the release runtime.
+- Archive audit passed: 146 entries, 92,147,017 bytes, embedded JAR SHA-256 matches the freshly compiled artifact. No saves/settings/logs/debug scripts; clean launch/configuration templates live in `tools/portable`. Native `MewnBase.exe` with the bundled Java reached the main menu. Local running installation remains pending update as noted below.
+
 ## Lifecycle / death diagnostics (2026-09-06)
 
 - Implemented session-bound callbacks, idempotent world/screen cleanup, remote-body cleanup before Box2D disposal, and deferred Game Over transitions. This addresses `hs_err_pid40384.log`: delayed `Server -> removePlayer -> Player.dispose -> jniDestroyBody` after the world was freed.

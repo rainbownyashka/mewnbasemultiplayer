@@ -1,6 +1,7 @@
 param(
   [string]$Name = "mewnbase_portable_win",
-  [string]$OutputDir = "dist"
+  [string]$OutputDir = "dist",
+  [string]$RuntimeJar = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,18 +21,18 @@ $includes = @(
   "game\desktop-1.0.jar",
   "jre",
   "MewnBase.exe",
-  "readme.txt",
+  "README.md",
   "run.bat",
-  "run_client.bat",
-  "run_log.bat",
-  "run_server.bat",
-  "fulltest.bat",
-  "fulltestnonai.bat",
   "server.properties"
 )
 
 function Copy-Include($srcRelative) {
   $src = Join-Path $base $srcRelative
+  if ($srcRelative -eq 'game\desktop-1.0.jar' -and $RuntimeJar) {
+    $src = (Resolve-Path -LiteralPath $RuntimeJar).Path
+  }
+  $template = Join-Path $root ('tools\portable\' + $srcRelative)
+  if (Test-Path -LiteralPath $template -PathType Leaf) { $src = $template }
   if (-not (Test-Path -LiteralPath $src)) {
     throw "Missing build input: $srcRelative"
   }
@@ -49,11 +50,8 @@ function Copy-Include($srcRelative) {
   }
 }
 
-if (Test-Path -LiteralPath $stageRoot) {
-  Remove-Item -LiteralPath $stageRoot -Recurse -Force
-}
-if (Test-Path -LiteralPath $zipPath) {
-  Remove-Item -LiteralPath $zipPath -Force
+if ((Test-Path -LiteralPath $stageRoot) -or (Test-Path -LiteralPath $zipPath)) {
+  throw 'Output already exists; choose a different Name or retry with a new timestamp.'
 }
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
