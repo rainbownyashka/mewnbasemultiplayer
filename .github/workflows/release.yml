@@ -47,10 +47,21 @@ jobs:
           Write-Host "Release asset: $($installer.FullName)"
           Write-Host "SHA-256: $hash"
 
+      - name: Build manual class patch archive
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Expected a version tag like v1.0.3; got $tag" }
+          $version = $Matches.version
+          $payload = "release-assets\MewnBaseMP-patch-v$version.zip"
+          $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version.zip"
+          & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/release-*/*.exe
+            dist/release-*/*.zip
             dist/release-*/*.sha256
           generate_release_notes: true

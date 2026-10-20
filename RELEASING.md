@@ -16,7 +16,7 @@ The script compiles the selected files and updates `basegame\game\desktop-1.0.ja
 
 ## Patch-only Windows installer
 
-A tag such as `v1.0.3` makes GitHub Actions compile `MewnBaseMP-Setup-v1.0.3.exe` with Inno Setup and attach it with a SHA-256 file. The workflow does not attach a source ZIP or a portable game package. The installer embeds a class-only binary patch; it does not contain the original game JAR, data, launcher, or Java sources.
+A tag such as `v1.0.3` makes GitHub Actions compile `MewnBaseMP-Setup-v1.0.3.exe` with Inno Setup and build `MewnBaseMP-Manual-Install-v1.0.3.zip`; both are attached with SHA-256 files. The manual ZIP contains only changed `.class` files in their JAR paths, without a manifest, installer, source files, or game package. The installer embeds the same class-only binary patch and does not contain the original game JAR, data, launcher, or Java sources.
 
 The matching patch input must be committed as `release-assets/MewnBaseMP-patch-v1.0.3.zip`. It contains the changed/new class files and a manifest with the expected original JAR hash. The workflow fails if the payload is missing or its version does not match the tag.
 
@@ -25,7 +25,18 @@ To prepare a new patch payload:
 1. Build the patched runtime from a local licensed game copy and the explicit Java source list.
 2. Run `tools\installer\Build-Installer.ps1` with the original game JAR, patched runtime JAR, and new patch version. Review the generated `MewnBaseMP-patch.zip`; it must contain only `.class` files plus `patch-manifest.json`.
 3. Copy that payload to `release-assets\MewnBaseMP-patch-v<version>.zip` and commit it with the release changes.
-4. Push a matching `v<version>` tag. CI builds and uploads the installer.
+4. Push a matching `v<version>` tag. CI builds and uploads the installer, manual class archive, and SHA-256 sidecars.
+
+The manual ZIP is built and verified from the same audited payload:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\installer\Build-ManualPatchZip.ps1 `
+  -PayloadZip "release-assets\MewnBaseMP-patch-v1.0.3.zip" `
+  -PatchVersion "1.0.3" `
+  -OutputZip "dist\release-1.0.3\MewnBaseMP-Manual-Install-v1.0.3.zip"
+```
+
+It preserves each class path (for example `com/cairn4/moonbase/...`) so the player can add the tree to the root of `game\desktop-1.0.jar` with an archive manager. Manual instructions must include the supported original JAR hash and the required `desktop-1.0_original.jar` backup.
 
 The installer detects Steam libraries and common itch.io/game folders. If no compatible game is found, the player must choose the root folder containing `MewnBase.exe`, `data`, and `game\desktop-1.0.jar`. Before changing the JAR, it saves a verified copy as `game\desktop-1.0_original.jar`; the restore action keeps this backup.
 

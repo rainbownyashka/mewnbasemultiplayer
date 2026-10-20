@@ -28,6 +28,19 @@ powershell -ExecutionPolicy Bypass -File tools\installer\Build-Installer.ps1 `
   -OutputDir "dist\mewnbasemultiplayer-installer-v1.0.3-release"
 ```
 
+## Manual class archive
+
+Create a second distribution option from the same verified payload. The resulting ZIP contains only changed `.class` files, keeping the `com/...` paths needed inside the JAR; it contains no manifest or installer files.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\installer\Build-ManualPatchZip.ps1 `
+  -PayloadZip "release-assets\MewnBaseMP-patch-v1.0.3.zip" `
+  -PatchVersion "1.0.3" `
+  -OutputZip "dist\release-1.0.3\MewnBaseMP-Manual-Install-v1.0.3.zip"
+```
+
+The script verifies the payload manifest and every class hash, checks that all entries stay inside the approved game/console class packages, writes the class tree, reopens the output to verify it, and creates a `.sha256` sidecar. Release notes should tell players to close the game, verify the supported base JAR hash, copy `game\desktop-1.0.jar` to `game\desktop-1.0_original.jar`, then merge the ZIP's `com` tree into the JAR root with an archive manager. To restore, replace the patched JAR with the backup.
+
 ## Player install and restore
 
 The setup searches Steam libraries using the Steam registry path and `libraryfolders.vdf`/`appmanifest_743130.acf`, checks common itch.io and game folders, and preselects a compatible install. If it finds none, choose the MewnBase root manually. The selected folder must contain `MewnBase.exe`, `data`, and `game\desktop-1.0.jar`.
