@@ -26,6 +26,7 @@ __pycache__/
 # JARs and zips
 *.jar
 *.zip
+!release-assets/*.zip
 META-INF/
 
 # IDE

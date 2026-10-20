@@ -4,40 +4,53 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Build Release Assets (Source Only)
-        shell: bash
+      - name: Install Inno Setup
+        shell: pwsh
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          mkdir -p dist
-          # Tracked files only (no basegame/, no local dist/). This is the only thing
-          # we can reliably produce in CI without the proprietary game jar/assets.
-          git archive --format=zip --output "dist/mewnbasemultiplayer-${TAG}-src.zip" HEAD
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
+          if (-not ($candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })) {
+            winget install --id JRSoftware.InnoSetup -e --version 6.7.3 --source winget --scope machine --silent --accept-package-agreements --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed with exit code $LASTEXITCODE" }
+          }
 
-          # Optional: if a maintainer committed any prebuilt zips (e.g. portable build),
-          # include them too.
-          if ls release-assets/*.zip >/dev/null 2>&1; then
-            cp -v release-assets/*.zip dist/ || true
-          fi
+      - name: Build patch-only installer
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Expected a version tag like v1.0.3; got $tag" }
+          $version = $Matches.version
+          $payload = "release-assets\MewnBaseMP-patch-v$version.zip"
+          if (-not (Test-Path -LiteralPath $payload -PathType Leaf)) { throw "Versioned binary patch payload is missing: $payload" }
+          $output = "dist\release-$version"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc -PathType Leaf)) { throw "Pinned Inno Setup compiler was not found: $iscc" }
+          & .\tools\installer\Build-Installer.ps1 -PayloadZip $payload -PatchVersion $version -OutputDir $output -ISCCPath $iscc
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed with exit code $LASTEXITCODE" }
+          $installer = Get-ChildItem -LiteralPath $output -Filter 'MewnBaseMP-Setup-*.exe' -File | Select-Object -First 1
+          if ($null -eq $installer) { throw 'The installer executable was not created.' }
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content -LiteralPath ($installer.FullName + '.sha256') -Encoding ascii
+          Write-Host "Release asset: $($installer.FullName)"
+          Write-Host "SHA-256: $hash"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.zip
+            dist/release-*/*.exe
+            dist/release-*/*.sha256
           generate_release_notes: true
-

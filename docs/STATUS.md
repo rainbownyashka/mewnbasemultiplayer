@@ -1,5 +1,13 @@
 # Status
 
+## Patch-only installer (2026-10-20)
+
+- Added a Windows Inno Setup installer that detects supported Steam/itch.io locations and asks the player to choose the game root if none is found. Its 310-class payload excludes the original game JAR, data, launcher, runtime, and Java sources. It supports the baseline JAR SHA-256 `9452d5588c457995599a3fb95ef6d570fa4aa2f3d367bd0dbe2d63a303272b6c`.
+- Before patching, the installer saves and SHA-256 verifies `game/desktop-1.0_original.jar`. It refuses a mismatched game JAR or an occupied invalid backup path; the restore action leaves the backup in place.
+- Local installer built with Inno Setup 6.7.3: 2,883,673 bytes, SHA-256 `4d62606b8250946f0778960f577fa1b7bb86fcc46886d17aab24c3e30e10f105`.
+- Verified on disposable game fixtures: first install created the backup with the expected original JAR hash, re-running applied the patch, and restore returned the JAR to the original hash while retaining the backup. `jar tf` opened the restored JAR successfully.
+- The tagged-release workflow is configured to build and attach the installer plus its SHA-256 file. It no longer creates a custom source ZIP. GitHub still automatically offers source archives for public tags.
+
 ## Release packaging (2026-09-06)
 
 - v1.0.3 portable prepared with `tools/build_portable.ps1 -Name mewnbasemultiplayer_v1.0.3_portable -RuntimeJar dist/desktop-v1.0.3.jar`. The override JAR was freshly built with the targeted automatic patch script and all 57 emitted class hashes verified. The active local game's locked JAR was not used as the release runtime.

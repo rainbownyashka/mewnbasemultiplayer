@@ -10,11 +10,12 @@
 
 Кратко:
 
-1. Запустите игру (`MewnBase.exe` или `run.bat` в portable-сборке).
-2. **Хост:** меню → **MULTIPLAYER** → **Create Server (7777)** → выберите сохранение.
-3. **Друзья:** **MULTIPLAYER** → IP хоста (в интернете — IP из **Radmin VPN**) → порт **7777** → **Connect**.
+1. Для купленной копии MewnBase скачайте `MewnBaseMP-Setup-*.exe` из [Releases](https://github.com/rainbownyashka/mewnbasemultiplayer/releases) и запустите. Установщик найдёт игру в Steam/itch.io или попросит указать её папку.
+2. Запустите игру обычным способом.
+3. **Хост:** меню → **MULTIPLAYER** → **Create Server (7777)** → выберите сохранение.
+4. **Друзья:** **MULTIPLAYER** → IP хоста (в интернете — IP из **Radmin VPN**) → порт **7777** → **Connect**.
 
-> Репозиторий **не содержит** файлов оригинальной игры. Нужна лицензионная копия MewnBase или готовый portable из [Releases](https://github.com/rainbownyashka/mewnbasemultiplayer/releases).
+> Репозиторий **не содержит** файлов оригинальной игры. Нужна лицензионная копия MewnBase. Установщик содержит только мультиплеерный патч и сохраняет исходный JAR как `game\desktop-1.0_original.jar`.
 
 ## Структура репозитория (разработка)
 
@@ -26,6 +27,7 @@
 | `out/` | Временные `.class` после компиляции |
 | `work/` | Распакованный jar для перепаковки |
 | `tools/` | `mewnbase_autoupdate.py`, `patch_manual.ps1`, служебные скрипты |
+| `tools/installer/` | Сборка Windows-установщика и безопасное применение патча к купленной игре |
 | `docs/` | Операционная и техдокументация |
 | `old/` | Старые деcompiled-варианты и сравнения, для справки |
 | `repos/MewnbaseModded/` | Отдельный репозиторий с loader/patch-инфраструктурой |
