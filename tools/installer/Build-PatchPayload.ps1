@@ -10,7 +10,9 @@ param(
   [string]$OutputZip,
 
   [Parameter(Mandatory = $true)]
-  [string]$PatchVersion
+  [string]$PatchVersion,
+
+  [string]$GameVersion = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -78,10 +80,10 @@ try {
   $patchEntries = New-Object 'System.Collections.Generic.List[object]'
   foreach ($entry in $patchedArchive.Entries) {
     if (-not $entry.FullName.EndsWith('.class', [StringComparison]::Ordinal)) { continue }
+    if ($excludedEntries -contains $entry.FullName) { continue }
     if (-not $patchedNames.Add($entry.FullName)) {
       throw "Patched runtime has duplicate class entry: $($entry.FullName)"
     }
-    if ($excludedEntries -contains $entry.FullName) { continue }
 
     $entryStream = $entry.Open()
     try { $patchedHash = Get-StreamSha256 $entryStream }
@@ -140,6 +142,7 @@ try {
   $manifest = [ordered]@{
     schemaVersion = 1
     patchVersion = $PatchVersion
+    gameVersion = $GameVersion
     baseJarSha256 = $baseSha256
     patchedRuntimeJarSha256 = $patchedSha256
     entryCount = $patchEntries.Count

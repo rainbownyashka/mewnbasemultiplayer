@@ -74,6 +74,7 @@ implements Telegraph {
     public static final String VERSION = "1.0.1";
     public static final String BUILD_VERSION = "Build 1";
     public static final String BUILD_DATE = "11/19/2023";
+    public static final String BUILD_DATE_SHORT = "Nov 2023";
     public static final boolean RELEASE_CANDIDATE = false;
     public static final boolean TEST_VERSION = false;
     public static boolean NEEDS_RESTART = false;
@@ -286,6 +287,15 @@ implements Telegraph {
             }
             dump.append('\n');
         }
+    }
+
+    public boolean isSteamActive() {
+        if (this.platformAdapter == null) {
+            return false;
+        }
+        boolean active = this.platformAdapter.isSteamActive();
+        MoonBase.log("IsSteamActive:" + active);
+        return active;
     }
 
     @Override

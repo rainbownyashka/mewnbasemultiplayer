@@ -61,6 +61,25 @@ extends CommandExecutor {
         this.world = gameScreen.world;
     }
 
+    public void openSaveFolder() {
+        com.cairn4.moonbase.Mission mission = MoonBase.getCurrentMission();
+        if (mission == null || mission.saveFolder == null || mission.saveFolder.trim().isEmpty()) {
+            MoonBase.error("No active save folder is available.");
+            return;
+        }
+
+        java.io.File saveDirectory = Gdx.files.local("saves/" + mission.saveFolder).file();
+        try {
+            if (!java.awt.Desktop.isDesktopSupported()) {
+                MoonBase.error("Opening the save folder is not supported on this system.");
+                return;
+            }
+            java.awt.Desktop.getDesktop().open(saveDirectory);
+        } catch (Exception e) {
+            MoonBase.error("Could not open save folder " + saveDirectory.getAbsolutePath() + ": " + e.getLocalizedMessage());
+        }
+    }
+
     public void toggleCreatures() {
         MoonBase.SPAWN_CREATURES = !MoonBase.SPAWN_CREATURES;
         this.gameScreen.game.console.log("SPAWN_CREATURES:" + MoonBase.SPAWN_CREATURES);

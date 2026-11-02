@@ -47,15 +47,40 @@ jobs:
           Write-Host "Release asset: $($installer.FullName)"
           Write-Host "SHA-256: $hash"
 
-      - name: Build manual class patch archive
+      - name: Build manual class patch archives
         shell: pwsh
         run: |
           $tag = $env:GITHUB_REF_NAME
-          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Expected a version tag like v1.0.3; got $tag" }
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Expected a version tag like v1.0.4; got $tag" }
           $version = $Matches.version
-          $payload = "release-assets\MewnBaseMP-patch-v$version.zip"
-          $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version.zip"
-          & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
+          $payload101 = "release-assets\MewnBaseMP-patch-v$version-1.0.1.zip"
+          $payload102 = "release-assets\MewnBaseMP-patch-v$version-1.0.2.zip"
+          if ((Test-Path -LiteralPath $payload101 -PathType Leaf) -and (Test-Path -LiteralPath $payload102 -PathType Leaf)) {
+            foreach ($gameVersion in @('1.0.1', '1.0.2')) {
+              $payload = "release-assets\MewnBaseMP-patch-v$version-$gameVersion.zip"
+              $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version-MewnBase-$gameVersion.zip"
+              & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
+              if ($LASTEXITCODE -ne 0) { throw "Manual archive build failed for MewnBase $gameVersion." }
+            }
+          } else {
+            $payload = "release-assets\MewnBaseMP-patch-v$version.zip"
+            $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version.zip"
+            & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
+            if ($LASTEXITCODE -ne 0) { throw 'Manual archive build failed.' }
+          }
+
+      - name: Prepare bilingual release notes
+        id: release_notes
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Expected a version tag like v1.0.4; got $tag" }
+          $notesPath = "docs\releases\v$($Matches.version).md"
+          if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) { throw "Bilingual release notes are missing: $notesPath" }
+          $notes = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $notesPath).Path)
+          $delimiter = 'RELEASE_NOTES_' + [guid]::NewGuid().ToString('N')
+          $output = "body<<$delimiter`n$notes`n$delimiter`n"
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT, $output, [Text.UTF8Encoding]::new($false))
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -64,4 +89,5 @@ jobs:
             dist/release-*/*.exe
             dist/release-*/*.zip
             dist/release-*/*.sha256
-          generate_release_notes: true
+          body: ${{ steps.release_notes.outputs.body }}
+          generate_release_notes: false

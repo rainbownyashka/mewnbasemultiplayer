@@ -16,6 +16,7 @@ repos/
 *.log
 *.txt
 !docs/STRUCTURE_CHECK.txt
+!tools/installer/patch-sources.txt
 autocompile.*
 compile_errors.json
 

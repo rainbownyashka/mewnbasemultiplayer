@@ -120,6 +120,25 @@ public class ProtoBase extends BaseModule {
         sa.addAnimation(0, "idle", true, 0.0F);
         this.proxySpineActors.add(sa);
     }
+
+    public void addProxyTile(int xTileOffset, int yTileOffset) {
+        GridPoint2 chunkPosition = World.gridPointPool.obtain();
+        GridPoint2 localPosition = World.gridPointPool.obtain();
+        try {
+            int worldTileX = this.worldX + xTileOffset;
+            int worldTileY = this.worldY + yTileOffset;
+            World.convertWorldPosToChunkCoord(chunkPosition, worldTileX, worldTileY);
+            Chunk targetChunk = this.world.getChunk(chunkPosition.x, chunkPosition.y);
+            World.convertWorldToLocal(localPosition, worldTileX, worldTileY);
+            if (targetChunk == null) {
+                return;
+            }
+            new ProxyTile(this.world, targetChunk, localPosition.x, localPosition.y, this);
+        } finally {
+            World.gridPointPool.free(chunkPosition);
+            World.gridPointPool.free(localPosition);
+        }
+    }
   
     public void update(float delta) {
         this.spineActor.update(delta);

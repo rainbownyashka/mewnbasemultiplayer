@@ -1,45 +1,46 @@
 # Releasing
 
-The repository contains the multiplayer project and patch tooling, but not the original MewnBase distribution. Releases should install the patch into the player's own licensed copy.
+The repository contains the multiplayer project and patch tooling, but not the original MewnBase distribution. Releases patch the player's own licensed game installation.
 
-## Runtime changes
+## Supported game JARs
 
-For a Java or runtime change, use the repository patch script with an explicit source list:
+The v1.0.4 installer and manual archives support these exact clean JARs:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\patch_manual.ps1 `
-  -SourceList "src\com\cairn4\moonbase\ui\MultiplayerConfigMenu.java,src\com\cairn4\moonbase\ui\HostServerSetupMenu.java" `
-  -UseChangedList 0
-```
+| MewnBase | Original JAR SHA-256 | Patch archive |
+| --- | --- | --- |
+| 1.0.1 | `9452d5588c457995599a3fb95ef6d570fa4aa2f3d367bd0dbe2d63a303272b6c` | `MewnBaseMP-patch-v1.0.4-1.0.1.zip` |
+| 1.0.2 | `18d88af1c48f475d25c45a1bcf5b127071f48d771958798e5fad62e14baee517` | `MewnBaseMP-patch-v1.0.4-1.0.2.zip` |
 
-The script compiles the selected files and updates `basegame\game\desktop-1.0.jar`. Verify the JAR changed and the build completed without compiler errors.
+The 1.0.2 build keeps its own `DesktopAdapter`, launcher/data classes, pinned-item HUD contract, proxy-tile behavior, chunk filtering, and save-folder API. `Patch-MewnBaseJar.ps1` chooses a payload only after matching the original JAR hash. It saves that JAR as `game\desktop-1.0_original.jar` and keeps the backup after restore.
 
-## Patch-only Windows installer
+## Build the versioned payloads
 
-A tag such as `v1.0.3` makes GitHub Actions compile `MewnBaseMP-Setup-v1.0.3.exe` with Inno Setup and build `MewnBaseMP-Manual-Install-v1.0.3.zip`; both are attached with SHA-256 files. The manual ZIP contains only changed `.class` files in their JAR paths, without a manifest, installer, source files, or game package. The installer embeds the same class-only binary patch and does not contain the original game JAR, data, launcher, or Java sources.
-
-The matching patch input must be committed as `release-assets/MewnBaseMP-patch-v1.0.3.zip`. It contains the changed/new class files and a manifest with the expected original JAR hash. The workflow fails if the payload is missing or its version does not match the tag.
-
-To prepare a new patch payload:
-
-1. Build the patched runtime from a local licensed game copy and the explicit Java source list.
-2. Run `tools\installer\Build-Installer.ps1` with the original game JAR, patched runtime JAR, and new patch version. Review the generated `MewnBaseMP-patch.zip`; it must contain only `.class` files plus `patch-manifest.json`.
-3. Copy that payload to `release-assets\MewnBaseMP-patch-v<version>.zip` and commit it with the release changes.
-4. Push a matching `v<version>` tag. CI builds and uploads the installer, manual class archive, and SHA-256 sidecars.
-
-The manual ZIP is built and verified from the same audited payload:
+Use the explicit source list and the two audited baseline JARs:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\installer\Build-ManualPatchZip.ps1 `
-  -PayloadZip "release-assets\MewnBaseMP-patch-v1.0.3.zip" `
-  -PatchVersion "1.0.3" `
-  -OutputZip "dist\release-1.0.3\MewnBaseMP-Manual-Install-v1.0.3.zip"
+powershell -ExecutionPolicy Bypass -File tools\installer\Build-VersionedPatchSet.ps1 `
+  -Baseline101 "C:\path\to\MewnBase-1.0.1\game\desktop-1.0.jar" `
+  -Baseline102 "C:\path\to\MewnBase-1.0.2\game\desktop-1.0.jar" `
+  -OutputDir "dist\mewnbasemultiplayer-patch-v1.0.4-build" `
+  -PatchVersion "1.0.4" `
+  -WorkspaceJar "basegame\game\desktop-1.0.jar"
 ```
 
-It preserves each class path (for example `com/cairn4/moonbase/...`) so the player can add the tree to the root of `game\desktop-1.0.jar` with an archive manager. Manual instructions must include the supported original JAR hash and the required `desktop-1.0_original.jar` backup.
+The script compiles Java 8 bytecode from `tools\installer\patch-sources.txt`, rejects baselines with different hashes, produces separate 1.0.1 and 1.0.2 class payloads, creates the version-selecting bundle, verifies class read-back, and updates the local workspace JAR with the 1.0.1 variant. Check both `javac-*.log` files and the final JAR hash before describing the build as complete.
 
-The installer detects Steam libraries and common itch.io/game folders. If no compatible game is found, the player must choose the root folder containing `MewnBase.exe`, `data`, and `game\desktop-1.0.jar`. Before changing the JAR, it saves a verified copy as `game\desktop-1.0_original.jar`; the restore action keeps this backup.
+Copy the three generated ZIPs to `release-assets\` using the versioned names above, then build the installer:
 
-GitHub automatically provides source-code archives for tags in a public repository. This workflow no longer creates or attaches an extra `*-src.zip`, but it cannot hide the repository's automatic source archives. Hiding tracked sources requires changing repository visibility or moving them out of the public repository.
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\installer\Build-Installer.ps1 `
+  -PayloadZip "release-assets\MewnBaseMP-patch-v1.0.4.zip" `
+  -PatchVersion "1.0.4" `
+  -OutputDir "dist\release-1.0.4"
+```
 
-Inno Setup's publisher requests a paid license when the compiler is used commercially, including non-interactive CI use in a commercial context. Review its current terms before using this workflow for a commercial release.
+Build the two manual archives from their matching payloads with `Build-ManualPatchZip.ps1`. They contain only changed `.class` files and keep each `com/...` path for merging into the JAR. The versioned bundle is a build input, not a player download.
+
+The GitHub workflow expects a matching `v<version>` tag and `docs\releases\v<version>.md`. It builds the installer and manual archives, then attaches SHA-256 sidecars and the bilingual release notes. The installer wizard supports English and Russian, searches Steam libraries and common itch.io/game folders, and asks the player to select the root folder if no compatible game is found.
+
+GitHub automatically provides source-code archives for public tags. This workflow does not create a separate source ZIP; it cannot hide GitHub's automatic tag archives.
+
+Inno Setup's publisher requests a paid license when its compiler is used commercially, including non-interactive CI use in a commercial context. Follow the publisher's current terms for the intended release use.

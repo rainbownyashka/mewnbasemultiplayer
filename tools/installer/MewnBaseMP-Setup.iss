@@ -35,6 +35,33 @@ VersionInfoCopyright=Community project
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+russian.SelectGameMissing=Совместимая папка MewnBase не найдена. Выберите папку игры — в ней должны быть MewnBase.exe, data и game\desktop-1.0.jar.
+english.SelectGameMissing=No compatible MewnBase folder was found. Select the game folder containing MewnBase.exe, data, and game\desktop-1.0.jar.
+russian.SelectGameFound=Найдена MewnBase. Проверьте путь или выберите другую установку игры.
+english.SelectGameFound=MewnBase was found. Check the path or choose another game installation.
+russian.OperationTitle=Действие
+english.OperationTitle=Action
+russian.OperationPrompt=Выберите, что сделать с выбранной установкой MewnBase
+english.OperationPrompt=Choose what to do with this MewnBase installation
+russian.OperationNote=При установке исходный JAR сохраняется рядом как desktop-1.0_original.jar.
+english.OperationNote=When installing, the original JAR is backed up as desktop-1.0_original.jar.
+russian.OperationInstall=Установить или обновить мультиплеерный патч
+english.OperationInstall=Install or update the multiplayer patch
+russian.OperationRestore=Восстановить исходный JAR из desktop-1.0_original.jar
+english.OperationRestore=Restore the original JAR from desktop-1.0_original.jar
+russian.InvalidGameFolder=В выбранной папке не найдена совместимая MewnBase. Нужны MewnBase.exe, папка data и game\desktop-1.0.jar. Выберите корневую папку игры.
+english.InvalidGameFolder=The selected folder is not a compatible MewnBase installation. It must contain MewnBase.exe, data, and game\desktop-1.0.jar. Select the game root folder.
+russian.BackupMissing=Резервная копия desktop-1.0_original.jar не найдена. Восстановление недоступно.
+english.BackupMissing=The desktop-1.0_original.jar backup was not found. Restore is unavailable.
+russian.PowerShellMissing=Не удалось запустить системный Windows PowerShell. Установка не выполнена.
+english.PowerShellMissing=Windows PowerShell could not be started. No changes were made.
+russian.PatchFailed=Патч не применён. Исходный JAR не был заменён, резервная копия сохранена. Проверьте совместимость игры и закройте MewnBase. Журнал:
+english.PatchFailed=The patch was not applied. The game JAR was not replaced and the backup is intact. Check game compatibility and close MewnBase. Log:
+russian.InstallFailed=Не удалось установить патч. Исходный JAR не был заменён.
+english.InstallFailed=The patch could not be installed. The game JAR was not replaced.
 
 [Files]
 Source: "{#PayloadZip}"; DestDir: "{tmp}"; DestName: "MewnBaseMP-patch.zip"; Flags: ignoreversion deleteafterinstall
@@ -183,16 +210,16 @@ begin
 
   if FoundGameDir = '' then
     WizardForm.SelectDirLabel.Caption :=
-      'Совместимая папка MewnBase не найдена. Выберите папку игры — в ней должны быть MewnBase.exe, data и game\desktop-1.0.jar.'
+      CustomMessage('SelectGameMissing')
   else
     WizardForm.SelectDirLabel.Caption :=
-      'Найдена MewnBase. Проверьте путь или выберите другую установку игры.';
+      CustomMessage('SelectGameFound');
 
   OperationPage := CreateInputOptionPage(wpSelectDir,
-    'Действие', 'Выберите, что сделать с выбранной установкой MewnBase',
-    'При установке исходный JAR сохраняется рядом как desktop-1.0_original.jar.', True, False);
-  OperationPage.Add('Установить или обновить мультиплеерный патч');
-  OperationPage.Add('Восстановить исходный JAR из desktop-1.0_original.jar');
+    CustomMessage('OperationTitle'), CustomMessage('OperationPrompt'),
+    CustomMessage('OperationNote'), True, False);
+  OperationPage.Add(CustomMessage('OperationInstall'));
+  OperationPage.Add(CustomMessage('OperationRestore'));
   OperationPage.SelectedValueIndex := 0;
 end;
 
@@ -201,12 +228,12 @@ begin
   Result := True;
   if CurPageID = wpSelectDir then begin
     if not IsGameRoot(WizardDirValue) then begin
-      MsgBox('В выбранной папке не найдена совместимая MewnBase. Нужны MewnBase.exe, папка data и game\desktop-1.0.jar. Выберите корневую папку игры.', mbError, MB_OK);
+      MsgBox(CustomMessage('InvalidGameFolder'), mbError, MB_OK);
       Result := False;
     end;
   end else if (CurPageID = OperationPage.ID) and (OperationPage.SelectedValueIndex = 1) then begin
     if not FileExists(GetBackupPath(WizardDirValue)) then begin
-      MsgBox('Резервная копия desktop-1.0_original.jar не найдена. Восстановление недоступно.', mbError, MB_OK);
+      MsgBox(CustomMessage('BackupMissing'), mbError, MB_OK);
       Result := False;
     end;
   end;
@@ -229,11 +256,11 @@ begin
       ' -GameDir "' + WizardDirValue + '" -PayloadZip "' +
       ExpandConstant('{tmp}\MewnBaseMP-patch.zip') + '"';
     if not Exec(PowerShellPath, Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
-      ErrorMessage := 'Не удалось запустить системный Windows PowerShell. Установка не выполнена.';
+      ErrorMessage := CustomMessage('PowerShellMissing');
     end else if ResultCode <> 0 then
-      ErrorMessage := 'Патч не применён. Исходный JAR не был заменён, резервная копия сохранена. Проверьте совместимость игры и закройте MewnBase. Журнал: ' + ExpandConstant('{%TEMP}') + '\MewnBaseMP-Setup.log';
+      ErrorMessage := CustomMessage('PatchFailed') + ' ' + ExpandConstant('{%TEMP}') + '\MewnBaseMP-Setup.log';
   except
-    ErrorMessage := 'Не удалось установить патч. Исходный JAR не был заменён. ' + GetExceptionMessage;
+    ErrorMessage := CustomMessage('InstallFailed') + ' ' + GetExceptionMessage;
   end;
   if ErrorMessage <> '' then begin
     MsgBox(ErrorMessage, mbError, MB_OK);

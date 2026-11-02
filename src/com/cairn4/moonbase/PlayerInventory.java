@@ -32,6 +32,8 @@ public class PlayerInventory {
     public ArrayList<ItemStack> itemList = new ArrayList();
     private int selectedIndex;
     public BuildingPlacementCursor.ORIENTATIONS placementOrientation;
+    public ItemData pinnedItemData;
+    public String pinnedItemCrafterId;
 
     public ArrayList<ItemStack> getItemList() {
         return this.itemList;
@@ -680,5 +682,15 @@ public class PlayerInventory {
             totalSpace += maxPerSlot;
         }
         return totalSpace;
+    }
+
+    public void setPinnedBuildable(ItemData itemData, String crafterId) {
+        this.pinnedItemData = itemData;
+        this.pinnedItemCrafterId = crafterId;
+        MessageManager.getInstance().dispatchMessage(60);
+    }
+
+    public ItemData getPinnedItemData() {
+        return this.pinnedItemData;
     }
 }

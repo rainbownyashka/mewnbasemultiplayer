@@ -17,8 +17,9 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $logPath = Join-Path $env:TEMP 'MewnBaseMP-Setup.log'
 try { Start-Transcript -Path $logPath -Append | Out-Null } catch { }
 trap {
-  try { Add-Content -LiteralPath $logPath -Value ("ERROR: " + $_.Exception.Message) -Encoding UTF8 } catch { }
+  $failureMessage = $_.Exception.Message
   try { Stop-Transcript | Out-Null } catch { }
+  try { Add-Content -LiteralPath $logPath -Value ("ERROR: " + $failureMessage) -Encoding UTF8 } catch { }
   exit 1
 }
 
@@ -146,6 +147,92 @@ function Get-ExistingBackup([string]$Path, [string]$ExpectedSha256) {
   return $true
 }
 
+function Read-PatchContainer([string]$Path) {
+  $archive = [IO.Compression.ZipFile]::OpenRead($Path)
+  $temporaryDirectory = Join-Path $env:TEMP ('MewnBaseMP-payload-' + [guid]::NewGuid().ToString('N'))
+  try {
+    $outerNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $archive.Entries) {
+      if (-not $outerNames.Add($entry.FullName)) { throw "Patch container contains a duplicate path: $($entry.FullName)" }
+    }
+
+    if ($null -ne $archive.GetEntry('patch-manifest.json')) {
+      $package = Read-PatchPackage $Path
+      return [pscustomobject]@{
+        PatchVersion = [string]$package.Manifest.patchVersion
+        Variants = @([pscustomobject]@{
+          GameVersion = [string]$package.Manifest.gameVersion
+          BaseJarSha256 = ([string]$package.Manifest.baseJarSha256).ToLowerInvariant()
+          Package = $package
+        })
+      }
+    }
+
+    $bundleEntry = $archive.GetEntry('bundle-manifest.json')
+    if ($null -eq $bundleEntry) { throw 'Payload ZIP is neither a flat class patch nor a versioned patch bundle.' }
+    $reader = New-Object IO.StreamReader($bundleEntry.Open(), [Text.Encoding]::UTF8, $true)
+    try { $bundle = $reader.ReadToEnd() | ConvertFrom-Json }
+    finally { $reader.Dispose() }
+    $items = @($bundle.variants)
+    if ($bundle.schemaVersion -ne 1 -or -not [string]$bundle.patchVersion -or $items.Count -lt 2 -or
+        $archive.Entries.Count -ne ($items.Count + 1)) {
+      throw 'Patch bundle has an unsupported or incomplete manifest.'
+    }
+
+    New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
+    $versions = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $baseHashes = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $paths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $variants = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($item in $items) {
+      $gameVersion = [string]$item.gameVersion
+      $baseHash = ([string]$item.baseJarSha256).ToLowerInvariant()
+      $payloadHash = ([string]$item.payloadSha256).ToLowerInvariant()
+      $payloadName = [string]$item.payloadPath
+      if ($gameVersion -notmatch '^\d+\.\d+\.\d+$' -or -not $versions.Add($gameVersion) -or
+          $baseHash -notmatch '^[0-9a-f]{64}$' -or -not $baseHashes.Add($baseHash) -or
+          $payloadHash -notmatch '^[0-9a-f]{64}$' -or
+          -not $payloadName.StartsWith('payloads/', [StringComparison]::Ordinal) -or
+          -not $payloadName.EndsWith('.zip', [StringComparison]::Ordinal) -or
+          $payloadName.Contains('..') -or $payloadName.Contains('\') -or -not $paths.Add($payloadName)) {
+        throw "Patch bundle contains an invalid or duplicate variant for game $gameVersion."
+      }
+      $payloadEntry = $archive.GetEntry($payloadName)
+      if ($null -eq $payloadEntry) { throw "Patch bundle is missing payload $payloadName." }
+      $payloadBytes = Get-EntryBytes $payloadEntry
+      $payloadMemory = New-Object IO.MemoryStream(, $payloadBytes)
+      try { $actualPayloadHash = Get-StreamSha256 $payloadMemory }
+      finally { $payloadMemory.Dispose() }
+      if ($actualPayloadHash -ne $payloadHash) { throw "Bundled payload hash mismatch: $payloadName" }
+
+      $payloadPath = Join-Path $temporaryDirectory (([guid]::NewGuid().ToString('N')) + '.zip')
+      [IO.File]::WriteAllBytes($payloadPath, $payloadBytes)
+      $package = Read-PatchPackage $payloadPath
+      if ([string]$package.Manifest.patchVersion -ne [string]$bundle.patchVersion -or
+          [string]$package.Manifest.gameVersion -ne $gameVersion -or
+          ([string]$package.Manifest.baseJarSha256).ToLowerInvariant() -ne $baseHash -or
+          [int]$package.Manifest.entryCount -ne [int]$item.entryCount -or
+          ([string]$package.Manifest.patchedRuntimeJarSha256).ToLowerInvariant() -ne ([string]$item.patchedRuntimeJarSha256).ToLowerInvariant()) {
+        throw "Bundle manifest does not match nested payload $payloadName."
+      }
+      $variants.Add([pscustomobject]@{ GameVersion = $gameVersion; BaseJarSha256 = $baseHash; Package = $package })
+    }
+
+    foreach ($entry in $archive.Entries) {
+      if ($entry.FullName -ne 'bundle-manifest.json' -and -not $paths.Contains($entry.FullName)) {
+        throw "Patch bundle contains an unexpected file: $($entry.FullName)"
+      }
+    }
+    if (-not $versions.Contains('1.0.1') -or -not $versions.Contains('1.0.2')) {
+      throw 'This patch bundle does not support both MewnBase 1.0.1 and 1.0.2.'
+    }
+    return [pscustomobject]@{ PatchVersion = [string]$bundle.patchVersion; Variants = @($variants.ToArray()) }
+  } finally {
+    $archive.Dispose()
+    if (Test-Path -LiteralPath $temporaryDirectory) { Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force }
+  }
+}
+
 $root = [IO.Path]::GetFullPath($GameDir).TrimEnd('\')
 $jarPath = Join-Path $root 'game\desktop-1.0.jar'
 $backupPath = Join-Path $root 'game\desktop-1.0_original.jar'
@@ -159,15 +246,64 @@ if (-not (Test-Path -LiteralPath $root -PathType Container) -or
   throw 'This folder is not a compatible MewnBase installation. Select the folder containing MewnBase.exe, data, and game\desktop-1.0.jar.'
 }
 
-$package = Read-PatchPackage $payloadPath
-$expectedBaseHash = ([string]$package.Manifest.baseJarSha256).ToLowerInvariant()
-if ($expectedBaseHash -notmatch '^[0-9a-f]{64}$') { throw 'Patch package has an invalid base JAR hash.' }
+$container = Read-PatchContainer $payloadPath
+$currentHash = Get-FileSha256 $jarPath
+$initialCurrentHash = $currentHash
+$hasBackup = Test-Path -LiteralPath $backupPath -PathType Leaf
+$backupHash = ''
+if ($hasBackup) { $backupHash = Get-FileSha256 $backupPath }
+$initialBackupHash = $backupHash
+
+$marker = $null
+$hasMarker = Test-Path -LiteralPath $markerPath -PathType Leaf
+if ($hasMarker) {
+  try { $marker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json }
+  catch { throw 'The installer marker is unreadable. The game JAR and backup were left untouched.' }
+}
+
+if ($hasBackup) {
+  $matchingVariant = @($container.Variants | Where-Object { $_.BaseJarSha256 -eq $backupHash })
+  if ($matchingVariant.Count -ne 1) {
+    throw "The original backup does not match a supported game version. It was left untouched: $backupPath"
+  }
+  if ($currentHash -ne $backupHash) {
+    if ($null -eq $marker -or
+        ([string]$marker.baseJarSha256).ToLowerInvariant() -ne $backupHash -or
+        ([string]$marker.patchedJarSha256).ToLowerInvariant() -ne $currentHash) {
+      throw 'The game JAR differs from its original backup and has no matching installer marker. It was left untouched.'
+    }
+  } elseif ($null -ne $marker -and
+      ([string]$marker.baseJarSha256).ToLowerInvariant() -ne $backupHash) {
+    throw 'The installer marker refers to a different original game version. The JAR and backup were left untouched.'
+  }
+} else {
+  if ($null -ne $marker) { throw 'An installer marker exists without its required original backup. The game JAR was left untouched.' }
+  $matchingVariant = @($container.Variants | Where-Object { $_.BaseJarSha256 -eq $currentHash })
+  if ($matchingVariant.Count -ne 1) {
+    $supportedHashes = ($container.Variants | ForEach-Object { $_.BaseJarSha256 }) -join ', '
+    throw "This MewnBase JAR is not a supported original version. No backup or replacement was made. Found $currentHash; supported baselines: $supportedHashes."
+  }
+}
+
+$selectedVariant = $matchingVariant[0]
+$package = $selectedVariant.Package
+$expectedBaseHash = [string]$selectedVariant.BaseJarSha256
+if ($expectedBaseHash -notmatch '^[0-9a-f]{64}$' -or
+    ([string]$package.Manifest.baseJarSha256).ToLowerInvariant() -ne $expectedBaseHash) {
+  throw 'The selected patch package does not match the detected original game JAR.'
+}
 
 if ($Action -eq 'Restore') {
-  if (-not (Get-ExistingBackup $backupPath $expectedBaseHash)) {
+  if (-not $hasBackup) {
     throw "The original game backup was not found: $backupPath"
   }
   Assert-GameClosed $root $jarPath
+  if ((Get-FileSha256 $jarPath) -ne $initialCurrentHash) {
+    throw 'The game JAR changed during restore validation. It was left untouched.'
+  }
+  if ((Get-FileSha256 $backupPath) -ne $expectedBaseHash) {
+    throw 'The original JAR backup changed during restore validation. It was left untouched.'
+  }
   $currentHash = Get-FileSha256 $jarPath
   if ($currentHash -eq $expectedBaseHash) {
     if (Test-Path -LiteralPath $markerPath) { Remove-Item -LiteralPath $markerPath -Force }
@@ -178,7 +314,8 @@ if ($Action -eq 'Restore') {
     throw 'The game JAR changed after the backup was made and has no matching installer marker. It was left untouched.'
   }
   $marker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
-  if ($marker.baseJarSha256 -ne $expectedBaseHash -or $marker.patchedJarSha256 -ne $currentHash) {
+  if (([string]$marker.baseJarSha256).ToLowerInvariant() -ne $expectedBaseHash -or
+      ([string]$marker.patchedJarSha256).ToLowerInvariant() -ne $currentHash) {
     throw 'The game JAR no longer matches the installed patch. It was left untouched.'
   }
   $restoreTemp = $jarPath + '.' + [guid]::NewGuid().ToString('N') + '.restore'
@@ -196,7 +333,12 @@ if ($Action -eq 'Restore') {
 
 Assert-GameClosed $root $jarPath
 $currentHash = Get-FileSha256 $jarPath
-$hasBackup = Get-ExistingBackup $backupPath $expectedBaseHash
+if ($currentHash -ne $initialCurrentHash) {
+  throw 'The game JAR changed during install validation. It was left untouched.'
+}
+if ($hasBackup -and (Get-FileSha256 $backupPath) -ne $initialBackupHash) {
+  throw 'The original JAR backup changed during install validation. It was left untouched.'
+}
 if (-not $hasBackup) {
   if ($currentHash -ne $expectedBaseHash) {
     throw "This MewnBase JAR is not the supported original version. No backup or replacement was made. Expected SHA-256 $expectedBaseHash; found $currentHash."
@@ -205,14 +347,6 @@ if (-not $hasBackup) {
   if ((Get-FileSha256 $backupPath) -ne $expectedBaseHash) {
     Remove-Item -LiteralPath $backupPath -Force
     throw 'The original JAR backup could not be verified; installation was stopped.'
-  }
-} elseif ($currentHash -ne $expectedBaseHash) {
-  if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) {
-    throw 'The game JAR differs from the original backup and has no matching installer marker. It was left untouched.'
-  }
-  $oldMarker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
-  if ($oldMarker.baseJarSha256 -ne $expectedBaseHash -or $oldMarker.patchedJarSha256 -ne $currentHash) {
-    throw 'The game JAR changed after installation. It was left untouched; verify the game files in Steam/itch and retry.'
   }
 }
 
@@ -223,18 +357,6 @@ $targetArchive = $null
 $targetStream = $null
 $patchArchive = $null
 try {
-  $patchArchive = [IO.Compression.ZipFile]::OpenRead($payloadPath)
-  foreach ($entry in $patchArchive.Entries) {
-    if ($entry.FullName.ToUpperInvariant().StartsWith('META-INF/') -and
-        ($entry.FullName.ToUpperInvariant().EndsWith('.SF') -or
-         $entry.FullName.ToUpperInvariant().EndsWith('.RSA') -or
-         $entry.FullName.ToUpperInvariant().EndsWith('.DSA') -or
-         $entry.FullName.ToUpperInvariant().EndsWith('.EC'))) {
-      throw 'Signed JARs are not supported because a class patch would invalidate their signature.'
-    }
-  }
-  $patchArchive.Dispose(); $patchArchive = $null
-
   $sourceArchive = [IO.Compression.ZipFile]::OpenRead($backupPath)
   $signatureEntries = @($sourceArchive.Entries | Where-Object {
     $upperName = $_.FullName.ToUpperInvariant()
@@ -296,6 +418,7 @@ try {
   $marker = [ordered]@{
     schemaVersion = 1
     patchVersion = [string]$package.Manifest.patchVersion
+    gameVersion = [string]$package.Manifest.gameVersion
     baseJarSha256 = $expectedBaseHash
     patchedJarSha256 = $patchedHash
     backupFile = 'game\desktop-1.0_original.jar'

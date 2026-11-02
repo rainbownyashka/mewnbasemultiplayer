@@ -2,6 +2,8 @@
 
 - Before tagging a future patch version, build and review its matching `release-assets/MewnBaseMP-patch-v<version>.zip`; public releases require an exact supported original JAR hash.
 
+- Full MewnBase 1.0.2 Steam/itch.io runtime smoke remains unverified: only its `desktop-1.0.jar` was present in the supplied archive; the local UI smoke used the 1.0.1 launcher/data. The 1.0.4 binary payloads and bilingual release notes are prepared locally.
+
 - Lifecycle patch: rebuild the main `basegame/game/desktop-1.0.jar` after the user closes the active game; isolated runtime integration checks passed (see STATUS).
 - Original map/death slowdown remains open: first diagnostic iteration ruled out slow map texture generation in the incident log (1–3 ms); subsequent isolated tests did not reproduce the prolonged stall. Capture a fresh frame summary + watchdog/JFR during the actual event before attributing it to Bloom, networking, or map generation.
 

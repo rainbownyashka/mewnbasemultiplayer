@@ -14,6 +14,8 @@ public interface PlatformAdapter {
 
     public void steamAPIupdate();
 
+    public boolean isSteamActive();
+
     public void dispose();
 
     public void initRPC();

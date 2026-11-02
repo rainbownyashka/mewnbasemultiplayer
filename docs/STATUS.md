@@ -1,5 +1,15 @@
 # Status
 
+## MewnBase 1.0.2 installer compatibility (2026-11-03)
+
+- Added an exact-hash variant for clean MewnBase 1.0.2 JARs alongside 1.0.1. The 1.0.2 baseline SHA-256 is `18d88af1c48f475d25c45a1bcf5b127071f48d771958798e5fad62e14baee517`; 1.0.1 remains `9452d5588c457995599a3fb95ef6d570fa4aa2f3d367bd0dbe2d63a303272b6c`.
+- Ported the 1.0.2 runtime contracts that the multiplayer overlay replaces: Steam-active API, pinned-item inventory methods, proxy-tile registration, invalid-chunk filtering, and `ConsoleExecutor.openSaveFolder`. The 1.0.2 build keeps its baseline `DesktopAdapter` and applies 1.0.2 build labels.
+- Compiled the explicit source list with Java 8 bytecode: 288 classes for 1.0.1 and 285 for 1.0.2. Public/protected API review found no missing required 1.0.2 calls after these compatibility additions. Local `basegame/game/desktop-1.0.jar` was updated and read back; SHA-256 `c45094779133ef6e740a98a7379c9b49658d48a415a637769f6eba67204026dc`.
+- Verified installer install/restore for both exact JAR baselines. Each `_original.jar` backup matched the expected clean hash, restore returned the JAR to that hash, and the backup remained.
+- Built the bilingual Inno Setup 6.7.3 installer and separate manual ZIPs for 1.0.1/1.0.2. Installer SHA-256: `e5216bf45ba442e4cc142fd2fa58fec3fb400f0458517215d7043083c5060e85`. Manual ZIP hashes and download links are in `docs/releases/v1.0.4.md`.
+- Runtime smoke on the 1.0.2 JAR reached `CreatePlayerScreen`; `MoonBase.isSteamActive()` logged false without `NoSuchMethodError`. Only the 1.0.2 JAR was available from `Development.zip`, so the smoke used the 1.0.1 launcher/data and logged the expected missing 1.0.2 locale key from that older data. The archive itself was not modified; SHA-256 remains `c2ab196436229cd975cd5bdc2311977f3c4faf57b0facb95b204ec6be4fdf3b5`.
+- Release binaries and bilingual notes are prepared locally in `release-assets/` and `dist/release-1.0.4/`.
+
 ## Patch-only installer (2026-10-20)
 
 - Added a Windows Inno Setup installer that detects supported Steam/itch.io locations and asks the player to choose the game root if none is found. Its 310-class payload excludes the original game JAR, data, launcher, runtime, and Java sources. It supports the baseline JAR SHA-256 `9452d5588c457995599a3fb95ef6d570fa4aa2f3d367bd0dbe2d63a303272b6c`.

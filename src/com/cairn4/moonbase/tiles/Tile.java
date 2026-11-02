@@ -406,6 +406,18 @@ public class Tile {
         return gridPoints;
     }
 
+    public static ArrayList<GridPoint2> REMOVE_INVALID_CHUNKS(ArrayList<GridPoint2> chunks, World world) {
+        for (int i = chunks.size() - 1; i >= 0; i--) {
+            GridPoint2 chunkPosition = chunks.get(i);
+            int chunkX = Chunk.getChunkX(chunkPosition.x);
+            int chunkY = Chunk.getChunkY(chunkPosition.y);
+            if (world.getChunk(chunkX, chunkY) == null) {
+                chunks.remove(chunkPosition);
+            }
+        }
+        return chunks;
+    }
+
     public Behavior findBehavior(Class bClass) {
         for (Behavior b : this.behaviorList) {
             if (!b.getClass().equals(bClass)) continue;

@@ -173,6 +173,11 @@ implements PlatformAdapter {
     }
 
     @Override
+    public boolean isSteamActive() {
+        return SteamAPI.isSteamRunning();
+    }
+
+    @Override
     public boolean earnAchievement(String achievementId) {
         if (MoonBase.STEAM_VERSION && this.userStats != null) {
             this.userStats.setAchievement(achievementId);

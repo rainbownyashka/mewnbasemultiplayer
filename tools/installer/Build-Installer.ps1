@@ -49,35 +49,41 @@ if ($PayloadZip) {
   $payloadPath = (Resolve-Path -LiteralPath $payloadPath).Path
   Add-Type -AssemblyName System.IO.Compression
   Add-Type -AssemblyName System.IO.Compression.FileSystem
-  $archive = [IO.Compression.ZipFile]::OpenRead($payloadPath)
-  try {
-    $manifestEntry = $archive.GetEntry('patch-manifest.json')
+  function Assert-PatchArchive([IO.Compression.ZipArchive]$Archive, [string]$ExpectedGameVersion) {
+    $names = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $Archive.Entries) {
+      if (-not $names.Add($entry.FullName)) { throw "Patch archive contains a duplicate path: $($entry.FullName)" }
+    }
+    $manifestEntry = $Archive.GetEntry('patch-manifest.json')
     if ($null -eq $manifestEntry) { throw 'Patch payload is missing patch-manifest.json.' }
     $reader = New-Object IO.StreamReader($manifestEntry.Open(), [Text.Encoding]::UTF8, $true)
     try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json }
     finally { $reader.Dispose() }
+    $manifestItems = @($manifest.entries)
     if ($manifest.schemaVersion -ne 1 -or [string]$manifest.patchVersion -ne $PatchVersion -or
         [string]$manifest.baseJarSha256 -notmatch '^[0-9a-fA-F]{64}$' -or
-        [int]$manifest.entryCount -ne @($manifest.entries).Count -or
-        [int]$manifest.entryCount -ne $archive.Entries.Count - 1) {
-      throw "Patch payload manifest does not match requested version $PatchVersion."
+        ($ExpectedGameVersion -and [string]$manifest.gameVersion -ne $ExpectedGameVersion) -or
+        [int]$manifest.entryCount -lt 1 -or [int]$manifest.entryCount -ne $manifestItems.Count -or
+        $manifest.entryCount -ne $Archive.Entries.Count - 1) {
+      throw "Patch payload manifest does not match requested patch $PatchVersion / game $ExpectedGameVersion."
     }
     $expected = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
-    foreach ($item in $manifest.entries) {
+    foreach ($item in $manifestItems) {
       $name = [string]$item.path
       $hash = ([string]$item.sha256).ToLowerInvariant()
       if (-not $name.EndsWith('.class', [StringComparison]::Ordinal) -or $name.Contains('..') -or
           $name.StartsWith('/') -or $name.Contains('\') -or $hash -notmatch '^[0-9a-f]{64}$' -or
-          $expected.ContainsKey($name)) {
+          $expected.ContainsKey($name) -or
+          -not ($name.StartsWith('com/cairn4/moonbase/', [StringComparison]::Ordinal) -or
+                $name.StartsWith('com/strongjoshua/console/', [StringComparison]::Ordinal))) {
         throw "Patch payload manifest contains an invalid or duplicate class entry: $name"
       }
       $expected.Add($name, $hash)
     }
     $actual = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    foreach ($entry in $archive.Entries) {
+    foreach ($entry in $Archive.Entries) {
       if ($entry.FullName -eq 'patch-manifest.json') { continue }
-      if (-not $entry.FullName.EndsWith('.class', [StringComparison]::Ordinal) -or
-          -not $expected.ContainsKey($entry.FullName) -or -not $actual.Add($entry.FullName)) {
+      if (-not $expected.ContainsKey($entry.FullName) -or -not $actual.Add($entry.FullName)) {
         throw "Patch payload contains an unexpected or duplicate file: $($entry.FullName)"
       }
       $stream = $entry.Open()
@@ -89,6 +95,74 @@ if ($PayloadZip) {
       }
     }
     if ($actual.Count -ne $expected.Count) { throw 'Patch payload is missing one or more manifest classes.' }
+    return $manifest
+  }
+
+  $archive = [IO.Compression.ZipFile]::OpenRead($payloadPath)
+  try {
+    if ($null -ne $archive.GetEntry('patch-manifest.json')) {
+      Assert-PatchArchive $archive '' | Out-Null
+    } else {
+      $bundleEntry = $archive.GetEntry('bundle-manifest.json')
+      if ($null -eq $bundleEntry) { throw 'Payload ZIP is neither a class patch nor a versioned patch bundle.' }
+      $reader = New-Object IO.StreamReader($bundleEntry.Open(), [Text.Encoding]::UTF8, $true)
+      try { $bundle = $reader.ReadToEnd() | ConvertFrom-Json }
+      finally { $reader.Dispose() }
+      $variants = @($bundle.variants)
+      if ($bundle.schemaVersion -ne 1 -or [string]$bundle.patchVersion -ne $PatchVersion -or $variants.Count -lt 2 -or
+          $archive.Entries.Count -ne ($variants.Count + 1)) {
+        throw "Patch bundle manifest does not match requested version $PatchVersion."
+      }
+      $variantVersions = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+      $variantHashes = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+      $variantPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+      foreach ($variant in $variants) {
+        $gameVersion = [string]$variant.gameVersion
+        $baseHash = ([string]$variant.baseJarSha256).ToLowerInvariant()
+        $payloadName = [string]$variant.payloadPath
+        $payloadHash = ([string]$variant.payloadSha256).ToLowerInvariant()
+        if ($gameVersion -notmatch '^\d+\.\d+\.\d+$' -or -not $variantVersions.Add($gameVersion) -or
+            $baseHash -notmatch '^[0-9a-f]{64}$' -or -not $variantHashes.Add($baseHash) -or
+            $payloadHash -notmatch '^[0-9a-f]{64}$' -or
+            -not $payloadName.StartsWith('payloads/', [StringComparison]::Ordinal) -or
+            -not $payloadName.EndsWith('.zip', [StringComparison]::Ordinal) -or $payloadName.Contains('..') -or
+            $payloadName.Contains('\') -or -not $variantPaths.Add($payloadName)) {
+          throw "Patch bundle contains an invalid or duplicate variant for game $gameVersion."
+        }
+        $nestedEntry = $archive.GetEntry($payloadName)
+        if ($null -eq $nestedEntry) { throw "Patch bundle is missing its payload: $payloadName" }
+        $nestedStream = $nestedEntry.Open()
+        $memory = New-Object IO.MemoryStream
+        try {
+          $nestedStream.CopyTo($memory)
+          $nestedBytes = $memory.ToArray()
+          $payloadSha = [Security.Cryptography.SHA256]::Create()
+          try { $actualPayloadHash = [BitConverter]::ToString($payloadSha.ComputeHash($nestedBytes)).Replace('-', '').ToLowerInvariant() }
+          finally { $payloadSha.Dispose() }
+          if ($actualPayloadHash -ne $payloadHash) { throw "Bundled payload hash mismatch: $payloadName" }
+          $nestedMemory = New-Object IO.MemoryStream(, $nestedBytes)
+          try {
+            $nestedArchive = New-Object IO.Compression.ZipArchive($nestedMemory, [IO.Compression.ZipArchiveMode]::Read, $false)
+            try {
+              $nestedManifest = Assert-PatchArchive $nestedArchive $gameVersion
+              if ([string]$nestedManifest.baseJarSha256 -ne $baseHash -or
+                  [int]$nestedManifest.entryCount -ne [int]$variant.entryCount -or
+                  ([string]$nestedManifest.patchedRuntimeJarSha256).ToLowerInvariant() -ne ([string]$variant.patchedRuntimeJarSha256).ToLowerInvariant()) {
+                throw "Bundle metadata does not match nested payload: $payloadName"
+              }
+            } finally { $nestedArchive.Dispose() }
+          } finally { $nestedMemory.Dispose() }
+        } finally { $nestedStream.Dispose(); $memory.Dispose() }
+      }
+      foreach ($entry in $archive.Entries) {
+        if ($entry.FullName -ne 'bundle-manifest.json' -and -not $variantPaths.Contains($entry.FullName)) {
+          throw "Patch bundle contains an unexpected file: $($entry.FullName)"
+        }
+      }
+      if (-not $variantVersions.Contains('1.0.1') -or -not $variantVersions.Contains('1.0.2')) {
+        throw 'The v1.0.4 installer bundle must include both MewnBase 1.0.1 and 1.0.2.'
+      }
+    }
   } finally { $archive.Dispose() }
   $resolvedPayloadZip = $payloadPath
 } else {
