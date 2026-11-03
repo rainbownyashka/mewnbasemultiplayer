@@ -98,6 +98,7 @@ try {
     }
 
     $outputEntry = $outputArchive.CreateEntry($entry.FullName, [IO.Compression.CompressionLevel]::Optimal)
+    $outputEntry.LastWriteTime = [DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
     $inputStream = $entry.Open()
     $outputEntryStream = $outputEntry.Open()
     try { $inputStream.CopyTo($outputEntryStream) }

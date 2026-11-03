@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File tools\installer\Build-Installer.ps1 `
   -OutputDir "dist\release-1.0.4"
 ```
 
-Build the two manual archives from their matching payloads with `Build-ManualPatchZip.ps1`. They contain only changed `.class` files and keep each `com/...` path for merging into the JAR. The versioned bundle is a build input, not a player download.
+Build the two manual archives from their matching payloads with `Build-ManualPatchZip.ps1`. They contain only changed `.class` files and keep each `com/...` path for merging into the JAR. Fixed ZIP entry timestamps make the manual archive hashes reproducible. The versioned bundle is a build input, not a player download.
 
 The GitHub workflow expects a matching `v<version>` tag and `docs\releases\v<version>.md`. It builds the installer and manual archives, then attaches SHA-256 sidecars and the bilingual release notes. The installer wizard supports English and Russian, searches Steam libraries and common itch.io/game folders, and asks the player to select the root folder if no compatible game is found.
 

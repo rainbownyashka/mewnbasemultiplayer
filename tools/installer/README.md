@@ -50,7 +50,7 @@ powershell -ExecutionPolicy Bypass -File tools\installer\Build-ManualPatchZip.ps
   -OutputZip "dist\release-1.0.4\MewnBaseMP-Manual-Install-v1.0.4-MewnBase-1.0.2.zip"
 ```
 
-The script verifies every class against the payload manifest, rejects paths outside the game and console packages, reopens the output to verify it, and writes a `.sha256` sidecar. Before merging the ZIP into the JAR, close the game, verify the matching clean JAR hash, and copy it to `game\desktop-1.0_original.jar`. Merge the ZIP's `com` folder into the JAR root with an archive manager. Restore by replacing the patched JAR with the backup.
+The script verifies every class against the payload manifest, rejects paths outside the game and console packages, reopens the output to verify it, writes a `.sha256` sidecar, and uses fixed entry timestamps for reproducible archive hashes. Before merging the ZIP into the JAR, close the game, verify the matching clean JAR hash, and copy it to `game\desktop-1.0_original.jar`. Merge the ZIP's `com` folder into the JAR root with an archive manager. Restore by replacing the patched JAR with the backup.
 
 ## Install detection
 
