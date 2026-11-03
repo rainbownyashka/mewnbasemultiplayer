@@ -60,13 +60,19 @@ jobs:
               $payload = "release-assets\MewnBaseMP-patch-v$version-$gameVersion.zip"
               $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version-MewnBase-$gameVersion.zip"
               & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
-              if ($LASTEXITCODE -ne 0) { throw "Manual archive build failed for MewnBase $gameVersion." }
+              if (-not (Test-Path -LiteralPath $output -PathType Leaf) -or
+                  -not (Test-Path -LiteralPath ($output + '.sha256') -PathType Leaf)) {
+                throw "Manual archive build did not produce the ZIP and SHA-256 file for MewnBase $gameVersion."
+              }
             }
           } else {
             $payload = "release-assets\MewnBaseMP-patch-v$version.zip"
             $output = "dist\release-$version\MewnBaseMP-Manual-Install-v$version.zip"
             & .\tools\installer\Build-ManualPatchZip.ps1 -PayloadZip $payload -PatchVersion $version -OutputZip $output
-            if ($LASTEXITCODE -ne 0) { throw 'Manual archive build failed.' }
+            if (-not (Test-Path -LiteralPath $output -PathType Leaf) -or
+                -not (Test-Path -LiteralPath ($output + '.sha256') -PathType Leaf)) {
+              throw 'Manual archive build did not produce the ZIP and SHA-256 file.'
+            }
           }
 
       - name: Prepare bilingual release notes

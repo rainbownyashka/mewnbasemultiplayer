@@ -9,6 +9,7 @@
 - Built the bilingual Inno Setup 6.7.3 installer and separate manual ZIPs for 1.0.1/1.0.2. Installer SHA-256: `e5216bf45ba442e4cc142fd2fa58fec3fb400f0458517215d7043083c5060e85`. Manual ZIP creation uses fixed timestamps; two independent builds matched for both versions. Hashes and download links are in `docs/releases/v1.0.4.md`.
 - Runtime smoke on the 1.0.2 JAR reached `CreatePlayerScreen`; `MoonBase.isSteamActive()` logged false without `NoSuchMethodError`. Only the 1.0.2 JAR was available from `Development.zip`, so the smoke used the 1.0.1 launcher/data and logged the expected missing 1.0.2 locale key from that older data. The archive itself was not modified; SHA-256 remains `c2ab196436229cd975cd5bdc2311977f3c4faf57b0facb95b204ec6be4fdf3b5`.
 - Release binaries and bilingual notes are prepared locally in `release-assets/` and `dist/release-1.0.4/`.
+- The first GitHub Actions release run exposed a false failure check: the manual ZIP builder is a PowerShell script, so `$LASTEXITCODE` can be empty even when it completed. The workflow now validates both the ZIP and its SHA-256 sidecar; GitHub release verification is pending.
 
 ## Patch-only installer (2026-10-20)
 
